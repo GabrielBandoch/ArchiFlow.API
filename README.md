@@ -4,7 +4,7 @@ API REST em **.NET 8 / C#** para a plataforma de gestão de projetos de arquitet
 Projeto de Portfólio — Católica SC · Linha: Web Applications  
 Autor: Gabriel Felipe Alves Bandoch
 
-![CI](https://github.com/seu-usuario/archiflow-backend/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/GabrielBandoch/ArchiFlow.API/actions/workflows/ci.yml/badge.svg)
 
 ---
 
