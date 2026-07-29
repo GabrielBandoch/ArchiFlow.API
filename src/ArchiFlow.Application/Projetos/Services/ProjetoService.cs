@@ -1,36 +1,143 @@
 using AutoMapper;
 using ArchiFlow.Application.Projetos.Commands;
 using ArchiFlow.Application.Projetos.DTOs;
-using ArchiFlow.Infrastructure.Data;
-using ArchiFlow.Application.Projetos.Services.Interface;
+using ArchiFlow.Domain.Projetos;
+using ArchiFlow.Domain.Shared;
+using ArchiFlow.Application.Interfaces.Services;
+using ArchiFlow.Domain.Projetos.Enum;
 
 namespace ArchiFlow.Application.Projetos.Services;
 
 public class ProjetoService : IProjetoService
 {
-    public ProjetoService(ArchiFlowDbContext context, IMapper mapper) { }
+    private readonly IProjetoRepository _repository;
+    private readonly IUnitOfWork        _unitOfWork;
+    private readonly IMapper            _mapper;
 
-    public Task<IEnumerable<ProjetoDto>> ObterTodos() =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public ProjetoService(
+        IProjetoRepository repository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _mapper     = mapper;
+    }
 
-    public Task<ProjetoDto?> ObterPorId(Guid id) =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public async Task<IEnumerable<ProjetoDto>> GetAll()
+    {
+        var projetos = await _repository.GetAllWithEtapas();
+        return projetos.Select(ToDto);
+    }
 
-    public Task<ProjetoDto> Criar(CriarProjetoCommand command) =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public async Task<ProjetoDto?> GetById(Guid id)
+    {
+        var projeto = await _repository.GetByIdWithEtapas(id);
+        return projeto is null ? null : ToDto(projeto);
+    }
 
-    public Task<ProjetoDto> Atualizar(AtualizarProjetoCommand command) =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public async Task<ProjetoDto> Create(CriarProjetoCommand command)
+    {
+        var projeto = _mapper.Map<Projeto>(command);
+        await _repository.Create(projeto);
+        await _unitOfWork.Commit();
+        return ToDto(projeto);
+    }
 
-    public Task<ProjetoDto> AtualizarStatus(AtualizarStatusProjetoCommand command) =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public async Task<ProjetoDto> Update(AtualizarProjetoCommand command)
+    {
+        var projeto = await _repository.GetByIdWithEtapas(command.Id)
+            ?? throw new KeyNotFoundException($"Projeto {command.Id} não encontrado.");
 
-    public Task<EtapaProjetoDto> CriarEtapa(CriarEtapaCommand command) =>
-        throw new NotImplementedException("Pendente de Implementação");
+        _mapper.Map(command, projeto);
+        await _repository.Update(projeto);
+        await _unitOfWork.Commit();
+        return ToDto(projeto);
+    }
 
-    public Task<EtapaProjetoDto> AtualizarStatusEtapa(AtualizarStatusEtapaCommand command) =>
-        throw new NotImplementedException("Pendente de Implementação");
+    public async Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command)
+    {
+        var projeto = await _repository.GetByIdWithEtapas(command.Id)
+            ?? throw new KeyNotFoundException($"Projeto {command.Id} não encontrado.");
 
-    public Task Excluir(Guid id) =>
-        throw new NotImplementedException("Pendente de Implementação");
+        projeto.Status      = command.Status;
+        projeto.AtualizadoEm = DateTime.UtcNow;
+
+        await _repository.Update(projeto);
+        await _unitOfWork.Commit();
+        return ToDto(projeto);
+    }
+
+    public async Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command)
+    {
+        var etapa = new EtapaProjeto
+        {
+            Id        = Guid.NewGuid(),
+            ProjetoId = command.ProjetoId,
+            Nome      = command.Nome,
+            Descricao = command.Descricao,
+            Ordem     = command.Ordem,
+            Status    = StatusEtapaEnum.Pendente
+        };
+
+        await _repository.CreateEtapa(etapa);
+        await _unitOfWork.Commit();
+        return ToEtapaDto(etapa);
+    }
+
+    public async Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command)
+    {
+        var etapa = await _repository.GetEtapaById(command.EtapaId)
+            ?? throw new KeyNotFoundException($"Etapa {command.EtapaId} não encontrada.");
+
+        etapa.Status = command.Status;
+
+        if (command.Status == StatusEtapaEnum.Concluida)
+            etapa.DataConclusao = DateTime.UtcNow;
+
+        await _repository.UpdateEtapa(etapa);
+        await _unitOfWork.Commit();
+        return ToEtapaDto(etapa);
+    }
+
+    public async Task Delete(Guid id)
+    {
+        await _repository.Delete(id);
+        await _unitOfWork.Commit();
+    }
+
+    private static ProjetoDto ToDto(Projeto p)
+    {
+        var total      = p.Etapas?.Count ?? 0;
+        var concluidas = p.Etapas?.Count(e => e.Status == StatusEtapaEnum.Concluida) ?? 0;
+        var progresso  = total == 0 ? 0 : (int)Math.Round((double)concluidas / total * 100);
+
+        return new ProjetoDto(
+            p.Id, 
+            p.Nome ?? string.Empty, 
+            p.Descricao ?? string.Empty,
+            p.Status ?? StatusProjetoEnum.Briefing,  
+            (p.Status ?? StatusProjetoEnum.Briefing).ToString(),
+            p.Tipo ?? TipoProjetoEnum.Residencial,    
+            (p.Tipo ?? TipoProjetoEnum.Residencial).ToString(),
+            p.DataInicio ?? DateTime.UtcNow, 
+            p.DataPrevistaEntrega,
+            p.MetragemTotal ?? 0, 
+            p.ClienteId ?? Guid.Empty,
+            p.CriadoEm ?? DateTime.UtcNow, 
+            p.AtualizadoEm,
+            (p.Etapas ?? Array.Empty<EtapaProjeto>()).OrderBy(e => e.Ordem ?? 0).Select(ToEtapaDto),
+            progresso
+        );
+    }
+
+    private static EtapaProjetoDto ToEtapaDto(EtapaProjeto e) =>
+        new(e.Id, 
+            e.ProjetoId ?? Guid.Empty, 
+            e.Nome ?? string.Empty, 
+            e.Descricao ?? string.Empty,
+            e.Status ?? StatusEtapaEnum.Pendente, 
+            (e.Status ?? StatusEtapaEnum.Pendente).ToString(), 
+            e.Ordem ?? 0, 
+            e.DataConclusao);
 }

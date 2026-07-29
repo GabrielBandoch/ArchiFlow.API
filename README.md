@@ -53,13 +53,6 @@ Domain  ←── Application ←── Tests
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8)
 - [PostgreSQL 15+](https://www.postgresql.org/download/)
 
-```sql
--- Criar banco e usuário
-CREATE DATABASE archiflow;
-CREATE USER archiflow WITH PASSWORD 'archiflow123';
-GRANT ALL PRIVILEGES ON DATABASE archiflow TO archiflow;
-```
-
 ---
 
 ## Como Executar

@@ -11,6 +11,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ArchiFlow.Domain\ArchiFlow.Domain.csproj" />
-    <ProjectReference Include="..\ArchiFlow.Infrastructure\ArchiFlow.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
