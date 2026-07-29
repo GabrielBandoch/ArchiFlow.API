@@ -1,3 +1,4 @@
+using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Projetos.Enum;
 
 namespace ArchiFlow.Application.Projetos.DTOs;
@@ -18,4 +19,15 @@ public record ProjetoDto(
     DateTime? AtualizadoEm,
     IEnumerable<EtapaProjetoDto> Etapas,
     int ProgressoPercentual
+);
+
+public record EtapaProjetoDto(
+    Guid Id,
+    Guid ProjetoId,
+    string Nome,
+    string Descricao,
+    StatusEtapaEnum Status,
+    string StatusLabel,
+    int Ordem,
+    DateTime? DataConclusao
 );
