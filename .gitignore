@@ -52,3 +52,5 @@ desktop.ini
 appsettings.Production.json
 *.pfx
 *.key
+.env
+
