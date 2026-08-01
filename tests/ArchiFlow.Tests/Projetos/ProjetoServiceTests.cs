@@ -13,7 +13,7 @@ namespace ArchiFlow.Tests.Projetos;
 
 public class ProjetoServiceTests
 {
-    private readonly IProjetoService _sut;
+    private readonly ProjetoService _sut;
 
     public ProjetoServiceTests()
     {

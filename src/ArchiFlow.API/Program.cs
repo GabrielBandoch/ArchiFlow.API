@@ -56,4 +56,4 @@ app.UseCors("ArchiFlowPolicy");
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseSerilogRequestLogging();
 app.MapControllers();
-app.Run();
+await app.RunAsync();
