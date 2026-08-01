@@ -10,8 +10,12 @@ using ArchiFlow.Infrastructure.Data;
 using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddDbContext<ArchiFlowDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -45,5 +49,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("ArchiFlowPolicy");
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseSerilogRequestLogging();
 app.MapControllers();
 app.Run();
