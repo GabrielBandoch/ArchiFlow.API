@@ -39,6 +39,6 @@ public class ExceptionMiddleware
     {
         context.Response.StatusCode  = (int)status;
         context.Response.ContentType = "application/json";
-        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }), context.RequestAborted);
     }
 }

@@ -6,7 +6,7 @@ namespace ArchiFlow.Application.Projetos.Commands;
 public record CriarProjetoCommand(
     string Nome,
     string Descricao,
-    TipoProjetoEnum Tipo,
+    TipoProjeto Tipo,
     DateTime DataInicio,
     DateTime? DataPrevistaEntrega,
     decimal MetragemTotal,
@@ -17,8 +17,8 @@ public record AtualizarProjetoCommand(
     Guid Id,
     string Nome,
     string Descricao,
-    TipoProjetoEnum Tipo,
-    StatusProjetoEnum Status,
+    TipoProjeto Tipo,
+    StatusProjeto Status,
     DateTime DataInicio,
     DateTime? DataPrevistaEntrega,
     decimal MetragemTotal
@@ -26,7 +26,7 @@ public record AtualizarProjetoCommand(
 
 public record AtualizarStatusProjetoCommand(
     Guid Id,
-    StatusProjetoEnum Status
+    StatusProjeto Status
 );
 
 public record CriarEtapaCommand(
@@ -38,5 +38,5 @@ public record CriarEtapaCommand(
 
 public record AtualizarStatusEtapaCommand(
     Guid EtapaId,
-    StatusEtapaEnum Status
+    StatusEtapa Status
 );

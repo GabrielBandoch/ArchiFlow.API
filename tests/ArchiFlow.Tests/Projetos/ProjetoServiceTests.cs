@@ -60,7 +60,7 @@ public class ProjetoServiceTests
 
         var resultado = await _sut.Create(command);
 
-        resultado.Status.Should().Be(StatusProjetoEnum.Briefing);
+        resultado.Status.Should().Be(StatusProjeto.Briefing);
     }
 
     [Fact]
@@ -105,17 +105,19 @@ public class ProjetoServiceTests
     public async Task UpdateStatus_ComStatusValido_DeveAlterarCorretamente()
     {
         var projeto = await _sut.Create(CriarComando("Casa Duplex"));
-        var command = new AtualizarStatusProjetoCommand(projeto.Id, StatusProjetoEnum.Desenvolvimento);
+        var command = new AtualizarStatusProjetoCommand(projeto.Id, StatusProjeto.Desenvolvimento);
 
         var atualizado = await _sut.UpdateStatus(command);
 
-        atualizado.Status.Should().Be(StatusProjetoEnum.Desenvolvimento);
+        atualizado.Status.Should().Be(StatusProjeto.Desenvolvimento);
     }
+
+
 
     [Fact]
     public async Task AtualizarStatus_ComIdInexistente_DeveLancarKeyNotFoundException()
     {
-        var command = new AtualizarStatusProjetoCommand(Guid.NewGuid(), StatusProjetoEnum.Concluido);
+        var command = new AtualizarStatusProjetoCommand(Guid.NewGuid(), StatusProjeto.Concluido);
 
         var act = async () => await _sut.UpdateStatus(command);
 
@@ -133,7 +135,7 @@ public class ProjetoServiceTests
         etapa.Id.Should().NotBeEmpty();
         etapa.ProjetoId.Should().Be(projeto.Id);
         etapa.Nome.Should().Be("Briefing");
-        etapa.Status.Should().Be(StatusEtapaEnum.Pendente);
+        etapa.Status.Should().Be(StatusEtapa.Pendente);
     }
 
     [Fact]
@@ -142,18 +144,18 @@ public class ProjetoServiceTests
         var projeto = await _sut.Create(CriarComando("Apartamento Duplex"));
         var etapa   = await _sut.CreateEtapa(
             new CriarEtapaCommand(projeto.Id, "Estudo Preliminar", "", 1));
-        var command = new AtualizarStatusEtapaCommand(etapa.Id, StatusEtapaEnum.Concluida);
+        var command = new AtualizarStatusEtapaCommand(etapa.Id, StatusEtapa.Concluida);
 
         var atualizada = await _sut.UpdateStatusEtapa(command);
 
-        atualizada.Status.Should().Be(StatusEtapaEnum.Concluida);
+        atualizada.Status.Should().Be(StatusEtapa.Concluida);
         atualizada.DataConclusao.Should().NotBeNull();
     }
 
     [Fact]
     public async Task AtualizarStatusEtapa_ComIdInexistente_DeveLancarKeyNotFoundException()
     {
-        var command = new AtualizarStatusEtapaCommand(Guid.NewGuid(), StatusEtapaEnum.Concluida);
+        var command = new AtualizarStatusEtapaCommand(Guid.NewGuid(), StatusEtapa.Concluida);
 
         var act = async () => await _sut.UpdateStatusEtapa(command);
 
@@ -169,8 +171,8 @@ public class ProjetoServiceTests
         await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "E3", "", 3));
         await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "E4", "", 4));
 
-        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e1.Id, StatusEtapaEnum.Concluida));
-        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e2.Id, StatusEtapaEnum.Concluida));
+        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e1.Id, StatusEtapa.Concluida));
+        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e2.Id, StatusEtapa.Concluida));
         var projetoAtualizado = await _sut.GetById(projeto.Id);
 
         projetoAtualizado!.ProgressoPercentual.Should().Be(50);
@@ -193,8 +195,8 @@ public class ProjetoServiceTests
         var e1 = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "E1", "", 1));
         var e2 = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "E2", "", 2));
 
-        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e1.Id, StatusEtapaEnum.Concluida));
-        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e2.Id, StatusEtapaEnum.Concluida));
+        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e1.Id, StatusEtapa.Concluida));
+        await _sut.UpdateStatusEtapa(new AtualizarStatusEtapaCommand(e2.Id, StatusEtapa.Concluida));
         var resultado = await _sut.GetById(projeto.Id);
 
         resultado!.ProgressoPercentual.Should().Be(100);
@@ -223,7 +225,7 @@ public class ProjetoServiceTests
         new(
             Nome:                nome,
             Descricao:           "Descrição de teste",
-            Tipo:                TipoProjetoEnum.Residencial,
+            Tipo:                TipoProjeto.Residencial,
             DataInicio:          DateTime.UtcNow,
             DataPrevistaEntrega: DateTime.UtcNow.AddMonths(6),
             MetragemTotal:       150,

@@ -39,9 +39,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "ArchiFlow API", Version = "v1" }));
 
+var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?.Split(',') ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
     options.AddPolicy("ArchiFlowPolicy", p =>
-        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+        p.WithOrigins(allowedOrigins)
+         .AllowAnyMethod()
+         .AllowAnyHeader()
+         .AllowCredentials()));
 
 var app = builder.Build();
 

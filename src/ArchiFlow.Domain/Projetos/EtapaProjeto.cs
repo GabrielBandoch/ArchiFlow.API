@@ -8,7 +8,7 @@ public class EtapaProjeto
     public Guid? ProjetoId { get; set; }
     public string? Nome { get; set; }
     public string? Descricao { get; set; }
-    public StatusEtapaEnum? Status { get; set; }
+    public StatusEtapa? Status { get; set; }
     public int? Ordem { get; set; }
     public DateTime? DataConclusao { get; set; }
     public virtual Projeto? Projeto { get; set; }
