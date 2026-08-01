@@ -77,7 +77,7 @@ public class ProjetoService : IProjetoService
             Nome      = command.Nome,
             Descricao = command.Descricao,
             Ordem     = command.Ordem,
-            Status    = StatusEtapaEnum.Pendente
+            Status    = StatusEtapa.Pendente
         };
 
         await _repository.CreateEtapa(etapa);
@@ -92,7 +92,7 @@ public class ProjetoService : IProjetoService
 
         etapa.Status = command.Status;
 
-        if (command.Status == StatusEtapaEnum.Concluida)
+        if (command.Status == StatusEtapa.Concluida)
             etapa.DataConclusao = DateTime.UtcNow;
 
         await _repository.UpdateEtapa(etapa);
@@ -108,25 +108,25 @@ public class ProjetoService : IProjetoService
 
     private static ProjetoDto ToDto(Projeto p)
     {
-        var total      = p.Etapas?.Count ?? 0;
-        var concluidas = p.Etapas?.Count(e => e.Status == StatusEtapaEnum.Concluida) ?? 0;
+        var total      = p.Etapas.Count;
+        var concluidas = p.Etapas.Count(e => e.Status == StatusEtapa.Concluida);
         var progresso  = total == 0 ? 0 : (int)Math.Round((double)concluidas / total * 100);
 
         return new ProjetoDto(
             p.Id, 
             p.Nome ?? string.Empty, 
             p.Descricao ?? string.Empty,
-            p.Status ?? StatusProjetoEnum.Briefing,  
-            (p.Status ?? StatusProjetoEnum.Briefing).ToString(),
-            p.Tipo ?? TipoProjetoEnum.Residencial,    
-            (p.Tipo ?? TipoProjetoEnum.Residencial).ToString(),
+            p.Status ?? StatusProjeto.Briefing,  
+            (p.Status ?? StatusProjeto.Briefing).ToString(),
+            p.Tipo ?? TipoProjeto.Residencial,    
+            (p.Tipo ?? TipoProjeto.Residencial).ToString(),
             p.DataInicio ?? DateTime.UtcNow, 
             p.DataPrevistaEntrega,
             p.MetragemTotal ?? 0, 
             p.ClienteId ?? Guid.Empty,
             p.CriadoEm ?? DateTime.UtcNow, 
             p.AtualizadoEm,
-            (p.Etapas ?? Array.Empty<EtapaProjeto>()).OrderBy(e => e.Ordem ?? 0).Select(ToEtapaDto),
+            p.Etapas.OrderBy(e => e.Ordem ?? 0).Select(ToEtapaDto),
             progresso
         );
     }
@@ -136,8 +136,8 @@ public class ProjetoService : IProjetoService
             e.ProjetoId ?? Guid.Empty, 
             e.Nome ?? string.Empty, 
             e.Descricao ?? string.Empty,
-            e.Status ?? StatusEtapaEnum.Pendente, 
-            (e.Status ?? StatusEtapaEnum.Pendente).ToString(), 
+            e.Status ?? StatusEtapa.Pendente, 
+            (e.Status ?? StatusEtapa.Pendente).ToString(), 
             e.Ordem ?? 0, 
             e.DataConclusao);
 }

@@ -17,6 +17,6 @@ public class ProjetoFacade : IProjetoFacade
     public Task<ProjetoDto> Update(AtualizarProjetoCommand command)               => _service.Update(command);
     public Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command)   => _service.UpdateStatus(command);
     public Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command)              => _service.CreateEtapa(command);
-    public Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand c) => _service.UpdateStatusEtapa(c);
+    public Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command) => _service.UpdateStatusEtapa(command);
     public Task Delete(Guid id)                                                     => _service.Delete(id);
 }

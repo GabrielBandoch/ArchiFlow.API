@@ -8,6 +8,7 @@ namespace ArchiFlow.API.Controllers;
 [Route("api/projetos")]
 public class ProjetosController : ControllerBase
 {
+    private const string IdInconsistenteMsg = "ID inconsistente.";
     private readonly IProjetoFacade _facade;
 
     public ProjetosController(IProjetoFacade facade) 
@@ -35,7 +36,7 @@ public class ProjetosController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] AtualizarProjetoCommand command)
     {
         if (id != command.Id) 
-            return BadRequest("ID inconsistente.");
+            return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.Update(command));
     }
 
@@ -43,7 +44,7 @@ public class ProjetosController : ControllerBase
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] AtualizarStatusProjetoCommand command)
     {
         if (id != command.Id) 
-            return BadRequest("ID inconsistente.");
+            return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatus(command));
     }
 
@@ -51,7 +52,7 @@ public class ProjetosController : ControllerBase
     public async Task<IActionResult> CreateEtapa(Guid id, [FromBody] CriarEtapaCommand command)
     {
         if (id != command.ProjetoId) 
-            return BadRequest("ID inconsistente.");
+            return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.CreateEtapa(command));
     }
 
@@ -59,7 +60,7 @@ public class ProjetosController : ControllerBase
     public async Task<IActionResult> UpdateStatusEtapa(Guid etapaId, [FromBody] AtualizarStatusEtapaCommand command)
     {
         if (etapaId != command.EtapaId) 
-            return BadRequest("ID inconsistente.");
+            return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatusEtapa(command));
     }
 

@@ -8,7 +8,7 @@ public interface IProjetoRepository : IRepository<Projeto>
     Task<Projeto?> GetByIdWithEtapas(Guid id);
     Task<IEnumerable<Projeto>> GetAllWithEtapas();
     Task<IEnumerable<Projeto>> GetByClienteId(Guid clienteId);
-    Task<IEnumerable<Projeto>> GetByStatus(StatusProjetoEnum status);
+    Task<IEnumerable<Projeto>> GetByStatus(StatusProjeto status);
     Task<EtapaProjeto?> GetEtapaById(Guid etapaId);
     Task<EtapaProjeto> CreateEtapa(EtapaProjeto etapa);
     Task<EtapaProjeto> UpdateEtapa(EtapaProjeto etapa);

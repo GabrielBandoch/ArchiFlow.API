@@ -10,8 +10,12 @@ using ArchiFlow.Infrastructure.Data;
 using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddDbContext<ArchiFlowDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -35,9 +39,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "ArchiFlow API", Version = "v1" }));
 
+var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?.Split(',') ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
     options.AddPolicy("ArchiFlowPolicy", p =>
-        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+        p.WithOrigins(allowedOrigins)
+         .AllowAnyMethod()
+         .AllowAnyHeader()
+         .AllowCredentials()));
 
 var app = builder.Build();
 
@@ -45,5 +54,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("ArchiFlowPolicy");
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseSerilogRequestLogging();
 app.MapControllers();
-app.Run();
+await app.RunAsync();

@@ -16,11 +16,11 @@ RUN dotnet restore "src/ArchiFlow.API/ArchiFlow.API.csproj"
 
 COPY . .
 WORKDIR "/src/src/ArchiFlow.API"
-RUN dotnet build "ArchiFlow.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "ArchiFlow.API.csproj" -c "$BUILD_CONFIGURATION" -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "ArchiFlow.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "ArchiFlow.API.csproj" -c "$BUILD_CONFIGURATION" -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
