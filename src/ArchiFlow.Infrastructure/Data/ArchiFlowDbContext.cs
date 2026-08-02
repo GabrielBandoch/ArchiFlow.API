@@ -1,14 +1,19 @@
 using ArchiFlow.Domain.Projetos;
+using ArchiFlow.Domain.Usuarios;
+using ArchiFlow.Domain.Clientes;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
 
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class ArchiFlowDbContext : DbContext
 {
     public ArchiFlowDbContext(DbContextOptions<ArchiFlowDbContext> options) : base(options) { }
 
     public DbSet<Projeto>      Projetos      => Set<Projeto>();
     public DbSet<EtapaProjeto> EtapasProjeto => Set<EtapaProjeto>();
+    public DbSet<Usuario>      Usuarios      => Set<Usuario>();
+    public DbSet<Cliente>      Clientes      => Set<Cliente>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,6 +36,11 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(p => p.AtualizadoEm).HasColumnName("PJT_Atualizado_Em");
 
             entity.HasIndex(p => p.ClienteId);
+
+            entity.HasOne<Cliente>()
+                  .WithMany()
+                  .HasForeignKey(p => p.ClienteId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<EtapaProjeto>(entity =>
@@ -49,6 +59,39 @@ public class ArchiFlowDbContext : DbContext
                   .WithMany(p => p.Etapas)
                   .HasForeignKey(e => e.ProjetoId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.ToTable("Usuarios");
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Id).HasColumnName("USR_Id");
+            entity.Property(u => u.Nome).HasColumnName("USR_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(u => u.Email).HasColumnName("USR_Email").IsRequired().HasMaxLength(256);
+            entity.Property(u => u.SenhaHash).HasColumnName("USR_Senha_Hash").IsRequired();
+            entity.Property(u => u.Role).HasColumnName("USR_Role").IsRequired().HasMaxLength(50);
+            entity.Property(u => u.Ativo).HasColumnName("USR_Ativo");
+            entity.Property(u => u.CriadoEm).HasColumnName("USR_Criado_Em");
+            entity.Property(u => u.AtualizadoEm).HasColumnName("USR_Atualizado_Em");
+
+            entity.HasIndex(u => u.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.ToTable("Clientes");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("CLI_Id");
+            entity.Property(c => c.LeadId).HasColumnName("CLI_Lead_Id");
+            entity.Property(c => c.Nome).HasColumnName("CLI_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(c => c.Email).HasColumnName("CLI_Email").IsRequired().HasMaxLength(256);
+            entity.Property(c => c.Telefone).HasColumnName("CLI_Telefone").HasMaxLength(20);
+            entity.Property(c => c.CpfCnpj).HasColumnName("CLI_Cpf_Cnpj").HasMaxLength(20);
+            entity.Property(c => c.SenhaPortal).HasColumnName("CLI_Senha_Portal");
+            entity.Property(c => c.Ativo).HasColumnName("CLI_Ativo");
+            entity.Property(c => c.Endereco).HasColumnName("CLI_Endereco");
+
+            entity.HasIndex(c => c.Email).IsUnique();
         });
     }
 }
