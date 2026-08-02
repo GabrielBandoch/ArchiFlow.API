@@ -1,5 +1,7 @@
 using ArchiFlow.API;
 using ArchiFlow.API.Middleware;
+using ArchiFlow.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using ArchiFlow.Application.Mappings;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
@@ -68,6 +70,9 @@ builder.Services.AddScoped<IProjetoFacade, ProjetoFacade>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthorizationHandler, ProjetoOwnerHandler>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -86,6 +91,24 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew = TimeSpan.Zero
     };
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ApenasAdmin", policy =>
+        policy.RequireRole("Administrador"));
+
+    options.AddPolicy("ApenasGerenteOuAdmin", policy =>
+        policy.RequireRole("Administrador", "Gerente"));
+
+    options.AddPolicy("AcessoArquiteto", policy =>
+        policy.RequireRole("Administrador", "Gerente", "Colaborador"));
+
+    options.AddPolicy("ProjetoOwner", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new ProjetoOwnerRequirement());
+    });
 });
 
 builder.Services.AddControllers()
@@ -140,6 +163,23 @@ app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ArchiFlowDbContext>();
+        await context.Database.MigrateAsync();
+        await DbSeeder.SeedAsync(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
+    }
+}
+
 await app.RunAsync();
 
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
