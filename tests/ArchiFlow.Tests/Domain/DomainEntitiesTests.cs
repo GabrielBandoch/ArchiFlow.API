@@ -63,4 +63,13 @@ public class DomainEntitiesTests
         cliente.Ativo.Should().BeFalse();
         cliente.Endereco.Should().Be("Rua X");
     }
+
+    [Fact]
+    public void Roles_DeveConterValoresCorretos()
+    {
+        Roles.Administrador.Should().Be("Administrador");
+        Roles.Gerente.Should().Be("Gerente");
+        Roles.Colaborador.Should().Be("Colaborador");
+        Roles.Cliente.Should().Be("Cliente");
+    }
 }
