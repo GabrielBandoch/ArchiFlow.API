@@ -115,6 +115,140 @@ public class ProjetoOwnerHandlerTests
 
         context.HasSucceeded.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task HandleAsync_QuandoHttpContextNulo_NaoDeveRetornarSucesso()
+    {
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns((HttpContext?)null);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_QuandoRotaNaoContemId_NaoDeveRetornarSucesso()
+    {
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContextMock = new Mock<HttpContext>();
+        var routeData = new RouteData();
+
+        httpContextMock.Setup(c => c.Features.Get<IRoutingFeature>())
+            .Returns(new RoutingFeature { RouteData = routeData });
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContextMock.Object);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_QuandoRotaIdInvalido_NaoDeveRetornarSucesso()
+    {
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim("projeto_id", Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContextMock = new Mock<HttpContext>();
+        var routeData = new RouteData();
+        routeData.Values.Add("id", "invalid-guid-format");
+
+        httpContextMock.Setup(c => c.Features.Get<IRoutingFeature>())
+            .Returns(new RoutingFeature { RouteData = routeData });
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContextMock.Object);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_QuandoClienteSemClaimProjetoId_NaoDeveRetornarSucesso()
+    {
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContextMock = new Mock<HttpContext>();
+        var routeData = new RouteData();
+        routeData.Values.Add("id", Guid.NewGuid().ToString());
+
+        httpContextMock.Setup(c => c.Features.Get<IRoutingFeature>())
+            .Returns(new RoutingFeature { RouteData = routeData });
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContextMock.Object);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_QuandoClaimProjetoIdInvalido_NaoDeveRetornarSucesso()
+    {
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim("projeto_id", "invalid-guid-claim"),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContextMock = new Mock<HttpContext>();
+        var routeData = new RouteData();
+        routeData.Values.Add("id", Guid.NewGuid().ToString());
+
+        httpContextMock.Setup(c => c.Features.Get<IRoutingFeature>())
+            .Returns(new RoutingFeature { RouteData = routeData });
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContextMock.Object);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
 }
 
 #pragma warning disable CS8767
