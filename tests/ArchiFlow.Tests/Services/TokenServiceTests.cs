@@ -93,4 +93,31 @@ public class TokenServiceTests
         jwtToken.Claims.Should().Contain(c => c.Type == "user_type" && c.Value == "client");
         jwtToken.Claims.Should().NotContain(c => c.Type == "projeto_id");
     }
+
+    [Fact]
+    public void GenerateToken_QuandoExpiracaoInvalida_DeveUsarFallback60Minutos()
+    {
+        Environment.SetEnvironmentVariable("JWT_EXPIRATION_MINUTES", "not-a-number");
+
+        var usuario = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Arquiteto Teste",
+            Email = "arquiteto@test.com",
+            Role = "Administrador"
+        };
+
+        var token = _sut.GenerateToken(usuario);
+
+        token.Should().NotBeNullOrEmpty();
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+
+        // O token deve expirar em cerca de 60 minutos se usar o fallback
+        jwtToken.ValidTo.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(60), TimeSpan.FromMinutes(2));
+
+        // Restaura a expiração válida
+        Environment.SetEnvironmentVariable("JWT_EXPIRATION_MINUTES", "60");
+    }
 }
