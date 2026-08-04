@@ -1,5 +1,7 @@
 using ArchiFlow.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -8,6 +10,23 @@ namespace ArchiFlow.Infrastructure.Data;
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class DbSeeder
 {
+    public static async Task MigrateAndSeedAsync(IServiceProvider serviceProvider)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ArchiFlowDbContext>();
+            await context.Database.MigrateAsync();
+            await SeedAsync(context);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
+            logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
+        }
+    }
+
     public static async Task SeedAsync(ArchiFlowDbContext context)
     {
         if (await context.Usuarios.AnyAsync())

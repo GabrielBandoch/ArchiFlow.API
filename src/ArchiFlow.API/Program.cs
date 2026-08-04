@@ -93,23 +93,15 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("ApenasAdmin", policy =>
-        policy.RequireRole("Administrador"));
-
-    options.AddPolicy("ApenasGerenteOuAdmin", policy =>
-        policy.RequireRole("Administrador", "Gerente"));
-
-    options.AddPolicy("AcessoArquiteto", policy =>
-        policy.RequireRole("Administrador", "Gerente", "Colaborador"));
-
-    options.AddPolicy("ProjetoOwner", policy =>
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("ApenasAdmin", policy => policy.RequireRole("Administrador"))
+    .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole("Administrador", "Gerente"))
+    .AddPolicy("AcessoArquiteto", policy => policy.RequireRole("Administrador", "Gerente", "Colaborador"))
+    .AddPolicy("ProjetoOwner", policy =>
     {
         policy.RequireAuthenticatedUser();
         policy.AddRequirements(new ProjetoOwnerRequirement());
     });
-});
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -164,21 +156,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<ArchiFlowDbContext>();
-        await context.Database.MigrateAsync();
-        await DbSeeder.SeedAsync(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
-    }
-}
+await DbSeeder.MigrateAndSeedAsync(app.Services);
 
 await app.RunAsync();
 

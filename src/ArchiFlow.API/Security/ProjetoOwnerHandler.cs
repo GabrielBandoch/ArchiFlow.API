@@ -22,7 +22,7 @@ public class ProjetoOwnerHandler : AuthorizationHandler<ProjetoOwnerRequirement>
     {
         var user = context.User;
 
-        if (user.Identity == null || !user.Identity.IsAuthenticated)
+        if (user.Identity?.IsAuthenticated != true)
         {
             return Task.CompletedTask;
         }
@@ -34,27 +34,34 @@ public class ProjetoOwnerHandler : AuthorizationHandler<ProjetoOwnerRequirement>
             return Task.CompletedTask;
         }
 
-        if (userType == "client" || user.IsInRole("Cliente"))
+        if ((userType == "client" || user.IsInRole("Cliente")) && HasAccessToProject(user))
         {
-            var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext != null)
-            {
-                var routeData = httpContext.GetRouteData();
-                if (routeData.Values.TryGetValue("id", out var routeIdObj) && routeIdObj != null)
-                {
-                    if (Guid.TryParse(routeIdObj.ToString(), out var routeId))
-                    {
-                        var claimProjetoId = user.FindFirst("projeto_id")?.Value;
-                        if (Guid.TryParse(claimProjetoId, out var userProjetoId) && userProjetoId == routeId)
-                        {
-                            context.Succeed(requirement);
-                            return Task.CompletedTask;
-                        }
-                    }
-                }
-            }
+            context.Succeed(requirement);
         }
 
         return Task.CompletedTask;
+    }
+
+    private bool HasAccessToProject(ClaimsPrincipal user)
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+        {
+            return false;
+        }
+
+        var routeData = httpContext.GetRouteData();
+        if (!routeData.Values.TryGetValue("id", out var routeIdObj) || routeIdObj == null)
+        {
+            return false;
+        }
+
+        if (!Guid.TryParse(routeIdObj.ToString(), out var routeId))
+        {
+            return false;
+        }
+
+        var claimProjetoId = user.FindFirst("projeto_id")?.Value;
+        return Guid.TryParse(claimProjetoId, out var userProjetoId) && userProjetoId == routeId;
     }
 }
