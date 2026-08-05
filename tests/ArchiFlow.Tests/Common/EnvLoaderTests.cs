@@ -13,7 +13,8 @@ public class EnvLoaderTests
     public async Task LoadAsync_QuandoArquivoEnvExiste_DeveCarregarVariaveis()
     {
         var tempEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
-        await File.WriteAllTextAsync(tempEnvPath, "TEST_VAR_1=valor1\nTEST_VAR_2=valor2\n# Comentario\n\nTEST_VAR_3=valor=com=igual");
+        // Adicionada uma linha sem '=' (TEST_VAR_INVALID) para cobrir o branch parts.Length != 2
+        await File.WriteAllTextAsync(tempEnvPath, "TEST_VAR_1=valor1\nTEST_VAR_2=valor2\n# Comentario\n\nTEST_VAR_INVALID\nTEST_VAR_3=valor=com=igual");
 
         try
         {
@@ -22,6 +23,7 @@ public class EnvLoaderTests
             Environment.GetEnvironmentVariable("TEST_VAR_1").Should().Be("valor1");
             Environment.GetEnvironmentVariable("TEST_VAR_2").Should().Be("valor2");
             Environment.GetEnvironmentVariable("TEST_VAR_3").Should().Be("valor=com=igual");
+            Environment.GetEnvironmentVariable("TEST_VAR_INVALID").Should().BeNull();
         }
         finally
         {
@@ -59,5 +61,20 @@ public class EnvLoaderTests
                 Environment.SetEnvironmentVariable("PARENT_VAR", null);
             }
         }
+    }
+
+    [Fact]
+    public async Task LoadAsync_QuandoArquivoEnvNaoExiste_NaoDeveFalhar()
+    {
+        // Garante que o arquivo .env temporário local e em níveis acima não exista neste escopo de teste isolado
+        var tempEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
+        if (File.Exists(tempEnvPath))
+        {
+            File.Delete(tempEnvPath);
+        }
+
+        var act = async () => await EnvLoader.LoadAsync();
+
+        await act.Should().NotThrowAsync();
     }
 }

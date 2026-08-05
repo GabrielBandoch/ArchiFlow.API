@@ -1,5 +1,7 @@
 using ArchiFlow.API;
 using ArchiFlow.API.Middleware;
+using ArchiFlow.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using ArchiFlow.Application.Mappings;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
@@ -68,6 +70,9 @@ builder.Services.AddScoped<IProjetoFacade, ProjetoFacade>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthorizationHandler, ProjetoOwnerHandler>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -87,6 +92,16 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("ApenasAdmin", policy => policy.RequireRole("Administrador"))
+    .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole("Administrador", "Gerente"))
+    .AddPolicy("AcessoArquiteto", policy => policy.RequireRole("Administrador", "Gerente", "Colaborador"))
+    .AddPolicy("ProjetoOwner", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new ProjetoOwnerRequirement());
+    });
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -140,6 +155,9 @@ app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+await DbSeeder.MigrateAndSeedAsync(app.Services);
+
 await app.RunAsync();
 
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]

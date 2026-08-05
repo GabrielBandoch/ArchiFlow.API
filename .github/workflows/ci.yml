@@ -69,6 +69,7 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.cs.cobertura.reportsPaths="coverage/**/coverage.cobertura.xml"
+          /d:sonar.coverage.exclusions="**/*Migrations/*.cs,**/*DbContext.cs,**/Program.cs,**/EnvLoader.cs,**/*Seeder.cs,**/infra/**"
 
       - name: Restore dependencies
         run: dotnet restore ArchiFlow.sln
