@@ -67,10 +67,11 @@ cd src/ArchiFlow.API
 dotnet run
 ```
 
-| Recurso    | URL                          |
-|------------|------------------------------|
-| API        | http://localhost:5000         |
-| Swagger    | http://localhost:5000/swagger |
+| Recurso       | URL                            | Descrição                                         |
+|---------------|--------------------------------|---------------------------------------------------|
+| API           | http://localhost:5000          | Ponto de entrada base da API                      |
+| Swagger       | http://localhost:5000/swagger  | Interface interativa de documentação da API       |
+| Health Check  | http://localhost:5000/health   | Endpoint de verificação de integridade do sistema |
 
 ---
 
@@ -94,6 +95,16 @@ O pipeline roda automaticamente em todo `push` e `pull_request` para `main`:
 2. Build em modo Release
 3. Execução dos testes com coleta de cobertura
 4. Upload do relatório de cobertura como artefato
+
+---
+
+## Documentação Técnica (Wiki)
+
+A documentação de arquitetura e deploy está estruturada para a Wiki do GitHub e pode ser acessada localmente na pasta [`wiki`](file:///c:/TCC/ArchiFlow.API/wiki/):
+
+- **[Arquitetura do Sistema](file:///c:/TCC/ArchiFlow.API/wiki/Arquitetura.md)**: Detalhamento da Clean Architecture, modelagem e decisões de segurança.
+- **[Instruções de Deploy](file:///c:/TCC/ArchiFlow.API/wiki/Instrucoes-de-Deploy.md)**: Guia completo para deploy local, Docker Compose e AWS CDK (Fases 1, 1.5, 2 e 3).
+- **[Roadmap de Infraestrutura (Fases 1 a 7)](file:///c:/TCC/ArchiFlow.API/wiki/Plano-Futuro-Infraestrutura.md)**: Evolução estratégica proposta para a infraestrutura cloud do ArchiFlow, detalhando as fases iniciais sugeridas (Fases 1 a 3) e o planejamento futuro (Fases 4 a 7).
 
 ---
 
