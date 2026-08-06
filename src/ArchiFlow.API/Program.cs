@@ -2,6 +2,7 @@ using ArchiFlow.API;
 using ArchiFlow.API.Middleware;
 using ArchiFlow.API.Security;
 using Microsoft.AspNetCore.Authorization;
+using ArchiFlow.API.HealthChecks;
 using ArchiFlow.Application.Mappings;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
@@ -56,6 +57,9 @@ builder.Host.UseSerilog((context, configuration) =>
 
 builder.Services.AddDbContext<ArchiFlowDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("Database");
 
 builder.Services.AddAutoMapper(typeof(ArchiFlowMappingProfile));
 
@@ -157,6 +161,26 @@ app.UseAuthorization();
 app.MapControllers();
 
 await DbSeeder.MigrateAndSeedAsync(app.Services);
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(entry => new
+            {
+                name = entry.Key,
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description,
+                duration = entry.Value.Duration.ToString()
+            })
+        };
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+    }
+});
 
 await app.RunAsync();
 
