@@ -12,7 +12,7 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
 
     public async Task<Usuario?> GetByEmail(string email)
     {
-        var normalizedEmail = email.Trim();
-        return await _dbSet.FirstOrDefaultAsync(u => u.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase));
+        var normalizedEmail = email.Trim().ToLower();
+        return await _dbSet.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
     }
 }
