@@ -160,7 +160,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-await DbSeeder.MigrateAndSeedAsync(app.Services);
+if (app.Environment.IsDevelopment())
+{
+    await DbSeeder.MigrateAndSeedAsync(app.Services);
+}
 
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
