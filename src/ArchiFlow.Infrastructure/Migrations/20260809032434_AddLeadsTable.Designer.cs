@@ -3,6 +3,7 @@ using System;
 using ArchiFlow.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ArchiFlow.Infrastructure.Migrations
 {
     [DbContext(typeof(ArchiFlowDbContext))]
-    partial class ArchiFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260809032434_AddLeadsTable")]
+    partial class AddLeadsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -129,20 +132,16 @@ namespace ArchiFlow.Infrastructure.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("LED_Email");
 
-                    b.Property<string>("MotivoPerda")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("LED_Motivo_Perda");
-
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("LED_Nome");
 
-                    b.Property<Guid?>("OrigemId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("LED_Origem_Id");
+                    b.Property<string>("Origem")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("LED_Origem");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -158,35 +157,7 @@ namespace ArchiFlow.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("OrigemId");
-
                     b.ToTable("Leads", (string)null);
-                });
-
-            modelBuilder.Entity("ArchiFlow.Domain.Leads.OrigemLead", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("OL_Id");
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("OL_Ativo");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("OL_Criado_Em");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("OL_Descricao");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Origens_Lead", (string)null);
                 });
 
             modelBuilder.Entity("ArchiFlow.Domain.Projetos.EtapaProjeto", b =>
@@ -344,16 +315,6 @@ namespace ArchiFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Lead");
-                });
-
-            modelBuilder.Entity("ArchiFlow.Domain.Leads.Lead", b =>
-                {
-                    b.HasOne("ArchiFlow.Domain.Leads.OrigemLead", "Origem")
-                        .WithMany()
-                        .HasForeignKey("OrigemId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Origem");
                 });
 
             modelBuilder.Entity("ArchiFlow.Domain.Projetos.EtapaProjeto", b =>
