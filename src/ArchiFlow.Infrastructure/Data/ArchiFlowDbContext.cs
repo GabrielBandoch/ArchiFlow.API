@@ -1,6 +1,7 @@
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
+using ArchiFlow.Domain.Leads;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -10,10 +11,13 @@ public class ArchiFlowDbContext : DbContext
 {
     public ArchiFlowDbContext(DbContextOptions<ArchiFlowDbContext> options) : base(options) { }
 
-    public DbSet<Projeto>      Projetos      => Set<Projeto>();
-    public DbSet<EtapaProjeto> EtapasProjeto => Set<EtapaProjeto>();
-    public DbSet<Usuario>      Usuarios      => Set<Usuario>();
-    public DbSet<Cliente>      Clientes      => Set<Cliente>();
+    public DbSet<Projeto>              Projetos              => Set<Projeto>();
+    public DbSet<EtapaProjeto>         EtapasProjeto         => Set<EtapaProjeto>();
+    public DbSet<Usuario>              Usuarios              => Set<Usuario>();
+    public DbSet<Cliente>              Clientes              => Set<Cliente>();
+    public DbSet<Lead>                 Leads                 => Set<Lead>();
+    public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
+    public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +96,54 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(c => c.Endereco).HasColumnName("CLI_Endereco");
 
             entity.HasIndex(c => c.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<Lead>(entity =>
+        {
+            entity.ToTable("Leads");
+            entity.HasKey(l => l.Id);
+            entity.Property(l => l.Id).HasColumnName("LED_Id");
+            entity.Property(l => l.Nome).HasColumnName("LED_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(l => l.Email).HasColumnName("LED_Email").IsRequired().HasMaxLength(256);
+            entity.Property(l => l.Telefone).HasColumnName("LED_Telefone").HasMaxLength(20);
+            entity.Property(l => l.OrigemId).HasColumnName("LED_Origem_Id");
+            entity.Property(l => l.MotivoPerda).HasColumnName("LED_Motivo_Perda").HasMaxLength(500);
+            entity.Property(l => l.Status).HasColumnName("LED_Status").IsRequired();
+            entity.Property(l => l.CriadoEm).HasColumnName("LED_Criado_Em").IsRequired();
+            entity.Property(l => l.AtualizadoEm).HasColumnName("LED_Atualizado_Em");
+
+            entity.HasIndex(l => l.Email).IsUnique();
+
+            entity.HasOne(l => l.Origem)
+                  .WithMany()
+                  .HasForeignKey(l => l.OrigemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<OrigemLead>(entity =>
+        {
+            entity.ToTable("Origens_Lead");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Id).HasColumnName("OL_Id");
+            entity.Property(o => o.Descricao).HasColumnName("OL_Descricao").IsRequired().HasMaxLength(100);
+            entity.Property(o => o.Ativo).HasColumnName("OL_Ativo").IsRequired();
+            entity.Property(o => o.CriadoEm).HasColumnName("OL_Criado_Em").IsRequired();
+        });
+
+        modelBuilder.Entity<HistoricoContatoLead>(entity =>
+        {
+            entity.ToTable("Historicos_Contato_Lead");
+            entity.HasKey(h => h.Id);
+            entity.Property(h => h.Id).HasColumnName("HCL_Id");
+            entity.Property(h => h.LeadId).HasColumnName("HCL_Lead_Id");
+            entity.Property(h => h.DataContato).HasColumnName("HCL_Data_Contato").IsRequired();
+            entity.Property(h => h.Canal).HasColumnName("HCL_Canal").IsRequired().HasMaxLength(100);
+            entity.Property(h => h.Resumo).HasColumnName("HCL_Resumo").IsRequired();
+
+            entity.HasOne(h => h.Lead)
+                  .WithMany(l => l.HistoricoContatos)
+                  .HasForeignKey(h => h.LeadId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

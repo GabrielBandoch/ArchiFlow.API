@@ -1,4 +1,5 @@
 using ArchiFlow.Domain.Usuarios;
+using ArchiFlow.Domain.Leads;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,12 @@ public static class DbSeeder
     }
 
     public static async Task SeedAsync(ArchiFlowDbContext context)
+    {
+        await SeedUsuariosAsync(context);
+        await SeedOrigensLeadAsync(context);
+    }
+
+    private static async Task SeedUsuariosAsync(ArchiFlowDbContext context)
     {
         if (await context.Usuarios.AnyAsync())
         {
@@ -68,6 +75,26 @@ public static class DbSeeder
         };
 
         await context.Usuarios.AddRangeAsync(admin, gerente, colaborador);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedOrigensLeadAsync(ArchiFlowDbContext context)
+    {
+        if (await context.OrigensLead.AnyAsync())
+        {
+            return;
+        }
+
+        var origens = new[]
+        {
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Instagram", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Indicação", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Site", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "E-mail", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Outros", Ativo = true, CriadoEm = DateTime.UtcNow }
+        };
+
+        await context.OrigensLead.AddRangeAsync(origens);
         await context.SaveChangesAsync();
     }
 }
