@@ -19,6 +19,17 @@ public static class DbSeeder
         {
             var context = services.GetRequiredService<ArchiFlowDbContext>();
             await context.Database.MigrateAsync();
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
+                ");
+            }
+            catch
+            {
+            }
+
             await SeedAsync(context);
         }
         catch (Exception ex)

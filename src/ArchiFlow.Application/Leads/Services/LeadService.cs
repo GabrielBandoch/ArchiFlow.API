@@ -84,6 +84,11 @@ public class LeadService : ILeadService
         var lead = await _repository.GetByIdWithHistorico(command.Id)
             ?? throw new KeyNotFoundException($"Lead {command.Id} não encontrado.");
 
+        if (lead.Status == StatusLead.Convertido && command.Status != StatusLead.Convertido)
+        {
+            throw new InvalidOperationException("Não é permitido alterar o status de um lead que já foi convertido em cliente.");
+        }
+
         lead.Status = command.Status;
         if (command.Status == StatusLead.Perdido)
         {

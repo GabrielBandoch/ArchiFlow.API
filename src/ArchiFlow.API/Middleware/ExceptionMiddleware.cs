@@ -28,6 +28,10 @@ public class ExceptionMiddleware
         {
             await WriteResponse(context, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            await WriteResponse(context, HttpStatusCode.BadRequest, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro não tratado.");
