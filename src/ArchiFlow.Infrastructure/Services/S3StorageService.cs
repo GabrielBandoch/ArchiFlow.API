@@ -32,7 +32,6 @@ public class S3StorageService : IStorageService
 
         await _s3Client.PutObjectAsync(putRequest);
 
-        // Retorna a URL pública gerada no S3
         return $"https://{_bucketName}.s3.amazonaws.com/{uniqueFileName}";
     }
 

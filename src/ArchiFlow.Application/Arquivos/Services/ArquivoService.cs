@@ -42,25 +42,29 @@ public class ArquivoService : IArquivoService
 
     public async Task<ArquivoDto> Upload(UploadArquivoCommand command)
     {
-        if (command.Stream == null || command.Length == 0)
+        if (command.File == null || command.File.Length == 0)
         {
             throw new ArgumentException("Nenhum arquivo enviado.");
         }
 
-        if (command.Length > 20 * 1024 * 1024)
+        if (command.File.Length > 20 * 1024 * 1024)
         {
             throw new ArgumentException("O arquivo excede o limite de tamanho permitido de 20MB.");
         }
 
-        var urlStorage = await _storageService.UploadAsync(command.Stream, command.FileName, command.ContentType);
+        string urlStorage;
+        using (var stream = command.File.OpenReadStream())
+        {
+            urlStorage = await _storageService.UploadAsync(stream, command.File.FileName, command.File.ContentType);
+        }
 
         var arquivo = new Arquivo
         {
             Id = Guid.NewGuid(),
             ProjetoId = command.ProjetoId,
-            Nome = command.FileName,
+            Nome = command.File.FileName,
             UrlStorage = urlStorage,
-            Tipo = command.ContentType,
+            Tipo = command.File.ContentType,
             VisivelCliente = command.VisivelCliente,
             CriadoEm = DateTime.UtcNow
         };

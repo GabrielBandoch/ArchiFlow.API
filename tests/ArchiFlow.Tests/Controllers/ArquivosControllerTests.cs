@@ -47,37 +47,19 @@ public class ArquivosControllerTests
     }
 
     [Fact]
-    public async Task Upload_Should_Return_BadRequest_When_File_Is_Null()
-    {
-        // Act
-        var result = await _controller.Upload(null!, Guid.NewGuid(), true);
-
-        // Assert
-        var badRequest = result as BadRequestObjectResult;
-        badRequest.Should().NotBeNull();
-        badRequest!.Value.Should().Be("Nenhum arquivo enviado.");
-    }
-
-    [Fact]
-    public async Task Upload_Should_Return_Ok_When_File_Is_Valid()
+    public async Task Upload_Should_Return_Ok_When_Command_Is_Processed()
     {
         // Arrange
         var fileMock = new Mock<IFormFile>();
-        var content = "dummy pdf content";
-        var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        fileMock.Setup(f => f.OpenReadStream()).Returns(stream);
-        fileMock.Setup(f => f.FileName).Returns("planta.pdf");
-        fileMock.Setup(f => f.ContentType).Returns("application/pdf");
-        fileMock.Setup(f => f.Length).Returns(content.Length);
-
         var projetoId = Guid.NewGuid();
+        var command = new UploadArquivoCommand(projetoId, fileMock.Object, true);
         var dto = new ArquivoDto(Guid.NewGuid(), projetoId, "planta.pdf", "https://s3.com/planta.pdf", "application/pdf", true, DateTime.UtcNow);
 
-        _mockFacade.Setup(f => f.Upload(It.IsAny<UploadArquivoCommand>()))
+        _mockFacade.Setup(f => f.Upload(command))
             .ReturnsAsync(dto);
 
         // Act
-        var result = await _controller.Upload(fileMock.Object, projetoId, true);
+        var result = await _controller.Upload(command);
 
         // Assert
         var okResult = result as OkObjectResult;

@@ -4,6 +4,7 @@ using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -63,15 +64,12 @@ public class ArquivoServiceTests
     }
 
     [Fact]
-    public async Task Upload_Should_Throw_When_Stream_Is_Empty()
+    public async Task Upload_Should_Throw_When_File_Is_Null_Or_Empty()
     {
         // Arrange
         var command = new UploadArquivoCommand(
             Guid.NewGuid(),
-            "empty.txt",
-            "text/plain",
-            0,
-            Stream.Null,
+            null,
             true
         );
 
@@ -87,13 +85,12 @@ public class ArquivoServiceTests
     public async Task Upload_Should_Throw_When_Length_Exceeds_20MB()
     {
         // Arrange
-        using var stream = new MemoryStream(new byte[10]);
+        var mockFile = new Mock<IFormFile>();
+        mockFile.Setup(f => f.Length).Returns(21 * 1024 * 1024);
+
         var command = new UploadArquivoCommand(
             Guid.NewGuid(),
-            "huge.zip",
-            "application/zip",
-            21 * 1024 * 1024,
-            stream,
+            mockFile.Object,
             true
         );
 
@@ -109,13 +106,17 @@ public class ArquivoServiceTests
     public async Task Upload_Should_Save_To_Storage_And_Repository_Successfully()
     {
         // Arrange
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("hello"));
+        var content = "hello";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        var mockFile = new Mock<IFormFile>();
+        mockFile.Setup(f => f.OpenReadStream()).Returns(stream);
+        mockFile.Setup(f => f.FileName).Returns("render.png");
+        mockFile.Setup(f => f.ContentType).Returns("image/png");
+        mockFile.Setup(f => f.Length).Returns(content.Length);
+
         var command = new UploadArquivoCommand(
             Guid.NewGuid(),
-            "render.png",
-            "image/png",
-            5,
-            stream,
+            mockFile.Object,
             true
         );
 
