@@ -26,8 +26,10 @@ public static class DbSeeder
                     ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
                 ");
             }
-            catch
+            catch (Exception ex)
             {
+                var seederLogger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
+                seederLogger.LogWarning(ex, "Coluna CLI_Foto_Url já existe ou não pôde ser adicionada.");
             }
 
             await SeedAsync(context);

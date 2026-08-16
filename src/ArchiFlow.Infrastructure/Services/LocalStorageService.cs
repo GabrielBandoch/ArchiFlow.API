@@ -16,15 +16,21 @@ public class LocalStorageService : IStorageService
 
     public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType)
     {
-        var uploadsFolder = Path.Combine(_rootPath, "uploads");
+        var uploadsFolder = Path.GetFullPath(Path.Combine(_rootPath, "uploads"));
         
         if (!Directory.Exists(uploadsFolder))
         {
             Directory.CreateDirectory(uploadsFolder);
         }
 
-        var uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
-        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+        var safeFileName = Path.GetFileName(fileName);
+        var uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
+        var filePath = Path.GetFullPath(Path.Combine(uploadsFolder, uniqueFileName));
+
+        if (!filePath.StartsWith(uploadsFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Caminho de arquivo inválido.");
+        }
 
         using (var destinationStream = new FileStream(filePath, FileMode.Create))
         {
@@ -38,8 +44,14 @@ public class LocalStorageService : IStorageService
     {
         if (string.IsNullOrEmpty(fileUrl)) return Task.CompletedTask;
 
-        var fileName = Path.GetFileName(fileUrl);
-        var filePath = Path.Combine(_rootPath, "uploads", fileName);
+        var safeFileName = Path.GetFileName(fileUrl);
+        var uploadsFolder = Path.GetFullPath(Path.Combine(_rootPath, "uploads"));
+        var filePath = Path.GetFullPath(Path.Combine(uploadsFolder, safeFileName));
+
+        if (!filePath.StartsWith(uploadsFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.CompletedTask;
+        }
 
         if (File.Exists(filePath))
         {

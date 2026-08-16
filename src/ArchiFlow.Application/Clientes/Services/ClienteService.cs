@@ -9,8 +9,10 @@ using ArchiFlow.Domain.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiFlow.Application.Clientes.Services;
 
@@ -22,6 +24,7 @@ public class ClienteService : IClienteService
     private readonly IEmailService      _emailService;
     private readonly IUnitOfWork        _unitOfWork;
     private readonly IConfiguration     _configuration;
+    private readonly ILogger<ClienteService>? _logger;
 
     public ClienteService(
         IClienteRepository clienteRepository,
@@ -29,7 +32,8 @@ public class ClienteService : IClienteService
         IProjetoRepository projetoRepository,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<ClienteService>? logger = null)
     {
         _clienteRepository = clienteRepository;
         _leadRepository    = leadRepository;
@@ -37,6 +41,7 @@ public class ClienteService : IClienteService
         _emailService      = emailService;
         _unitOfWork        = unitOfWork;
         _configuration     = configuration;
+        _logger            = logger;
     }
 
     public async Task<IEnumerable<ClienteDto>> GetAll()
@@ -95,8 +100,8 @@ public class ClienteService : IClienteService
             throw new ArgumentException("Este e-mail já está cadastrado para outro cliente.");
         }
 
-        var random = new Random();
-        var tempPassword = $"Arch@{random.Next(1000, 9999)}";
+        var tempCode = RandomNumberGenerator.GetInt32(1000, 10000);
+        var tempPassword = $"Arch@{tempCode}";
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12);
 
         var cliente = new Cliente
@@ -137,8 +142,9 @@ public class ClienteService : IClienteService
         {
             await _emailService.SendEmailAsync(cliente.Email, emailSubject, emailBody);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger?.LogWarning(ex, "Falha ao enviar e-mail de acesso ao portal para o cliente {Email}.", cliente.Email);
         }
 
         var dto = new ClienteDto(
