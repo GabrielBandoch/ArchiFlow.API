@@ -18,6 +18,7 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<Lead>                 Leads                 => Set<Lead>();
     public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
     public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
+    public DbSet<Arquivo>              Arquivos              => Set<Arquivo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,7 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(c => c.SenhaPortal).HasColumnName("CLI_Senha_Portal");
             entity.Property(c => c.Ativo).HasColumnName("CLI_Ativo");
             entity.Property(c => c.Endereco).HasColumnName("CLI_Endereco");
+            entity.Property(c => c.FotoUrl).HasColumnName("CLI_Foto_Url");
 
             entity.HasIndex(c => c.Email).IsUnique();
         });
@@ -143,6 +145,24 @@ public class ArchiFlowDbContext : DbContext
             entity.HasOne(h => h.Lead)
                   .WithMany(l => l.HistoricoContatos)
                   .HasForeignKey(h => h.LeadId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Arquivo>(entity =>
+        {
+            entity.ToTable("Arquivos");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Id).HasColumnName("ARQ_Id");
+            entity.Property(a => a.ProjetoId).HasColumnName("ARQ_Projeto_Id");
+            entity.Property(a => a.Nome).HasColumnName("ARQ_Nome").IsRequired().HasMaxLength(255);
+            entity.Property(a => a.UrlStorage).HasColumnName("ARQ_Url_Storage").IsRequired().HasMaxLength(1000);
+            entity.Property(a => a.Tipo).HasColumnName("ARQ_Tipo").HasMaxLength(100);
+            entity.Property(a => a.VisivelCliente).HasColumnName("ARQ_Visivel_Cliente");
+            entity.Property(a => a.CriadoEm).HasColumnName("ARQ_Criado_Em");
+
+            entity.HasOne<Projeto>()
+                  .WithMany()
+                  .HasForeignKey(a => a.ProjetoId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

@@ -35,7 +35,7 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.ConfigureDatabase(connectionString);
-builder.Services.ConfigureDependencyInjection();
+builder.Services.ConfigureDependencyInjection(builder.Environment);
 builder.Services.ConfigureSecurity(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.ConfigureSwagger();
 

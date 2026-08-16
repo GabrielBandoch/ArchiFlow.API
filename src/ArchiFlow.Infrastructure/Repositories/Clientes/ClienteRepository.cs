@@ -13,6 +13,6 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
     public async Task<Cliente?> GetByEmail(string email)
     {
         var normalizedEmail = email.Trim();
-        return await _dbSet.FirstOrDefaultAsync(c => c.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase));
+        return await _dbSet.FirstOrDefaultAsync(c => string.Equals(c.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase));
     }
 }

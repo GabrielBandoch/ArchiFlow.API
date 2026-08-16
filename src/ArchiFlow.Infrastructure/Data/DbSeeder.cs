@@ -19,6 +19,19 @@ public static class DbSeeder
         {
             var context = services.GetRequiredService<ArchiFlowDbContext>();
             await context.Database.MigrateAsync();
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
+                ");
+            }
+            catch (Exception ex)
+            {
+                var seederLogger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
+                seederLogger.LogWarning(ex, "Coluna CLI_Foto_Url já existe ou não pôde ser adicionada.");
+            }
+
             await SeedAsync(context);
         }
         catch (Exception ex)
