@@ -12,4 +12,8 @@ public interface IProjetoRepository : IRepository<Projeto>
     Task<EtapaProjeto?> GetEtapaById(Guid etapaId);
     Task<EtapaProjeto> CreateEtapa(EtapaProjeto etapa);
     Task<EtapaProjeto> UpdateEtapa(EtapaProjeto etapa);
+    Task<TarefaEtapa?> GetTarefaById(Guid id);
+    Task<TarefaEtapa> CreateTarefa(TarefaEtapa tarefa);
+    Task<TarefaEtapa> UpdateTarefa(TarefaEtapa tarefa);
+    Task DeleteTarefa(TarefaEtapa tarefa);
 }

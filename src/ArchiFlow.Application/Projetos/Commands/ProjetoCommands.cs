@@ -1,5 +1,6 @@
-using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Projetos.Enum;
+using System;
+using System.Collections.Generic;
 
 namespace ArchiFlow.Application.Projetos.Commands;
 
@@ -39,4 +40,28 @@ public record CriarEtapaCommand(
 public record AtualizarStatusEtapaCommand(
     Guid EtapaId,
     StatusEtapa Status
+);
+
+public record AdicionarTarefaCommand(
+    Guid EtapaId,
+    string Titulo
+);
+
+public record AlternarTarefaCommand(
+    Guid TarefaId
+);
+
+public record CriarTemplateProjetoCommand(
+    string Codigo,
+    string Nome,
+    string? Descricao,
+    string? Icone,
+    List<CriarTemplateEtapaItemCommand>? Etapas = null
+);
+
+public record CriarTemplateEtapaItemCommand(
+    string Nome,
+    string? Descricao,
+    int Ordem,
+    List<string>? Tarefas = null
 );

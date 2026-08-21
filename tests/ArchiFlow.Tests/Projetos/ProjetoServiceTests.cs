@@ -221,6 +221,49 @@ public class ProjetoServiceTests
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
+    [Fact]
+    public async Task AdicionarTarefa_ComDadosValidos_DevePersistirTarefaNaEtapa()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto com Tarefas"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Fazer levantamento fotográfico"));
+
+        tarefa.Id.Should().NotBeEmpty();
+        tarefa.Titulo.Should().Be("Fazer levantamento fotográfico");
+        tarefa.Concluida.Should().BeFalse();
+
+        var projAtualizado = await _sut.GetById(projeto.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AlternarTarefa_DeveInverterStatusDeConclusao()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto Toggle"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Item 1"));
+
+        var alternada = await _sut.AlternarTarefa(tarefa.Id);
+        alternada.Concluida.Should().BeTrue();
+
+        var alternadaDeNovo = await _sut.AlternarTarefa(tarefa.Id);
+        alternadaDeNovo.Concluida.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveExcluirTarefaDoBanco()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto Remove"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Item Para Remover"));
+
+        await _sut.RemoverTarefa(tarefa.Id);
+
+        var projAtualizado = await _sut.GetById(projeto.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().BeEmpty();
+    }
+
     private static CriarProjetoCommand CriarComando(string nome) =>
         new(
             Nome:                nome,

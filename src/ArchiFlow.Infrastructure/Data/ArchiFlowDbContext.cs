@@ -13,6 +13,9 @@ public class ArchiFlowDbContext : DbContext
 
     public DbSet<Projeto>              Projetos              => Set<Projeto>();
     public DbSet<EtapaProjeto>         EtapasProjeto         => Set<EtapaProjeto>();
+    public DbSet<TarefaEtapa>          TarefasEtapa          => Set<TarefaEtapa>();
+    public DbSet<TemplateProjeto>      TemplatesProjeto      => Set<TemplateProjeto>();
+    public DbSet<TemplateEtapa>        TemplatesEtapa        => Set<TemplateEtapa>();
     public DbSet<Usuario>              Usuarios              => Set<Usuario>();
     public DbSet<Cliente>              Clientes              => Set<Cliente>();
     public DbSet<Lead>                 Leads                 => Set<Lead>();
@@ -63,6 +66,52 @@ public class ArchiFlowDbContext : DbContext
             entity.HasOne(e => e.Projeto)
                   .WithMany(p => p.Etapas)
                   .HasForeignKey(e => e.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TarefaEtapa>(entity =>
+        {
+            entity.ToTable("Tarefas_Etapa");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasColumnName("TAR_Id");
+            entity.Property(t => t.EtapaId).HasColumnName("TAR_Etapa_Id");
+            entity.Property(t => t.Titulo).HasColumnName("TAR_Titulo").IsRequired().HasMaxLength(300);
+            entity.Property(t => t.Concluida).HasColumnName("TAR_Concluida");
+            entity.Property(t => t.CriadoEm).HasColumnName("TAR_Criado_Em");
+
+            entity.HasOne(t => t.Etapa)
+                  .WithMany(e => e.Tarefas)
+                  .HasForeignKey(t => t.EtapaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TemplateProjeto>(entity =>
+        {
+            entity.ToTable("Templates_Projeto");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasColumnName("TMP_Id");
+            entity.Property(t => t.Codigo).HasColumnName("TMP_Codigo").IsRequired().HasMaxLength(100);
+            entity.Property(t => t.Nome).HasColumnName("TMP_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(t => t.Descricao).HasColumnName("TMP_Descricao");
+            entity.Property(t => t.Icone).HasColumnName("TMP_Icone").HasMaxLength(50);
+            entity.Property(t => t.Ativo).HasColumnName("TMP_Ativo");
+            entity.Property(t => t.CriadoEm).HasColumnName("TMP_Criado_Em");
+        });
+
+        modelBuilder.Entity<TemplateEtapa>(entity =>
+        {
+            entity.ToTable("Templates_Etapa");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("TME_Id");
+            entity.Property(e => e.TemplateProjetoId).HasColumnName("TME_Template_Id");
+            entity.Property(e => e.Nome).HasColumnName("TME_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Descricao).HasColumnName("TME_Descricao");
+            entity.Property(e => e.Ordem).HasColumnName("TME_Ordem");
+            entity.Property(e => e.TarefasJson).HasColumnName("TME_Tarefas_Json");
+
+            entity.HasOne(e => e.TemplateProjeto)
+                  .WithMany(t => t.Etapas)
+                  .HasForeignKey(e => e.TemplateProjetoId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

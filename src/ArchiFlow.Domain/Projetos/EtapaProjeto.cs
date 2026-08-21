@@ -12,4 +12,5 @@ public class EtapaProjeto
     public int? Ordem { get; set; }
     public DateTime? DataConclusao { get; set; }
     public virtual Projeto? Projeto { get; set; }
+    public virtual ICollection<TarefaEtapa> Tarefas { get; set; } = new List<TarefaEtapa>();
 }
