@@ -37,6 +37,15 @@ services:
       - JWT_ISSUER=${JWT_ISSUER}
       - JWT_AUDIENCE=${JWT_AUDIENCE}
       - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES}
+      - SEED_ADMIN_NAME=${SEED_ADMIN_NAME:-Administrador do Sistema}
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin@archiflow.com}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-Admin@123}
+      - SEED_GERENTE_NAME=${SEED_GERENTE_NAME:-Gerente Arquiteto}
+      - SEED_GERENTE_EMAIL=${SEED_GERENTE_EMAIL:-gerente@archiflow.com}
+      - SEED_GERENTE_PASSWORD=${SEED_GERENTE_PASSWORD:-Gerente@123}
+      - SEED_COLABORADOR_NAME=${SEED_COLABORADOR_NAME:-Colaborador Arquiteto}
+      - SEED_COLABORADOR_EMAIL=${SEED_COLABORADOR_EMAIL:-colaborador@archiflow.com}
+      - SEED_COLABORADOR_PASSWORD=${SEED_COLABORADOR_PASSWORD:-Colaborador@123}
     ports:
       - "5000:8080"
     depends_on:

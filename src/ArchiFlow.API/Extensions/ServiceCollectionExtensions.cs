@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
 
         // Repositories
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
+        services.AddScoped<ITemplateProjetoRepository, TemplateProjetoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<ILeadRepository, LeadRepository>();
