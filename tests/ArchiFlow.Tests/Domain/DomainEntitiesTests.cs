@@ -72,4 +72,97 @@ public class DomainEntitiesTests
         Roles.Colaborador.Should().Be("Colaborador");
         Roles.Cliente.Should().Be("Cliente");
     }
+
+    [Fact]
+    public void ProjetosEntities_DevePermitirObterEDefinirPropriedades()
+    {
+        var id = Guid.NewGuid();
+        var data = DateTime.UtcNow;
+
+        var template = new Domain.Projetos.TemplateProjeto
+        {
+            Id = id,
+            Codigo = "res",
+            Nome = "Residencial",
+            Descricao = "Desc",
+            Icone = "home",
+            Ativo = true,
+            CriadoEm = data
+        };
+        template.Id.Should().Be(id);
+        template.Codigo.Should().Be("res");
+        template.Nome.Should().Be("Residencial");
+        template.Descricao.Should().Be("Desc");
+        template.Icone.Should().Be("home");
+        template.Ativo.Should().BeTrue();
+        template.CriadoEm.Should().Be(data);
+
+        var etapaTemplate = new Domain.Projetos.TemplateEtapa
+        {
+            Id = id,
+            TemplateProjetoId = template.Id,
+            Nome = "Etapa 1",
+            Descricao = "Desc",
+            Ordem = 1,
+            TarefasJson = "[]",
+            TemplateProjeto = template
+        };
+        etapaTemplate.Id.Should().Be(id);
+        etapaTemplate.TemplateProjetoId.Should().Be(template.Id);
+        etapaTemplate.Nome.Should().Be("Etapa 1");
+        etapaTemplate.Descricao.Should().Be("Desc");
+        etapaTemplate.Ordem.Should().Be(1);
+        etapaTemplate.TarefasJson.Should().Be("[]");
+        etapaTemplate.TemplateProjeto.Should().Be(template);
+
+        var tarefa = new Domain.Projetos.TarefaEtapa
+        {
+            Id = id,
+            EtapaId = id,
+            Titulo = "Desenho",
+            Concluida = true,
+            CriadoEm = data
+        };
+        tarefa.Id.Should().Be(id);
+        tarefa.EtapaId.Should().Be(id);
+        tarefa.Titulo.Should().Be("Desenho");
+        tarefa.Concluida.Should().BeTrue();
+        tarefa.CriadoEm.Should().Be(data);
+
+        var etapaProj = new Domain.Projetos.EtapaProjeto
+        {
+            Id = id,
+            ProjetoId = id,
+            Nome = "Fase",
+            Descricao = "Desc",
+            Ordem = 1,
+            Status = Domain.Projetos.Enum.StatusEtapa.Concluida,
+            DataConclusao = data
+        };
+        etapaProj.Id.Should().Be(id);
+        etapaProj.ProjetoId.Should().Be(id);
+        etapaProj.Nome.Should().Be("Fase");
+        etapaProj.Descricao.Should().Be("Desc");
+        etapaProj.Ordem.Should().Be(1);
+        etapaProj.Status.Should().Be(Domain.Projetos.Enum.StatusEtapa.Concluida);
+        etapaProj.DataConclusao.Should().Be(data);
+
+        var arq = new Domain.Projetos.Arquivo
+        {
+            Id = id,
+            ProjetoId = id,
+            Nome = "orig.pdf",
+            UrlStorage = "https://storage/orig.pdf",
+            Tipo = "PDF",
+            VisivelCliente = true,
+            CriadoEm = data
+        };
+        arq.Id.Should().Be(id);
+        arq.ProjetoId.Should().Be(id);
+        arq.Nome.Should().Be("orig.pdf");
+        arq.UrlStorage.Should().Be("https://storage/orig.pdf");
+        arq.Tipo.Should().Be("PDF");
+        arq.VisivelCliente.Should().BeTrue();
+        arq.CriadoEm.Should().Be(data);
+    }
 }

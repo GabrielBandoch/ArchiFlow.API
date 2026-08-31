@@ -133,4 +133,24 @@ public class OrigemLeadServiceTests
         noBanco.Should().NotBeNull();
         noBanco!.Ativo.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GetById_QuandoExiste_DeveRetornarDto()
+    {
+        var origem = new OrigemLead { Id = Guid.NewGuid(), Descricao = "Indicação", Ativo = true };
+        _ctx.OrigensLead.Add(origem);
+        await _ctx.SaveChangesAsync();
+
+        var resultado = await _sut.GetById(origem.Id);
+
+        resultado.Should().NotBeNull();
+        resultado!.Descricao.Should().Be("Indicação");
+    }
+
+    [Fact]
+    public async Task GetById_QuandoNaoExiste_DeveRetornarNull()
+    {
+        var resultado = await _sut.GetById(Guid.NewGuid());
+        resultado.Should().BeNull();
+    }
 }

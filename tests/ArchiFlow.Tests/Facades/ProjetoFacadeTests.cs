@@ -111,6 +111,105 @@ public class ProjetoFacadeTests
     }
 
     [Fact]
+    public async Task AdicionarTarefa_DeveChamarService()
+    {
+        var command = new AdicionarTarefaCommand(Guid.NewGuid(), "Planta");
+        var dto = new TarefaEtapaDto(Guid.NewGuid(), command.EtapaId, "Planta", false, null);
+        _serviceMock.Setup(s => s.AdicionarTarefa(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AdicionarTarefa(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AdicionarTarefa(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task AlternarTarefa_DeveChamarService()
+    {
+        var id = Guid.NewGuid();
+        var dto = new TarefaEtapaDto(id, Guid.NewGuid(), "Planta", true, DateTime.UtcNow);
+        _serviceMock.Setup(s => s.AlternarTarefa(id)).ReturnsAsync(dto);
+
+        var result = await _sut.AlternarTarefa(id);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AlternarTarefa(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveChamarService()
+    {
+        var id = Guid.NewGuid();
+        _serviceMock.Setup(s => s.RemoverTarefa(id)).Returns(Task.CompletedTask);
+
+        await _sut.RemoverTarefa(id);
+
+        _serviceMock.Verify(s => s.RemoverTarefa(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterTemplates_DeveChamarService()
+    {
+        var templates = new List<TemplateProjetoDto>();
+        _serviceMock.Setup(s => s.ObterTemplates()).ReturnsAsync(templates);
+
+        var result = await _sut.ObterTemplates();
+
+        result.Should().BeSameAs(templates);
+        _serviceMock.Verify(s => s.ObterTemplates(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterTemplatePorId_DeveChamarService()
+    {
+        var id = Guid.NewGuid();
+        var dto = new TemplateProjetoDto(id, "res", "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.ObterTemplatePorId(id)).ReturnsAsync(dto);
+
+        var result = await _sut.ObterTemplatePorId(id);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.ObterTemplatePorId(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task CriarTemplate_DeveChamarService()
+    {
+        var command = new CriarTemplateProjetoCommand("res", "Res", "Desc", "home", new List<CriarTemplateEtapaItemCommand>());
+        var dto = new TemplateProjetoDto(Guid.NewGuid(), "res", "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.CriarTemplate(command)).ReturnsAsync(dto);
+
+        var result = await _sut.CriarTemplate(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.CriarTemplate(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarTemplate_DeveChamarService()
+    {
+        var command = new AtualizarTemplateProjetoCommand(Guid.NewGuid(), "Res", "Desc", "home", new List<CriarTemplateEtapaItemCommand>());
+        var dto = new TemplateProjetoDto(command.Id, "res", "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.AtualizarTemplate(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AtualizarTemplate(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AtualizarTemplate(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExcluirTemplate_DeveChamarService()
+    {
+        var id = Guid.NewGuid();
+        _serviceMock.Setup(s => s.ExcluirTemplate(id)).Returns(Task.CompletedTask);
+
+        await _sut.ExcluirTemplate(id);
+
+        _serviceMock.Verify(s => s.ExcluirTemplate(id), Times.Once);
+    }
+
+    [Fact]
     public async Task Delete_DeveChamarService()
     {
         var id = Guid.NewGuid();

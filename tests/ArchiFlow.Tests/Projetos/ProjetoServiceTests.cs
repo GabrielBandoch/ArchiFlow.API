@@ -313,6 +313,54 @@ public class ProjetoServiceTests
         obtido.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ObterTemplates_DeveRetornarTodosTemplatesAtivos()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand("temp-1", "Template 1", "Desc", "home"));
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand("temp-2", "Template 2", "Desc", "chair"));
+
+        var templates = await _sut.ObterTemplates();
+
+        templates.Should().HaveCountGreaterThanOrEqualTo(2);
+        templates.Should().Contain(t => t.Codigo == "temp-1");
+        templates.Should().Contain(t => t.Codigo == "temp-2");
+    }
+
+    [Fact]
+    public async Task Update_DeveAtualizarDadosDoProjeto()
+    {
+        var criado = await _sut.Create(CriarComando("Projeto Original"));
+
+        var atualizado = await _sut.Update(new AtualizarProjetoCommand(
+            criado.Id,
+            "Projeto Modificado",
+            "Nova Descricao",
+            TipoProjeto.Comercial,
+            StatusProjeto.Desenvolvimento,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddMonths(12),
+            300
+        ));
+
+        atualizado.Nome.Should().Be("Projeto Modificado");
+        atualizado.Descricao.Should().Be("Nova Descricao");
+        atualizado.Tipo.Should().Be(TipoProjeto.Comercial);
+        atualizado.MetragemTotal.Should().Be(300);
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveRemoverTarefaExistente()
+    {
+        var proj = await _sut.Create(CriarComando("Projeto com Tarefa"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(proj.Id, "Etapa Teste", "Desc", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Tarefa a ser removida"));
+
+        await _sut.RemoverTarefa(tarefa.Id);
+
+        var projAtualizado = await _sut.GetById(proj.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().BeEmpty();
+    }
+
     private static CriarProjetoCommand CriarComando(string nome) =>
         new(
             Nome:                nome,
