@@ -35,7 +35,7 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.ConfigureDatabase(connectionString);
-builder.Services.ConfigureDependencyInjection();
+builder.Services.ConfigureDependencyInjection(builder.Environment);
 builder.Services.ConfigureSecurity(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.ConfigureSwagger();
 
@@ -64,10 +64,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-if (app.Environment.IsDevelopment())
-{
-    await DbSeeder.MigrateAndSeedAsync(app.Services);
-}
+await DbSeeder.MigrateAndSeedAsync(app.Services, app.Environment.IsDevelopment());
 
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
@@ -92,4 +89,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 await app.RunAsync();
 
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-public partial class Program { }
+public partial class Program
+{
+    protected Program() { }
+}

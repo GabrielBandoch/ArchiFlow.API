@@ -172,6 +172,58 @@ public class ProjetosControllerTests
     }
 
     [Fact]
+    public async Task AdicionarTarefa_ComIdConsistente_DeveRetornarOk()
+    {
+        var etapaId = Guid.NewGuid();
+        var command = new AdicionarTarefaCommand(etapaId, "Planta Baixa");
+        var dto = new TarefaEtapaDto(Guid.NewGuid(), etapaId, "Planta Baixa", false, null);
+
+        _facadeMock.Setup(f => f.AdicionarTarefa(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AdicionarTarefa(etapaId, command);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(dto);
+    }
+
+    [Fact]
+    public async Task AdicionarTarefa_ComIdInconsistente_DeveRetornarBadRequest()
+    {
+        var command = new AdicionarTarefaCommand(Guid.NewGuid(), "Planta Baixa");
+
+        var result = await _sut.AdicionarTarefa(Guid.NewGuid(), command);
+
+        var badResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        badResult.Value.Should().Be("ID inconsistente.");
+    }
+
+    [Fact]
+    public async Task AlternarTarefa_DeveRetornarOk()
+    {
+        var tarefaId = Guid.NewGuid();
+        var dto = new TarefaEtapaDto(tarefaId, Guid.NewGuid(), "Planta Baixa", true, DateTime.UtcNow);
+
+        _facadeMock.Setup(f => f.AlternarTarefa(tarefaId)).ReturnsAsync(dto);
+
+        var result = await _sut.AlternarTarefa(tarefaId);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(dto);
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveRetornarNoContent()
+    {
+        var tarefaId = Guid.NewGuid();
+        _facadeMock.Setup(f => f.RemoverTarefa(tarefaId)).Returns(Task.CompletedTask);
+
+        var result = await _sut.RemoverTarefa(tarefaId);
+
+        result.Should().BeOfType<NoContentResult>();
+        _facadeMock.Verify(f => f.RemoverTarefa(tarefaId), Times.Once);
+    }
+
+    [Fact]
     public async Task Delete_DeveRetornarNoContent()
     {
         var id = Guid.NewGuid();

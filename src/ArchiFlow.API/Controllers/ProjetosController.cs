@@ -75,6 +75,30 @@ public class ProjetosController : ControllerBase
         return Ok(await _facade.UpdateStatusEtapa(command));
     }
 
+    [HttpPost("etapas/{etapaId:guid}/tarefas")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> AdicionarTarefa(Guid etapaId, [FromBody] AdicionarTarefaCommand command)
+    {
+        if (etapaId != command.EtapaId)
+            return BadRequest(IdInconsistenteMsg);
+        return Ok(await _facade.AdicionarTarefa(command));
+    }
+
+    [HttpPatch("etapas/tarefas/{tarefaId:guid}/toggle")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> AlternarTarefa(Guid tarefaId)
+    {
+        return Ok(await _facade.AlternarTarefa(tarefaId));
+    }
+
+    [HttpDelete("etapas/tarefas/{tarefaId:guid}")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> RemoverTarefa(Guid tarefaId)
+    {
+        await _facade.RemoverTarefa(tarefaId);
+        return NoContent();
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "ApenasAdmin")]
     public async Task<IActionResult> Delete(Guid id)

@@ -17,12 +17,13 @@ public class ProjetoServiceTests
 
     public ProjetoServiceTests()
     {
-        var ctx        = TestDbContextFactory.Create();
-        var repository = new ProjetoRepository(ctx);
-        var unitOfWork = new UnitOfWork(ctx);
-        var mapper     = MappingFixture.Create();
+        var ctx                = TestDbContextFactory.Create();
+        var repository         = new ProjetoRepository(ctx);
+        var templateRepository = new TemplateProjetoRepository(ctx);
+        var unitOfWork         = new UnitOfWork(ctx);
+        var mapper             = MappingFixture.Create();
 
-        _sut = new ProjetoService(repository, unitOfWork, mapper);
+        _sut = new ProjetoService(repository, unitOfWork, mapper, null, templateRepository);
     }
 
     [Fact]
@@ -219,6 +220,145 @@ public class ProjetoServiceTests
         var act = async () => await _sut.Delete(Guid.NewGuid());
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task AdicionarTarefa_ComDadosValidos_DevePersistirTarefaNaEtapa()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto com Tarefas"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Fazer levantamento fotográfico"));
+
+        tarefa.Id.Should().NotBeEmpty();
+        tarefa.Titulo.Should().Be("Fazer levantamento fotográfico");
+        tarefa.Concluida.Should().BeFalse();
+
+        var projAtualizado = await _sut.GetById(projeto.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AlternarTarefa_DeveInverterStatusDeConclusao()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto Toggle"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Item 1"));
+
+        var alternada = await _sut.AlternarTarefa(tarefa.Id);
+        alternada.Concluida.Should().BeTrue();
+
+        var alternadaDeNovo = await _sut.AlternarTarefa(tarefa.Id);
+        alternadaDeNovo.Concluida.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveExcluirTarefaDoBanco()
+    {
+        var projeto = await _sut.Create(CriarComando("Projeto Remove"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Etapa 1", "Briefing", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Item Para Remover"));
+
+        await _sut.RemoverTarefa(tarefa.Id);
+
+        var projAtualizado = await _sut.GetById(projeto.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AtualizarTemplate_DeveAtualizarDadosEEtapas()
+    {
+        var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "paisagismo-v1",
+            "Paisagismo Inicial",
+            "Descricao",
+            "yard",
+            new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Estudo", "Desc", 1, new List<string> { "Planta de massas" })
+            }
+        ));
+
+        var atualizado = await _sut.AtualizarTemplate(new AtualizarTemplateProjetoCommand(
+            templateCriado.Id,
+            "Paisagismo Completo",
+            "Descricao Atualizada",
+            "park",
+            new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Estudo", "Desc", 1, new List<string> { "Planta de massas" }),
+                new("Executivo", "Plantas e Cortes", 2, new List<string> { "Memorial botânico", "Iluminação" })
+            }
+        ));
+
+        atualizado.Nome.Should().Be("Paisagismo Completo");
+        atualizado.Icone.Should().Be("park");
+        atualizado.Etapas.Should().HaveCount(2);
+        atualizado.Etapas.Last().Tarefas.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ExcluirTemplate_DeveRemoverTemplate()
+    {
+        var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "temp-delete",
+            "Template Exclusao",
+            "Descricao",
+            "home"
+        ));
+
+        await _sut.ExcluirTemplate(templateCriado.Id);
+
+        var obtido = await _sut.ObterTemplatePorId(templateCriado.Id);
+        obtido.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterTemplates_DeveRetornarTodosTemplatesAtivos()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand("temp-1", "Template 1", "Desc", "home"));
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand("temp-2", "Template 2", "Desc", "chair"));
+
+        var templates = await _sut.ObterTemplates();
+
+        templates.Should().HaveCountGreaterThanOrEqualTo(2);
+        templates.Should().Contain(t => t.Codigo == "temp-1");
+        templates.Should().Contain(t => t.Codigo == "temp-2");
+    }
+
+    [Fact]
+    public async Task Update_DeveAtualizarDadosDoProjeto()
+    {
+        var criado = await _sut.Create(CriarComando("Projeto Original"));
+
+        var atualizado = await _sut.Update(new AtualizarProjetoCommand(
+            criado.Id,
+            "Projeto Modificado",
+            "Nova Descricao",
+            TipoProjeto.Comercial,
+            StatusProjeto.Desenvolvimento,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddMonths(12),
+            300
+        ));
+
+        atualizado.Nome.Should().Be("Projeto Modificado");
+        atualizado.Descricao.Should().Be("Nova Descricao");
+        atualizado.Tipo.Should().Be(TipoProjeto.Comercial);
+        atualizado.MetragemTotal.Should().Be(300);
+    }
+
+    [Fact]
+    public async Task RemoverTarefa_DeveRemoverTarefaExistente()
+    {
+        var proj = await _sut.Create(CriarComando("Projeto com Tarefa"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(proj.Id, "Etapa Teste", "Desc", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Tarefa a ser removida"));
+
+        await _sut.RemoverTarefa(tarefa.Id);
+
+        var projAtualizado = await _sut.GetById(proj.Id);
+        projAtualizado!.Etapas.First().Tarefas.Should().BeEmpty();
     }
 
     private static CriarProjetoCommand CriarComando(string nome) =>

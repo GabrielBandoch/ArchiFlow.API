@@ -11,4 +11,5 @@ public class Cliente
     public string? SenhaPortal { get; set; }
     public bool Ativo { get; set; } = true;
     public string? Endereco { get; set; }
+    public string? FotoUrl { get; set; }
 }

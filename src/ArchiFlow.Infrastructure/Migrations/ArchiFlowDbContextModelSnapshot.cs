@@ -189,6 +189,50 @@ namespace ArchiFlow.Infrastructure.Migrations
                     b.ToTable("Origens_Lead", (string)null);
                 });
 
+            modelBuilder.Entity("ArchiFlow.Domain.Projetos.Arquivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("ARQ_Id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ARQ_Criado_Em");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("ARQ_Nome");
+
+                    b.Property<Guid>("ProjetoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ARQ_Projeto_Id");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ARQ_Tipo");
+
+                    b.Property<string>("UrlStorage")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("ARQ_Url_Storage");
+
+                    b.Property<bool>("VisivelCliente")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ARQ_Visivel_Cliente");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjetoId");
+
+                    b.ToTable("Arquivos", (string)null);
+                });
+
             modelBuilder.Entity("ArchiFlow.Domain.Projetos.EtapaProjeto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -354,6 +398,15 @@ namespace ArchiFlow.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Origem");
+                });
+
+            modelBuilder.Entity("ArchiFlow.Domain.Projetos.Arquivo", b =>
+                {
+                    b.HasOne("ArchiFlow.Domain.Projetos.Projeto", null)
+                        .WithMany()
+                        .HasForeignKey("ProjetoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ArchiFlow.Domain.Projetos.EtapaProjeto", b =>

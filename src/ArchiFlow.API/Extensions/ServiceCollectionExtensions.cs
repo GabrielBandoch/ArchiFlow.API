@@ -8,6 +8,8 @@ using ArchiFlow.Application.Projetos.Services;
 using ArchiFlow.Application.Usuarios.Services;
 using ArchiFlow.Application.Leads.Services;
 using ArchiFlow.Application.Leads.Facades;
+using ArchiFlow.Application.Clientes.Services;
+using ArchiFlow.Application.Clientes.Facades;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
@@ -22,7 +24,9 @@ using ArchiFlow.Infrastructure.Repositories.Leads;
 using ArchiFlow.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -43,16 +47,18 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection ConfigureDependencyInjection(this IServiceCollection services)
+    public static IServiceCollection ConfigureDependencyInjection(this IServiceCollection services, IWebHostEnvironment environment)
     {
         services.AddAutoMapper(typeof(ArchiFlowMappingProfile));
 
         // Repositories
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
+        services.AddScoped<ITemplateProjetoRepository, TemplateProjetoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
+        services.AddScoped<IArquivoRepository, ArquivoRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
@@ -62,8 +68,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILeadFacade, LeadFacade>();
         services.AddScoped<IOrigemLeadService, OrigemLeadService>();
         services.AddScoped<IOrigemLeadFacade, OrigemLeadFacade>();
+        services.AddScoped<IClienteService, ClienteService>();
+        services.AddScoped<IClienteFacade, ClienteFacade>();
+        services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();
+        services.AddScoped<IArquivoFacade, ArchiFlow.Application.Arquivos.Facades.ArquivoFacade>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+
+        // Storage & Email (Automatic environment-based registration)
+        if (environment.IsProduction())
+        {
+            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddScoped<Amazon.SimpleEmail.IAmazonSimpleEmailService, Amazon.SimpleEmail.AmazonSimpleEmailServiceClient>();
+            services.AddScoped<IStorageService, S3StorageService>();
+            services.AddScoped<IEmailService, SesEmailService>();
+        }
+        else
+        {
+            services.AddScoped<IStorageService, LocalStorageService>();
+            services.AddScoped<IEmailService, ConsoleEmailService>();
+        }
 
         // Security / Authorization
         services.AddHttpContextAccessor();
