@@ -160,7 +160,7 @@ public class ProjetoService : IProjetoService
 
     public async Task<TarefaEtapaDto> AdicionarTarefa(AdicionarTarefaCommand command)
     {
-        var etapa = await _repository.GetEtapaById(command.EtapaId)
+        _ = await _repository.GetEtapaById(command.EtapaId)
             ?? throw new KeyNotFoundException($"Etapa {command.EtapaId} não encontrada.");
 
         var tarefa = new TarefaEtapa

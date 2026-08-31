@@ -89,4 +89,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 await app.RunAsync();
 
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-public partial class Program { }
+public partial class Program
+{
+    protected Program() { }
+}
