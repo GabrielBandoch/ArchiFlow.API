@@ -266,7 +266,7 @@ public class ProjetoService : IProjetoService
         if (command.Etapas != null)
         {
             var oldEtapas = template.Etapas.ToList();
-            if (oldEtapas.Any())
+            if (oldEtapas.Count > 0)
             {
                 _templateRepository.RemoveEtapas(oldEtapas);
             }
