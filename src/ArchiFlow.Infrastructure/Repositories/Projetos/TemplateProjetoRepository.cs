@@ -29,4 +29,14 @@ public class TemplateProjetoRepository : Repository<TemplateProjeto>, ITemplateP
         await _context.TemplatesProjeto
             .Include(t => t.Etapas)
             .FirstOrDefaultAsync(t => t.Codigo == codigo);
+
+    public void RemoveEtapas(IEnumerable<TemplateEtapa> etapas)
+    {
+        _context.TemplatesEtapa.RemoveRange(etapas);
+    }
+
+    public void AddEtapas(IEnumerable<TemplateEtapa> etapas)
+    {
+        _context.TemplatesEtapa.AddRange(etapas);
+    }
 }

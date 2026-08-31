@@ -17,12 +17,13 @@ public class ProjetoServiceTests
 
     public ProjetoServiceTests()
     {
-        var ctx        = TestDbContextFactory.Create();
-        var repository = new ProjetoRepository(ctx);
-        var unitOfWork = new UnitOfWork(ctx);
-        var mapper     = MappingFixture.Create();
+        var ctx                = TestDbContextFactory.Create();
+        var repository         = new ProjetoRepository(ctx);
+        var templateRepository = new TemplateProjetoRepository(ctx);
+        var unitOfWork         = new UnitOfWork(ctx);
+        var mapper             = MappingFixture.Create();
 
-        _sut = new ProjetoService(repository, unitOfWork, mapper);
+        _sut = new ProjetoService(repository, unitOfWork, mapper, null, templateRepository);
     }
 
     [Fact]
@@ -262,6 +263,54 @@ public class ProjetoServiceTests
 
         var projAtualizado = await _sut.GetById(projeto.Id);
         projAtualizado!.Etapas.First().Tarefas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AtualizarTemplate_DeveAtualizarDadosEEtapas()
+    {
+        var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "paisagismo-v1",
+            "Paisagismo Inicial",
+            "Descricao",
+            "yard",
+            new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Estudo", "Desc", 1, new List<string> { "Planta de massas" })
+            }
+        ));
+
+        var atualizado = await _sut.AtualizarTemplate(new AtualizarTemplateProjetoCommand(
+            templateCriado.Id,
+            "Paisagismo Completo",
+            "Descricao Atualizada",
+            "park",
+            new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Estudo", "Desc", 1, new List<string> { "Planta de massas" }),
+                new("Executivo", "Plantas e Cortes", 2, new List<string> { "Memorial botânico", "Iluminação" })
+            }
+        ));
+
+        atualizado.Nome.Should().Be("Paisagismo Completo");
+        atualizado.Icone.Should().Be("park");
+        atualizado.Etapas.Should().HaveCount(2);
+        atualizado.Etapas.Last().Tarefas.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ExcluirTemplate_DeveRemoverTemplate()
+    {
+        var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "temp-delete",
+            "Template Exclusao",
+            "Descricao",
+            "home"
+        ));
+
+        await _sut.ExcluirTemplate(templateCriado.Id);
+
+        var obtido = await _sut.ObterTemplatePorId(templateCriado.Id);
+        obtido.Should().BeNull();
     }
 
     private static CriarProjetoCommand CriarComando(string nome) =>

@@ -242,9 +242,64 @@ public class ProjetoService : IProjetoService
         };
 
         await _templateRepository.Create(template);
+        if (template.Etapas.Any())
+        {
+            _templateRepository.AddEtapas(template.Etapas);
+        }
         await _unitOfWork.Commit();
 
         return ToTemplateDto(template);
+    }
+
+    public async Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command)
+    {
+        if (_templateRepository == null)
+            throw new InvalidOperationException("Repositório de templates não configurado.");
+
+        var template = await _templateRepository.GetByIdWithEtapas(command.Id)
+            ?? throw new KeyNotFoundException($"Template {command.Id} não encontrado.");
+
+        template.Nome = command.Nome;
+        template.Descricao = command.Descricao;
+        template.Icone = command.Icone;
+
+        if (command.Etapas != null)
+        {
+            var oldEtapas = template.Etapas.ToList();
+            if (oldEtapas.Any())
+            {
+                _templateRepository.RemoveEtapas(oldEtapas);
+            }
+
+            var newEtapas = command.Etapas.Select(e => new TemplateEtapa
+            {
+                Id = Guid.NewGuid(),
+                TemplateProjetoId = template.Id,
+                Nome = e.Nome,
+                Descricao = e.Descricao,
+                Ordem = e.Ordem,
+                TarefasJson = e.Tarefas != null ? JsonSerializer.Serialize(e.Tarefas) : null
+            }).ToList();
+
+            _templateRepository.AddEtapas(newEtapas);
+            template.Etapas = newEtapas;
+        }
+
+        await _unitOfWork.Commit();
+
+        return ToTemplateDto(template);
+    }
+
+    public async Task ExcluirTemplate(Guid id)
+    {
+        if (_templateRepository == null)
+            throw new InvalidOperationException("Repositório de templates não configurado.");
+
+        var template = await _templateRepository.GetByIdWithEtapas(id)
+            ?? throw new KeyNotFoundException($"Template {id} não encontrado.");
+
+        await _templateRepository.Delete(template.Id);
+        await _unitOfWork.Commit();
     }
 
     private static ProjetoDto ToDto(Projeto p, string? clienteNome = null)

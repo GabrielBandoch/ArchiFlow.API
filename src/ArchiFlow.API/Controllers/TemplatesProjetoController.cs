@@ -41,4 +41,23 @@ public class TemplatesProjetoController : ControllerBase
         var result = await _facade.CriarTemplate(command);
         return CreatedAtAction(nameof(ObterPorId), new { id = result.Id }, result);
     }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarTemplateProjetoCommand command)
+    {
+        if (id != command.Id)
+            return BadRequest("O ID informado na rota diverge do corpo da requisição.");
+
+        var result = await _facade.AtualizarTemplate(command);
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    public async Task<IActionResult> Excluir(Guid id)
+    {
+        await _facade.ExcluirTemplate(id);
+        return NoContent();
+    }
 }

@@ -59,6 +59,14 @@ public record CriarTemplateProjetoCommand(
     List<CriarTemplateEtapaItemCommand>? Etapas = null
 );
 
+public record AtualizarTemplateProjetoCommand(
+    Guid Id,
+    string Nome,
+    string? Descricao,
+    string? Icone,
+    List<CriarTemplateEtapaItemCommand>? Etapas = null
+);
+
 public record CriarTemplateEtapaItemCommand(
     string Nome,
     string? Descricao,

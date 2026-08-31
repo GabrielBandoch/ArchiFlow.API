@@ -24,4 +24,6 @@ public interface IProjetoFacade
     Task<IEnumerable<TemplateProjetoDto>> ObterTemplates();
     Task<TemplateProjetoDto?> ObterTemplatePorId(Guid id);
     Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command);
+    Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command);
+    Task ExcluirTemplate(Guid id);
 }
