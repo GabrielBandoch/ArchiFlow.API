@@ -9,6 +9,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -27,7 +28,7 @@ public class ArquivosControllerTests
     }
 
     [Fact]
-    public async Task GetByProjeto_Should_Return_Ok_With_List()
+    public async Task GetByProjeto_Should_Return_Ok_With_List_For_Staff()
     {
         // Arrange
         var projetoId = Guid.NewGuid();
@@ -35,7 +36,7 @@ public class ArquivosControllerTests
         {
             new ArquivoDto(Guid.NewGuid(), projetoId, "documento.pdf", "https://s3.com/doc.pdf", "application/pdf", true, DateTime.UtcNow)
         };
-        _mockFacade.Setup(f => f.GetByProjetoId(projetoId)).ReturnsAsync(lista);
+        _mockFacade.Setup(f => f.GetByProjetoId(projetoId, false)).ReturnsAsync(lista);
 
         // Act
         var result = await _controller.GetByProjeto(projetoId);
@@ -44,6 +45,38 @@ public class ArquivosControllerTests
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(lista);
+    }
+
+    [Fact]
+    public async Task GetByProjeto_Should_Filter_For_Client_When_User_Is_Client()
+    {
+        // Arrange
+        var projetoId = Guid.NewGuid();
+        var lista = new List<ArquivoDto>
+        {
+            new ArquivoDto(Guid.NewGuid(), projetoId, "documento.pdf", "https://s3.com/doc.pdf", "application/pdf", true, DateTime.UtcNow)
+        };
+        _mockFacade.Setup(f => f.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
+
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = await _controller.GetByProjeto(projetoId);
+
+        // Assert
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.Value.Should().BeEquivalentTo(lista);
+        _mockFacade.Verify(f => f.GetByProjetoId(projetoId, true), Times.Once);
     }
 
     [Fact]

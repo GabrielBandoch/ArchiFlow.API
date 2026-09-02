@@ -65,4 +65,44 @@ public class ArquivoRepositoryTests
         result.Last().Nome.Should().Be("planta1.pdf");
         result.Should().NotContain(a => a.ProjetoId == projetoId2);
     }
+
+    [Fact]
+    public async Task GetByProjetoId_ComApenasVisiveisCliente_DeveFiltrarArquivosOcultos()
+    {
+        using var context = TestDbContextFactory.Create();
+        var repo = new ArquivoRepository(context);
+
+        var projetoId = Guid.NewGuid();
+
+        var arqVisivel = new Arquivo
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = projetoId,
+            Nome = "visivel.pdf",
+            UrlStorage = "https://s3/visivel.pdf",
+            Tipo = "Planta",
+            VisivelCliente = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        var arqInterno = new Arquivo
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = projetoId,
+            Nome = "interno.pdf",
+            UrlStorage = "https://s3/interno.pdf",
+            Tipo = "Contrato",
+            VisivelCliente = false,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await repo.Create(arqVisivel);
+        await repo.Create(arqInterno);
+        await context.SaveChangesAsync();
+
+        var result = (await repo.GetByProjetoId(projetoId, apenasVisiveisCliente: true)).ToList();
+
+        result.Should().HaveCount(1);
+        result.First().Nome.Should().Be("visivel.pdf");
+    }
 }

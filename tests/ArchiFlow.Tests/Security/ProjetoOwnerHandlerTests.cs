@@ -73,6 +73,36 @@ public class ProjetoOwnerHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_QuandoUsuarioEhClienteERotaUsaProjetoIdCombina_DeveRetornarSucesso()
+    {
+        var projetoId = Guid.NewGuid();
+        var claims = new[]
+        {
+            new Claim("user_type", "client"),
+            new Claim("projeto_id", projetoId.ToString()),
+            new Claim(ClaimTypes.Role, "Cliente")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContextMock = new Mock<HttpContext>();
+        var routeData = new RouteData();
+        routeData.Values.Add("projetoId", projetoId.ToString());
+
+        httpContextMock.Setup(c => c.Features.Get<IRoutingFeature>())
+            .Returns(new RoutingFeature { RouteData = routeData });
+
+        _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContextMock.Object);
+
+        var requirement = new ProjetoOwnerRequirement();
+        var context = new AuthorizationHandlerContext(new[] { requirement }, principal, null);
+
+        await _sut.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task HandleAsync_QuandoUsuarioEhClienteEProjetoIdDiferente_NaoDeveRetornarSucesso()
     {
         var userProjetoId = Guid.NewGuid();
