@@ -11,7 +11,7 @@ namespace ArchiFlow.Tests.Repositories;
 
 public class MensagemChatRepositoryTests
 {
-    private ArchiFlowDbContext GetInMemoryDbContext()
+    private static ArchiFlowDbContext GetInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<ArchiFlowDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 namespace ArchiFlow.API.Hubs;
 
 [Authorize]
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class ChatHub : Hub
 {
     private readonly IMensagemChatFacade _mensagemFacade;
@@ -64,7 +65,7 @@ public class ChatHub : Hub
         await Clients.Group(grupo).SendAsync("ReceiveMessage", mensagemDto);
     }
 
-    private string ObterNomeGrupo(Guid projetoId) => $"projeto_{projetoId}";
+    private static string ObterNomeGrupo(Guid projetoId) => $"projeto_{projetoId}";
 
     private Guid? ObterUsuarioId()
     {
