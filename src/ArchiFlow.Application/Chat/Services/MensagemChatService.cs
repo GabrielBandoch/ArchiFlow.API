@@ -48,6 +48,11 @@ public class MensagemChatService : IMensagemChatService
             throw new ArgumentException("O conteúdo da mensagem não pode ser vazio.");
         }
 
+        if (conteudo.Trim().Length > 2000)
+        {
+            throw new ArgumentException("O conteúdo da mensagem não pode exceder 2000 caracteres.");
+        }
+
         var projeto = await _projetoRepository.GetById(projetoId)
             ?? throw new KeyNotFoundException($"Projeto {projetoId} não encontrado.");
 

@@ -66,6 +66,16 @@ public class MensagemChatServiceTests
     }
 
     [Fact]
+    public async Task EnviarMensagem_Should_Throw_When_Content_Too_Long()
+    {
+        var projetoId = Guid.NewGuid();
+        var conteudoLongo = new string('A', 2001);
+
+        var act = () => _service.EnviarMensagem(projetoId, Guid.NewGuid(), "Nome", "Arquiteto", conteudoLongo);
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
     public async Task EnviarMensagem_Should_Throw_When_Project_Not_Found()
     {
         var projetoId = Guid.NewGuid();
