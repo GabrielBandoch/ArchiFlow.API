@@ -43,12 +43,25 @@ public class ArquivoFacadeTests
     {
         var projetoId = Guid.NewGuid();
         var lista = new List<ArquivoDto>();
-        _serviceMock.Setup(s => s.GetByProjetoId(projetoId)).ReturnsAsync(lista);
+        _serviceMock.Setup(s => s.GetByProjetoId(projetoId, false)).ReturnsAsync(lista);
 
         var result = await _sut.GetByProjetoId(projetoId);
 
         result.Should().BeSameAs(lista);
-        _serviceMock.Verify(s => s.GetByProjetoId(projetoId), Times.Once);
+        _serviceMock.Verify(s => s.GetByProjetoId(projetoId, false), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByProjetoId_ComApenasVisiveisCliente_DeveDelegarParaService()
+    {
+        var projetoId = Guid.NewGuid();
+        var lista = new List<ArquivoDto>();
+        _serviceMock.Setup(s => s.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
+
+        var result = await _sut.GetByProjetoId(projetoId, true);
+
+        result.Should().BeSameAs(lista);
+        _serviceMock.Verify(s => s.GetByProjetoId(projetoId, true), Times.Once);
     }
 
     [Fact]

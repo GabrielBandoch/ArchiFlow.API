@@ -51,7 +51,7 @@ public class ArquivoServiceTests
             }
         };
 
-        _mockRepo.Setup(r => r.GetByProjetoId(projetoId)).ReturnsAsync(lista);
+        _mockRepo.Setup(r => r.GetByProjetoId(projetoId, false)).ReturnsAsync(lista);
 
         // Act
         var result = await _service.GetByProjetoId(projetoId);
@@ -61,6 +61,35 @@ public class ArquivoServiceTests
         var dto = result.First();
         dto.Nome.Should().Be("Planta_Baixa.pdf");
         dto.VisivelCliente.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetByProjetoId_ComApenasVisiveisCliente_Should_Pass_Flag_To_Repository()
+    {
+        // Arrange
+        var projetoId = Guid.NewGuid();
+        var lista = new List<Arquivo>
+        {
+            new Arquivo
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = projetoId,
+                Nome = "Planta_Baixa.pdf",
+                UrlStorage = "https://s3.amazonaws.com/Planta_Baixa.pdf",
+                Tipo = "application/pdf",
+                VisivelCliente = true,
+                CriadoEm = DateTime.UtcNow
+            }
+        };
+
+        _mockRepo.Setup(r => r.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
+
+        // Act
+        var result = await _service.GetByProjetoId(projetoId, true);
+
+        // Assert
+        result.Should().HaveCount(1);
+        _mockRepo.Verify(r => r.GetByProjetoId(projetoId, true), Times.Once);
     }
 
     [Fact]

@@ -14,7 +14,7 @@ public class ArquivoFacade : IArquivoFacade
 
     public ArquivoFacade(IArquivoService service) => _service = service;
 
-    public Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId) => _service.GetByProjetoId(projetoId);
+    public Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false) => _service.GetByProjetoId(projetoId, apenasVisiveisCliente);
     public Task<ArquivoDto> Upload(UploadArquivoCommand command) => _service.Upload(command);
     public Task Delete(Guid id) => _service.Delete(id);
 }

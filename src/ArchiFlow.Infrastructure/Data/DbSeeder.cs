@@ -68,6 +68,20 @@ public static class DbSeeder
                     ""TME_Tarefas_Json"" text,
                     CONSTRAINT ""FK_Templates_Etapa_Templates_Projeto"" FOREIGN KEY (""TME_Template_Id"") REFERENCES ""Templates_Projeto"" (""TMP_Id"") ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS ""Mensagens_Chat"" (
+                    ""MSG_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""MSG_Projeto_Id"" uuid NOT NULL,
+                    ""MSG_Remetente_Id"" uuid NOT NULL,
+                    ""MSG_Remetente_Nome"" character varying(200) NOT NULL,
+                    ""MSG_Remetente_Perfil"" character varying(50) NOT NULL,
+                    ""MSG_Conteudo"" text NOT NULL,
+                    ""MSG_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""MSG_Lida"" boolean NOT NULL DEFAULT false,
+                    CONSTRAINT ""FK_Mensagens_Chat_Projetos"" FOREIGN KEY (""MSG_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_MSG_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
             ");
         }
         catch (Exception ex)
