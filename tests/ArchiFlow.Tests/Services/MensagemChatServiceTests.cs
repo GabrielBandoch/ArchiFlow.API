@@ -108,6 +108,46 @@ public class MensagemChatServiceTests
     }
 
     [Fact]
+    public async Task EnviarMensagem_WithCommand_Should_Extract_Claims_And_Create()
+    {
+        var projetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+        var projeto = new Projeto { Id = projetoId, Nome = "Projeto Teste" };
+        var command = new ArchiFlow.Application.Chat.Commands.EnviarMensagemCommand(projetoId, "Mensagem via Command");
+
+        _mockProjetoRepo.Setup(r => r.GetById(projetoId)).ReturnsAsync(projeto);
+        _mockRepo.Setup(r => r.Create(It.IsAny<MensagemChat>())).ReturnsAsync((MensagemChat m) => m);
+        _mockUow.Setup(u => u.Commit(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(1);
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, usuarioId.ToString()),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Marina Sievert"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Arquiteto"),
+            new System.Security.Claims.Claim("user_type", "staff")
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(identity) };
+        var mockContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        mockContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var serviceWithContext = new MensagemChatService(
+            _mockRepo.Object,
+            _mockProjetoRepo.Object,
+            _mockUow.Object,
+            mockContextAccessor.Object
+        );
+
+        var result = await serviceWithContext.EnviarMensagem(projetoId, command);
+
+        result.Should().NotBeNull();
+        result.Conteudo.Should().Be("Mensagem via Command");
+        result.RemetenteNome.Should().Be("Marina Sievert");
+        result.RemetentePerfil.Should().Be("Arquiteto");
+        result.RemetenteId.Should().Be(usuarioId);
+    }
+
+    [Fact]
     public async Task MarcarComoLidas_Should_Call_Repository_And_Commit()
     {
         var projetoId = Guid.NewGuid();

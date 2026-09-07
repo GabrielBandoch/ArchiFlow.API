@@ -3,6 +3,7 @@ using ArchiFlow.Application.Arquivos.DTOs;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,15 +16,25 @@ public class ArquivoService : IArquivoService
     private readonly IArquivoRepository _arquivoRepository;
     private readonly IStorageService _storageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     public ArquivoService(
         IArquivoRepository arquivoRepository,
         IStorageService storageService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _arquivoRepository = arquivoRepository;
         _storageService = storageService;
         _unitOfWork = unitOfWork;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public async Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId)
+    {
+        var user = _httpContextAccessor?.HttpContext?.User;
+        var isClient = user?.IsInRole("Cliente") == true || user?.FindFirst("user_type")?.Value == "client";
+        return await GetByProjetoId(projetoId, isClient);
     }
 
     public async Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false)

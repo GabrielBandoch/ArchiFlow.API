@@ -19,11 +19,8 @@ public class ArquivosController : ControllerBase
 
     [HttpGet("projeto/{projetoId:guid}")]
     [Authorize(Policy = "ProjetoOwner")]
-    public async Task<IActionResult> GetByProjeto(Guid projetoId)
-    {
-        var isClient = User?.IsInRole("Cliente") == true || User?.FindFirst("user_type")?.Value == "client";
-        return Ok(await _facade.GetByProjetoId(projetoId, isClient));
-    }
+    public async Task<IActionResult> GetByProjeto(Guid projetoId) =>
+        Ok(await _facade.GetByProjetoId(projetoId));
 
     [HttpPost("upload")]
     [Authorize(Policy = "AcessoArquiteto")]

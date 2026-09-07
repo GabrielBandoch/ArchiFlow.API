@@ -26,7 +26,7 @@ public class MensagensChatControllerTests
     }
 
     [Fact]
-    public async Task GetByProjeto_Should_Return_Ok_With_Messages_And_Mark_As_Read()
+    public async Task GetByProjeto_Should_Return_Ok_With_Messages_From_Facade()
     {
         // Arrange
         var projetoId = Guid.NewGuid();
@@ -37,26 +37,15 @@ public class MensagensChatControllerTests
         };
 
         _mockFacade.Setup(f => f.GetByProjetoId(projetoId, 50)).ReturnsAsync(mensagens);
-        _mockFacade.Setup(f => f.MarcarComoLidas(projetoId, usuarioId)).Returns(Task.CompletedTask);
-
-        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, usuarioId.ToString())
-        }, "TestAuth"));
-
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = user }
-        };
 
         // Act
-        var result = await _controller.GetByProjeto(projetoId);
+        var result = await _controller.GetByProjeto(projetoId, 50);
 
         // Assert
-        var okResult = result.Result as OkObjectResult;
+        var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(mensagens);
-        _mockFacade.Verify(f => f.MarcarComoLidas(projetoId, usuarioId), Times.Once);
+        _mockFacade.Verify(f => f.GetByProjetoId(projetoId, 50), Times.Once);
     }
 
     [Fact]
@@ -77,28 +66,16 @@ public class MensagensChatControllerTests
             false
         );
 
-        _mockFacade.Setup(f => f.EnviarMensagem(projetoId, usuarioId, "Marina Sievert", "Arquiteto", "Mensagem de teste"))
+        _mockFacade.Setup(f => f.EnviarMensagem(projetoId, command))
                    .ReturnsAsync(msgRetorno);
-
-        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, usuarioId.ToString()),
-            new Claim(ClaimTypes.Name, "Marina Sievert"),
-            new Claim(ClaimTypes.Role, "Arquiteto"),
-            new Claim("user_type", "staff")
-        }, "TestAuth"));
-
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = user }
-        };
 
         // Act
         var result = await _controller.EnviarMensagem(projetoId, command);
 
         // Assert
-        var createdResult = result.Result as CreatedAtActionResult;
+        var createdResult = result as CreatedAtActionResult;
         createdResult.Should().NotBeNull();
         createdResult!.Value.Should().BeEquivalentTo(msgRetorno);
+        _mockFacade.Verify(f => f.EnviarMensagem(projetoId, command), Times.Once);
     }
 }

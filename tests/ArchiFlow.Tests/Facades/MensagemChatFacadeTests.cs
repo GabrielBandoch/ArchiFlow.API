@@ -54,6 +54,21 @@ public class MensagemChatFacadeTests
     }
 
     [Fact]
+    public async Task EnviarMensagem_WithCommand_Should_Delegate_To_Service()
+    {
+        var projetoId = Guid.NewGuid();
+        var command = new ArchiFlow.Application.Chat.Commands.EnviarMensagemCommand(projetoId, "Teste");
+        var msg = new MensagemChatDto(Guid.NewGuid(), projetoId, Guid.NewGuid(), "User", "Cliente", "Teste", DateTime.UtcNow, false);
+
+        _mockService.Setup(s => s.EnviarMensagem(projetoId, command)).ReturnsAsync(msg);
+
+        var result = await _facade.EnviarMensagem(projetoId, command);
+
+        result.Should().Be(msg);
+        _mockService.Verify(s => s.EnviarMensagem(projetoId, command), Times.Once);
+    }
+
+    [Fact]
     public async Task MarcarComoLidas_Should_Delegate_To_Service()
     {
         var projetoId = Guid.NewGuid();
