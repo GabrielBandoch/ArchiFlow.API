@@ -33,7 +33,7 @@ public class ArquivoServiceTests
     }
 
     [Fact]
-    public async Task GetByProjetoId_Should_Return_Mapped_Dtos()
+    public async Task GetByProjetoId_Should_Return_Mapped_Dtos_For_Non_Client()
     {
         // Arrange
         var projetoId = Guid.NewGuid();
@@ -61,6 +61,46 @@ public class ArquivoServiceTests
         var dto = result.First();
         dto.Nome.Should().Be("Planta_Baixa.pdf");
         dto.VisivelCliente.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetByProjetoId_Should_Filter_Only_Visible_When_User_Is_Client()
+    {
+        // Arrange
+        var projetoId = Guid.NewGuid();
+        var lista = new List<Arquivo>
+        {
+            new Arquivo
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = projetoId,
+                Nome = "Planta_Cliente.pdf",
+                UrlStorage = "https://s3.amazonaws.com/Planta_Cliente.pdf",
+                Tipo = "application/pdf",
+                VisivelCliente = true,
+                CriadoEm = DateTime.UtcNow
+            }
+        };
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim("user_type", "client"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Cliente")
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+        var httpContext = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(identity) };
+        var mockContextAccessor = new Mock<IHttpContextAccessor>();
+        mockContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var serviceWithContext = new ArquivoService(_mockRepo.Object, _mockStorage.Object, _mockUow.Object, mockContextAccessor.Object);
+        _mockRepo.Setup(r => r.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
+
+        // Act
+        var result = await serviceWithContext.GetByProjetoId(projetoId);
+
+        // Assert
+        result.Should().HaveCount(1);
+        _mockRepo.Verify(r => r.GetByProjetoId(projetoId, true), Times.Once);
     }
 
     [Fact]
