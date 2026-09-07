@@ -148,6 +148,116 @@ public class MensagemChatServiceTests
     }
 
     [Fact]
+    public async Task GetByProjetoId_WithAuthenticatedUser_Should_Trigger_MarcarComoLidas()
+    {
+        var projetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+        var mensagens = new List<MensagemChat>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = projetoId,
+                RemetenteId = usuarioId,
+                RemetenteNome = "Carlos",
+                RemetentePerfil = "Cliente",
+                Conteudo = "Olá",
+                CriadoEm = DateTime.UtcNow,
+                Lida = false
+            }
+        };
+
+        _mockRepo.Setup(r => r.GetByProjetoId(projetoId, It.IsAny<int>())).ReturnsAsync(mensagens);
+        _mockRepo.Setup(r => r.MarcarComoLidas(projetoId, usuarioId)).Returns(Task.CompletedTask);
+        _mockUow.Setup(u => u.Commit(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(1);
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, usuarioId.ToString())
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(identity) };
+        var mockContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        mockContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var serviceWithContext = new MensagemChatService(
+            _mockRepo.Object,
+            _mockProjetoRepo.Object,
+            _mockUow.Object,
+            mockContextAccessor.Object
+        );
+
+        var result = await serviceWithContext.GetByProjetoId(projetoId, 10);
+
+        result.Should().HaveCount(1);
+        _mockRepo.Verify(r => r.MarcarComoLidas(projetoId, usuarioId), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnviarMensagem_WithCommand_FallbackClaims_Should_DefaultProperly()
+    {
+        var projetoId = Guid.NewGuid();
+        var projeto = new Projeto { Id = projetoId, Nome = "Projeto Teste" };
+        var command = new ArchiFlow.Application.Chat.Commands.EnviarMensagemCommand(projetoId, "Mensagem Sem Claims");
+
+        _mockProjetoRepo.Setup(r => r.GetById(projetoId)).ReturnsAsync(projeto);
+        _mockRepo.Setup(r => r.Create(It.IsAny<MensagemChat>())).ReturnsAsync((MensagemChat m) => m);
+        _mockUow.Setup(u => u.Commit(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(1);
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim("unique_name", "Usuario Unico"),
+            new System.Security.Claims.Claim("role", "Cliente")
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(identity) };
+        var mockContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        mockContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var serviceWithContext = new MensagemChatService(
+            _mockRepo.Object,
+            _mockProjetoRepo.Object,
+            _mockUow.Object,
+            mockContextAccessor.Object
+        );
+
+        var result = await serviceWithContext.EnviarMensagem(projetoId, command);
+
+        result.Should().NotBeNull();
+        result.RemetenteNome.Should().Be("Usuario Unico");
+        result.RemetentePerfil.Should().Be("Cliente");
+    }
+
+    [Fact]
+    public void MensagemChatDto_And_Command_Records_Should_Work_Correctly()
+    {
+        var id = Guid.NewGuid();
+        var projetoId = Guid.NewGuid();
+        var remetenteId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var dto1 = new ArchiFlow.Application.Chat.DTOs.MensagemChatDto(id, projetoId, remetenteId, "A", "Cliente", "C", now, false);
+        var dto2 = new ArchiFlow.Application.Chat.DTOs.MensagemChatDto(id, projetoId, remetenteId, "A", "Cliente", "C", now, false);
+
+        dto1.Should().Be(dto2);
+        dto1.Id.Should().Be(id);
+        dto1.ProjetoId.Should().Be(projetoId);
+        dto1.RemetenteId.Should().Be(remetenteId);
+        dto1.RemetenteNome.Should().Be("A");
+        dto1.RemetentePerfil.Should().Be("Cliente");
+        dto1.Conteudo.Should().Be("C");
+        dto1.CriadoEm.Should().Be(now);
+        dto1.Lida.Should().BeFalse();
+
+        var cmd1 = new ArchiFlow.Application.Chat.Commands.EnviarMensagemCommand(projetoId, "Conteudo");
+        var cmd2 = new ArchiFlow.Application.Chat.Commands.EnviarMensagemCommand(projetoId, "Conteudo");
+
+        cmd1.Should().Be(cmd2);
+        cmd1.ProjetoId.Should().Be(projetoId);
+        cmd1.Conteudo.Should().Be("Conteudo");
+    }
+
+    [Fact]
     public async Task MarcarComoLidas_Should_Call_Repository_And_Commit()
     {
         var projetoId = Guid.NewGuid();

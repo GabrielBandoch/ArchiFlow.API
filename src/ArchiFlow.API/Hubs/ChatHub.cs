@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 namespace ArchiFlow.API.Hubs;
 
 [Authorize]
-[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class ChatHub : Hub
 {
     private readonly IMensagemChatFacade _mensagemFacade;

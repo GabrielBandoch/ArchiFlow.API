@@ -124,6 +124,85 @@ public class ChatHubTests
     }
 
     [Fact]
+    public async Task EntrarNoProjeto_Should_AddToGroup_WithoutMarkAsRead_When_User_Has_No_Id()
+    {
+        var projetoId = Guid.NewGuid();
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal());
+        _mockGroups.Setup(g => g.AddToGroupAsync("conn-123", $"projeto_{projetoId}", default))
+            .Returns(Task.CompletedTask);
+
+        await _hub.EntrarNoProjeto(projetoId.ToString());
+
+        _mockGroups.Verify(g => g.AddToGroupAsync("conn-123", $"projeto_{projetoId}", default), Times.Once);
+        _mockFacade.Verify(f => f.MarcarComoLidas(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SairDoProjeto_Should_Ignore_When_Invalid_Guid()
+    {
+        await _hub.SairDoProjeto("invalid-guid");
+        _mockGroups.Verify(g => g.RemoveFromGroupAsync(It.IsAny<string>(), It.IsAny<string>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnviarMensagem_Should_Fallback_To_Defaults_When_No_User_Claims()
+    {
+        var projetoId = Guid.NewGuid();
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal());
+
+        var dto = new MensagemChatDto(
+            Guid.NewGuid(),
+            projetoId,
+            Guid.NewGuid(),
+            "Usuário",
+            "Arquiteto",
+            "Mensagem Anônima",
+            DateTime.UtcNow,
+            false
+        );
+
+        _mockFacade.Setup(f => f.EnviarMensagem(projetoId, It.IsAny<Guid>(), "Usuário", "Arquiteto", "Mensagem Anônima"))
+            .ReturnsAsync(dto);
+
+        await _hub.EnviarMensagem(projetoId.ToString(), "Mensagem Anônima");
+
+        _mockFacade.Verify(f => f.EnviarMensagem(projetoId, It.IsAny<Guid>(), "Usuário", "Arquiteto", "Mensagem Anônima"), Times.Once);
+        _mockClients.Verify(c => c.Group($"projeto_{projetoId}"), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnviarMensagem_Should_Use_Email_And_Role_When_Available()
+    {
+        var projetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+        var claims = new List<Claim>
+        {
+            new("sub", usuarioId.ToString()),
+            new(ClaimTypes.Email, "teste@archiflow.com"),
+            new(ClaimTypes.Role, "Cliente")
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+
+        var dto = new MensagemChatDto(
+            Guid.NewGuid(),
+            projetoId,
+            usuarioId,
+            "teste@archiflow.com",
+            "Cliente",
+            "Mensagem com Email",
+            DateTime.UtcNow,
+            false
+        );
+
+        _mockFacade.Setup(f => f.EnviarMensagem(projetoId, usuarioId, "teste@archiflow.com", "Cliente", "Mensagem com Email"))
+            .ReturnsAsync(dto);
+
+        await _hub.EnviarMensagem(projetoId.ToString(), "Mensagem com Email");
+
+        _mockFacade.Verify(f => f.EnviarMensagem(projetoId, usuarioId, "teste@archiflow.com", "Cliente", "Mensagem com Email"), Times.Once);
+    }
+
+    [Fact]
     public async Task EnviarMensagem_Should_Ignore_When_Content_Empty()
     {
         await _hub.EnviarMensagem(Guid.NewGuid().ToString(), "   ");
