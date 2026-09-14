@@ -19,7 +19,7 @@ public class ChatHub : Hub
 
     public async Task EntrarNoProjeto(string projetoIdStr)
     {
-        if (Guid.TryParse(projetoIdStr, out var projetoId))
+        if (Guid.TryParse(projetoIdStr, out var projetoId) && PossuiAcessoAoProjeto(projetoId))
         {
             var grupo = ObterNomeGrupo(projetoId);
             await Groups.AddToGroupAsync(Context.ConnectionId, grupo);
@@ -43,7 +43,7 @@ public class ChatHub : Hub
 
     public async Task EnviarMensagem(string projetoIdStr, string conteudo)
     {
-        if (!Guid.TryParse(projetoIdStr, out var projetoId) || string.IsNullOrWhiteSpace(conteudo))
+        if (!Guid.TryParse(projetoIdStr, out var projetoId) || string.IsNullOrWhiteSpace(conteudo) || !PossuiAcessoAoProjeto(projetoId))
         {
             return;
         }
@@ -62,6 +62,39 @@ public class ChatHub : Hub
 
         var grupo = ObterNomeGrupo(projetoId);
         await Clients.Group(grupo).SendAsync("ReceiveMessage", mensagemDto);
+    }
+
+    private bool PossuiAcessoAoProjeto(Guid projetoId)
+    {
+        var user = Context.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var userType = user.FindFirst("user_type")?.Value;
+        if (userType == "staff")
+        {
+            return true;
+        }
+
+        var role = user.FindFirst(ClaimTypes.Role)?.Value
+                ?? user.FindFirst("role")?.Value;
+
+        if (role == "Administrador" || role == "Gerente" || role == "Colaborador" || role == "Arquiteto")
+        {
+            return true;
+        }
+
+        if (userType == "client" || role == "Cliente")
+        {
+            var claimProjetoId = user.FindFirst("projeto_id")?.Value
+                              ?? user.FindFirst("projetoId")?.Value;
+
+            return Guid.TryParse(claimProjetoId, out var userProjetoId) && userProjetoId == projetoId;
+        }
+
+        return false;
     }
 
     private static string ObterNomeGrupo(Guid projetoId) => $"projeto_{projetoId}";

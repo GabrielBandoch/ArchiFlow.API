@@ -109,7 +109,8 @@ public class ChatHubTests
         {
             new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
             new(ClaimTypes.Name, "Carlos"),
-            new("user_type", "client")
+            new("user_type", "client"),
+            new("projeto_id", projetoId.ToString())
         };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
         _mockContext.Setup(c => c.User).Returns(principal);
@@ -127,7 +128,12 @@ public class ChatHubTests
     public async Task EntrarNoProjeto_Should_AddToGroup_WithoutMarkAsRead_When_User_Has_No_Id()
     {
         var projetoId = Guid.NewGuid();
-        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal());
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Role, "Arquiteto"),
+            new("user_type", "staff")
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
         _mockGroups.Setup(g => g.AddToGroupAsync("conn-123", $"projeto_{projetoId}", default))
             .Returns(Task.CompletedTask);
 
@@ -145,10 +151,14 @@ public class ChatHubTests
     }
 
     [Fact]
-    public async Task EnviarMensagem_Should_Fallback_To_Defaults_When_No_User_Claims()
+    public async Task EnviarMensagem_Should_Fallback_To_Defaults_When_Staff_Has_No_Specific_Name_Claims()
     {
         var projetoId = Guid.NewGuid();
-        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal());
+        var claims = new List<Claim>
+        {
+            new("user_type", "staff")
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
 
         var dto = new MensagemChatDto(
             Guid.NewGuid(),
@@ -179,7 +189,8 @@ public class ChatHubTests
         {
             new("sub", usuarioId.ToString()),
             new(ClaimTypes.Email, "teste@archiflow.com"),
-            new(ClaimTypes.Role, "Cliente")
+            new(ClaimTypes.Role, "Cliente"),
+            new("projeto_id", projetoId.ToString())
         };
         _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
 
@@ -208,5 +219,110 @@ public class ChatHubTests
         await _hub.EnviarMensagem(Guid.NewGuid().ToString(), "   ");
 
         _mockFacade.Verify(f => f.EnviarMensagem(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EntrarNoProjeto_Should_Block_When_Client_Attempts_Access_To_Another_Project()
+    {
+        var projetoAlheioId = Guid.NewGuid();
+        var meuProjetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
+            new(ClaimTypes.Name, "Cliente Invasor"),
+            new(ClaimTypes.Role, "Cliente"),
+            new("user_type", "client"),
+            new("projeto_id", meuProjetoId.ToString())
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+
+        await _hub.EntrarNoProjeto(projetoAlheioId.ToString());
+
+        _mockGroups.Verify(g => g.AddToGroupAsync(It.IsAny<string>(), It.IsAny<string>(), default), Times.Never);
+        _mockFacade.Verify(f => f.MarcarComoLidas(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnviarMensagem_Should_Block_When_Client_Attempts_Sending_To_Another_Project()
+    {
+        var projetoAlheioId = Guid.NewGuid();
+        var meuProjetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
+            new(ClaimTypes.Name, "Cliente Invasor"),
+            new(ClaimTypes.Role, "Cliente"),
+            new("user_type", "client"),
+            new("projeto_id", meuProjetoId.ToString())
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+
+        await _hub.EnviarMensagem(projetoAlheioId.ToString(), "Mensagem Indevida");
+
+        _mockFacade.Verify(f => f.EnviarMensagem(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockClients.Verify(c => c.Group(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EntrarNoProjeto_Should_Allow_When_Client_Accesses_Own_Project()
+    {
+        var meuProjetoId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
+            new(ClaimTypes.Name, "Cliente Legítimo"),
+            new(ClaimTypes.Role, "Cliente"),
+            new("user_type", "client"),
+            new("projeto_id", meuProjetoId.ToString())
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+        _mockGroups.Setup(g => g.AddToGroupAsync("conn-123", $"projeto_{meuProjetoId}", default)).Returns(Task.CompletedTask);
+        _mockFacade.Setup(f => f.MarcarComoLidas(meuProjetoId, usuarioId)).Returns(Task.CompletedTask);
+
+        await _hub.EntrarNoProjeto(meuProjetoId.ToString());
+
+        _mockGroups.Verify(g => g.AddToGroupAsync("conn-123", $"projeto_{meuProjetoId}", default), Times.Once);
+        _mockFacade.Verify(f => f.MarcarComoLidas(meuProjetoId, usuarioId), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnviarMensagem_Should_Allow_When_Staff_Accesses_Any_Project()
+    {
+        var qualquerProjetoId = Guid.NewGuid();
+        var arquitetoId = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, arquitetoId.ToString()),
+            new(ClaimTypes.Name, "Marina Arquiteta"),
+            new(ClaimTypes.Role, "Arquiteto"),
+            new("user_type", "staff")
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+
+        var dto = new MensagemChatDto(
+            Guid.NewGuid(),
+            qualquerProjetoId,
+            arquitetoId,
+            "Marina Arquiteta",
+            "Arquiteto",
+            "Mensagem da Equipe",
+            DateTime.UtcNow,
+            false
+        );
+
+        _mockFacade.Setup(f => f.EnviarMensagem(qualquerProjetoId, arquitetoId, "Marina Arquiteta", "Arquiteto", "Mensagem da Equipe"))
+            .ReturnsAsync(dto);
+
+        await _hub.EnviarMensagem(qualquerProjetoId.ToString(), "Mensagem da Equipe");
+
+        _mockFacade.Verify(f => f.EnviarMensagem(qualquerProjetoId, arquitetoId, "Marina Arquiteta", "Arquiteto", "Mensagem da Equipe"), Times.Once);
+        _mockClients.Verify(c => c.Group($"projeto_{qualquerProjetoId}"), Times.Once);
     }
 }
