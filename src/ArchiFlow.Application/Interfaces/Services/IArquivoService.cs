@@ -9,6 +9,7 @@ namespace ArchiFlow.Application.Interfaces.Services;
 public interface IArquivoService
 {
     Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId);
+    Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente);
     Task<ArquivoDto> Upload(UploadArquivoCommand command);
     Task Delete(Guid id);
 }

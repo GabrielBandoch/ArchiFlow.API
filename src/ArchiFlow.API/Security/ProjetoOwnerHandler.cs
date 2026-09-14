@@ -51,12 +51,12 @@ public class ProjetoOwnerHandler : AuthorizationHandler<ProjetoOwnerRequirement>
         }
 
         var routeData = httpContext.GetRouteData();
-        if (!routeData.Values.TryGetValue("id", out var routeIdObj) || routeIdObj == null)
+        if (!routeData.Values.TryGetValue("projetoId", out var routeIdObj) && !routeData.Values.TryGetValue("id", out routeIdObj))
         {
             return false;
         }
 
-        if (!Guid.TryParse(routeIdObj.ToString(), out var routeId))
+        if (routeIdObj == null || !Guid.TryParse(routeIdObj.ToString(), out var routeId))
         {
             return false;
         }

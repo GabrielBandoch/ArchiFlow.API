@@ -9,6 +9,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -27,7 +28,7 @@ public class ArquivosControllerTests
     }
 
     [Fact]
-    public async Task GetByProjeto_Should_Return_Ok_With_List()
+    public async Task GetByProjeto_Should_Return_Ok_With_List_From_Facade()
     {
         // Arrange
         var projetoId = Guid.NewGuid();
@@ -44,6 +45,7 @@ public class ArquivosControllerTests
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(lista);
+        _mockFacade.Verify(f => f.GetByProjetoId(projetoId), Times.Once);
     }
 
     [Fact]

@@ -7,5 +7,5 @@ namespace ArchiFlow.Domain.Projetos;
 
 public interface IArquivoRepository : IRepository<Arquivo>
 {
-    Task<IEnumerable<Arquivo>> GetByProjetoId(Guid projetoId);
+    Task<IEnumerable<Arquivo>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false);
 }

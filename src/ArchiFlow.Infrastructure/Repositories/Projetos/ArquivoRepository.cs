@@ -12,9 +12,15 @@ public class ArquivoRepository : Repository<Arquivo>, IArquivoRepository
 {
     public ArquivoRepository(ArchiFlowDbContext context) : base(context) { }
 
-    public async Task<IEnumerable<Arquivo>> GetByProjetoId(Guid projetoId) =>
-        await _dbSet
-            .Where(a => a.ProjetoId == projetoId)
+    public async Task<IEnumerable<Arquivo>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false)
+    {
+        var query = _dbSet.Where(a => a.ProjetoId == projetoId);
+        if (apenasVisiveisCliente)
+        {
+            query = query.Where(a => a.VisivelCliente);
+        }
+        return await query
             .OrderByDescending(a => a.CriadoEm)
             .ToListAsync();
+    }
 }

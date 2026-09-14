@@ -75,6 +75,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
 
+        // Chat Repositories, Services & Facades
+        services.AddScoped<ArchiFlow.Domain.Chat.IMensagemChatRepository, ArchiFlow.Infrastructure.Repositories.Chat.MensagemChatRepository>();
+        services.AddScoped<IMensagemChatService, ArchiFlow.Application.Chat.Services.MensagemChatService>();
+        services.AddScoped<IMensagemChatFacade, ArchiFlow.Application.Chat.Facades.MensagemChatFacade>();
+
         // Storage & Email (Automatic environment-based registration)
         if (environment.IsProduction())
         {
@@ -88,6 +93,9 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IStorageService, LocalStorageService>();
             services.AddScoped<IEmailService, ConsoleEmailService>();
         }
+
+        // SignalR
+        services.AddSignalR();
 
         // Security / Authorization
         services.AddHttpContextAccessor();
@@ -119,6 +127,20 @@ public static class ServiceCollectionExtensions
                 ValidAudience = jwtAudience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
                 ClockSkew = TimeSpan.Zero
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
 

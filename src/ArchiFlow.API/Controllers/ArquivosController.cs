@@ -18,7 +18,7 @@ public class ArquivosController : ControllerBase
         => _facade = facade;
 
     [HttpGet("projeto/{projetoId:guid}")]
-    [Authorize(Policy = "AcessoArquiteto")]
+    [Authorize(Policy = "ProjetoOwner")]
     public async Task<IActionResult> GetByProjeto(Guid projetoId) =>
         Ok(await _facade.GetByProjetoId(projetoId));
 

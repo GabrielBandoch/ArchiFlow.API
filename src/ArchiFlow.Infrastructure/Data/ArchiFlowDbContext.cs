@@ -2,6 +2,7 @@ using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
+using ArchiFlow.Domain.Chat;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -22,6 +23,7 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
     public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
     public DbSet<Arquivo>              Arquivos              => Set<Arquivo>();
+    public DbSet<MensagemChat>          MensagensChat         => Set<MensagemChat>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +214,27 @@ public class ArchiFlowDbContext : DbContext
             entity.HasOne<Projeto>()
                   .WithMany()
                   .HasForeignKey(a => a.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MensagemChat>(entity =>
+        {
+            entity.ToTable("Mensagens_Chat");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Id).HasColumnName("MSG_Id");
+            entity.Property(m => m.ProjetoId).HasColumnName("MSG_Projeto_Id").IsRequired();
+            entity.Property(m => m.RemetenteId).HasColumnName("MSG_Remetente_Id").IsRequired();
+            entity.Property(m => m.RemetenteNome).HasColumnName("MSG_Remetente_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(m => m.RemetentePerfil).HasColumnName("MSG_Remetente_Perfil").IsRequired().HasMaxLength(50);
+            entity.Property(m => m.Conteudo).HasColumnName("MSG_Conteudo").IsRequired();
+            entity.Property(m => m.CriadoEm).HasColumnName("MSG_Criado_Em").IsRequired();
+            entity.Property(m => m.Lida).HasColumnName("MSG_Lida").IsRequired();
+
+            entity.HasIndex(m => m.ProjetoId);
+
+            entity.HasOne<Projeto>()
+                  .WithMany()
+                  .HasForeignKey(m => m.ProjetoId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

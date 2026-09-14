@@ -1,6 +1,7 @@
 using ArchiFlow.API;
 using ArchiFlow.API.Middleware;
 using ArchiFlow.API.Extensions;
+using ArchiFlow.API.Hubs;
 using ArchiFlow.Infrastructure.Data;
 using Serilog;
 
@@ -63,6 +64,7 @@ app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 await DbSeeder.MigrateAndSeedAsync(app.Services, app.Environment.IsDevelopment());
 
