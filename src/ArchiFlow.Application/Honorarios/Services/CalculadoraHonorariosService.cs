@@ -57,7 +57,7 @@ public class CalculadoraHonorariosService : ICalculadoraHonorariosService
         var custoProducaoHoras = Math.Round(horasBase * valorHoraBase, 2);
 
         var padraoStrategy = _strategyFactory.ObterPadraoStrategy(parametros.PadraoImovel);
-        var valorFatorPadrao = Math.Round(custoProducaoHoras * (padraoStrategy.Multiplicador - 1.0m), 2);
+        var valorFatorPadrao = padraoStrategy.CalcularFatorPadrao(custoProducaoHoras);
         var custoProducaoAjustado = custoProducaoHoras + valorFatorPadrao;
 
         var valorFatorTipologia = tipologiaStrategy.CalcularFatorTipologia(custoProducaoHoras);
@@ -133,9 +133,9 @@ public class CalculadoraHonorariosService : ICalculadoraHonorariosService
             new("Entrega Técnica, Caderno & Vistoria", "Emissão de ART/RRT, caderno final encadernado e vistoria técnica.", true, 10m, 0m, 0m, 5)
         };
 
-        if (inclusas != null && inclusas.Any())
+        if (inclusas is { Count: > 0 })
         {
-            return todas.Select(e => e with { Incluso = inclusas.Any(i => string.Equals(i, e.Nome, StringComparison.OrdinalIgnoreCase)) }).ToList();
+            return todas.Select(e => e with { Incluso = inclusas.Exists(i => string.Equals(i, e.Nome, StringComparison.OrdinalIgnoreCase)) }).ToList();
         }
 
         return todas;
