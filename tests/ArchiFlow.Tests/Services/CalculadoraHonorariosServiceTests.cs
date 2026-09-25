@@ -72,8 +72,30 @@ public class CalculadoraHonorariosServiceTests
         resultado.MemoriaCalculo.CustoFixoRateado.Should().Be(347.64m);
         resultado.MemoriaCalculo.CustosDiretos.Should().Be(1312.92m);
         resultado.MemoriaCalculo.ValorFatorPadrao.Should().Be(0m);
+        resultado.MemoriaCalculo.ValorEscopo.Should().Be(resultado.MemoriaCalculo.ValorBase);
         resultado.ValorTotalSugerido.Should().Be(8574.93m);
         resultado.ValorMetroQuadrado.Should().Be(57.17m);
+    }
+
+    [Fact]
+    public void Calcular_Should_Calculate_ValorEscopo_Distinct_From_ValorFatorPadrao_When_Partial_Scope()
+    {
+        var parametros = new SimulacaoParametrosDto(
+            100m,
+            TipoProjeto.Residencial,
+            PadraoImovel.AltoPadrao,
+            new List<string> { "Estudo Preliminar & Moodboard", "Anteprojeto & Modelagem 3D" }, // 45% do escopo
+            50m,
+            100m
+        );
+
+        var resultado = _calculadora.Calcular(parametros);
+
+        resultado.Should().NotBeNull();
+        resultado.MemoriaCalculo.PercentualEscopoIncluso.Should().Be(45m);
+        resultado.MemoriaCalculo.ValorFatorPadrao.Should().BeGreaterThan(0);
+        resultado.MemoriaCalculo.ValorEscopo.Should().BeGreaterThan(0);
+        resultado.MemoriaCalculo.ValorEscopo.Should().NotBe(resultado.MemoriaCalculo.ValorFatorPadrao);
     }
 
     [Fact]
