@@ -82,6 +82,47 @@ public static class DbSeeder
                 );
 
                 CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_MSG_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Propostas_Honorarios"" (
+                    ""PH_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PH_Titulo"" character varying(200) NOT NULL,
+                    ""PH_Codigo"" character varying(50) NOT NULL,
+                    ""PH_Cliente_Id"" uuid,
+                    ""PH_Cliente_Nome"" character varying(200),
+                    ""PH_Lead_Id"" uuid,
+                    ""PH_Lead_Nome"" character varying(200),
+                    ""PH_Tipo_Projeto"" integer NOT NULL,
+                    ""PH_Padrao_Imovel"" integer NOT NULL,
+                    ""PH_Metragem_Quadrada"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Hora_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_M2_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Horas_Estimadas_Total"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Fator_Padrao"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Fator_Tipologia"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Escopo"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Total_Sugerido"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Final_Ajustado"" numeric(18,2) NOT NULL,
+                    ""PH_Status"" integer NOT NULL,
+                    ""PH_Observacoes"" text,
+                    ""PH_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""PH_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Itens_Propostas_Etapas"" (
+                    ""IPE_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""IPE_Proposta_Id"" uuid NOT NULL,
+                    ""IPE_Nome_Etapa"" character varying(200) NOT NULL,
+                    ""IPE_Descricao"" text,
+                    ""IPE_Incluso"" boolean NOT NULL,
+                    ""IPE_Percentual"" numeric(18,2) NOT NULL,
+                    ""IPE_Valor"" numeric(18,2) NOT NULL,
+                    ""IPE_Horas_Estimadas"" numeric(18,2) NOT NULL,
+                    ""IPE_Ordem"" integer NOT NULL,
+                    CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
             ");
         }
         catch (Exception ex)

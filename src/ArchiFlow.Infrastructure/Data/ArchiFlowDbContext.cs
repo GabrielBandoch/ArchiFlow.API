@@ -3,6 +3,7 @@ using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Chat;
+using ArchiFlow.Domain.Honorarios;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -23,7 +24,9 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
     public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
     public DbSet<Arquivo>              Arquivos              => Set<Arquivo>();
-    public DbSet<MensagemChat>          MensagensChat         => Set<MensagemChat>();
+    public DbSet<MensagemChat>         MensagensChat         => Set<MensagemChat>();
+    public DbSet<PropostaHonorario>    PropostasHonorarios   => Set<PropostaHonorario>();
+    public DbSet<ItemPropostaEtapa>    ItensPropostasEtapas  => Set<ItemPropostaEtapa>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -236,6 +239,66 @@ public class ArchiFlowDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(m => m.ProjetoId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PropostaHonorario>(entity =>
+        {
+            entity.ToTable("Propostas_Honorarios");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).HasColumnName("PH_Id");
+            entity.Property(p => p.Titulo).HasColumnName("PH_Titulo").IsRequired().HasMaxLength(200);
+            entity.Property(p => p.Codigo).HasColumnName("PH_Codigo").IsRequired().HasMaxLength(50);
+            entity.HasIndex(p => p.Codigo).IsUnique();
+            entity.Property(p => p.ClienteId).HasColumnName("PH_Cliente_Id");
+            entity.Property(p => p.ClienteNome).HasColumnName("PH_Cliente_Nome").HasMaxLength(200);
+            entity.Property(p => p.LeadId).HasColumnName("PH_Lead_Id");
+            entity.Property(p => p.LeadNome).HasColumnName("PH_Lead_Nome").HasMaxLength(200);
+            entity.Property(p => p.TipoProjeto).HasColumnName("PH_Tipo_Projeto");
+            entity.Property(p => p.PadraoImovel).HasColumnName("PH_Padrao_Imovel");
+            entity.Property(p => p.MetragemQuadrada).HasColumnName("PH_Metragem_Quadrada").HasPrecision(18, 2);
+            entity.Property(p => p.ValorHoraBase).HasColumnName("PH_Valor_Hora_Base").HasPrecision(18, 2);
+            entity.Property(p => p.ValorMetroQuadradoBase).HasColumnName("PH_Valor_M2_Base").HasPrecision(18, 2);
+            entity.Property(p => p.HorasEstimadasTotal).HasColumnName("PH_Horas_Estimadas_Total").HasPrecision(18, 2);
+            entity.Property(p => p.ValorBase).HasColumnName("PH_Valor_Base").HasPrecision(18, 2);
+            entity.Property(p => p.ValorFatorPadrao).HasColumnName("PH_Valor_Fator_Padrao").HasPrecision(18, 2);
+            entity.Property(p => p.ValorFatorTipologia).HasColumnName("PH_Valor_Fator_Tipologia").HasPrecision(18, 2);
+            entity.Property(p => p.ValorEscopo).HasColumnName("PH_Valor_Escopo").HasPrecision(18, 2);
+            entity.Property(p => p.ValorTotalSugerido).HasColumnName("PH_Valor_Total_Sugerido").HasPrecision(18, 2);
+            entity.Property(p => p.ValorFinalAjustado).HasColumnName("PH_Valor_Final_Ajustado").HasPrecision(18, 2);
+            entity.Property(p => p.Status).HasColumnName("PH_Status");
+            entity.Property(p => p.Observacoes).HasColumnName("PH_Observacoes");
+            entity.Property(p => p.CriadoEm).HasColumnName("PH_Criado_Em");
+            entity.Property(p => p.AtualizadoEm).HasColumnName("PH_Atualizado_Em");
+
+            entity.HasOne(p => p.Cliente)
+                  .WithMany()
+                  .HasForeignKey(p => p.ClienteId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(p => p.Lead)
+                  .WithMany()
+                  .HasForeignKey(p => p.LeadId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(p => p.ItensEtapa)
+                  .WithOne(i => i.Proposta)
+                  .HasForeignKey(i => i.PropostaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ItemPropostaEtapa>(entity =>
+        {
+            entity.ToTable("Itens_Propostas_Etapas");
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Id).HasColumnName("IPE_Id");
+            entity.Property(i => i.PropostaId).HasColumnName("IPE_Proposta_Id");
+            entity.Property(i => i.NomeEtapa).HasColumnName("IPE_Nome_Etapa").IsRequired().HasMaxLength(200);
+            entity.Property(i => i.Descricao).HasColumnName("IPE_Descricao");
+            entity.Property(i => i.Incluso).HasColumnName("IPE_Incluso");
+            entity.Property(i => i.Percentual).HasColumnName("IPE_Percentual").HasPrecision(18, 2);
+            entity.Property(i => i.Valor).HasColumnName("IPE_Valor").HasPrecision(18, 2);
+            entity.Property(i => i.HorasEstimadas).HasColumnName("IPE_Horas_Estimadas").HasPrecision(18, 2);
+            entity.Property(i => i.Ordem).HasColumnName("IPE_Ordem");
         });
     }
 }
