@@ -121,6 +121,14 @@ public static class DbSeeder
                     ""IPE_Ordem"" integer NOT NULL,
                     CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS ""Preferencias_Dashboard"" (
+                    ""PDB_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PDB_Usuario_Id"" uuid NOT NULL,
+                    ""PDB_Layout_Json"" text NOT NULL,
+                    ""PDB_Atualizado_Em"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""UQ_Preferencias_Dashboard_Usuario"" UNIQUE (""PDB_Usuario_Id"")
+                );
             ");
         }
         catch (Exception ex)

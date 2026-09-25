@@ -13,6 +13,8 @@ using ArchiFlow.Application.Leads.Services;
 using ArchiFlow.Application.Leads.Facades;
 using ArchiFlow.Application.Clientes.Services;
 using ArchiFlow.Application.Clientes.Facades;
+using ArchiFlow.Application.Dashboard.Services;
+using ArchiFlow.Application.Dashboard.Facades;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
@@ -63,6 +65,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
         services.AddScoped<IArquivoRepository, ArquivoRepository>();
         services.AddScoped<ArchiFlow.Domain.Honorarios.IPropostaHonorarioRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.PropostaHonorarioRepository>();
+        services.AddScoped<ArchiFlow.Domain.Dashboard.IPreferenciaDashboardRepository, ArchiFlow.Infrastructure.Repositories.Dashboard.PreferenciaDashboardRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
@@ -97,6 +100,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ArchiFlow.Domain.Chat.IMensagemChatRepository, ArchiFlow.Infrastructure.Repositories.Chat.MensagemChatRepository>();
         services.AddScoped<IMensagemChatService, ArchiFlow.Application.Chat.Services.MensagemChatService>();
         services.AddScoped<IMensagemChatFacade, ArchiFlow.Application.Chat.Facades.MensagemChatFacade>();
+
+        // Dashboard Services & Facades
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IDashboardFacade, DashboardFacade>();
 
         // Storage & Email (Automatic environment-based registration)
         if (environment.IsProduction())
