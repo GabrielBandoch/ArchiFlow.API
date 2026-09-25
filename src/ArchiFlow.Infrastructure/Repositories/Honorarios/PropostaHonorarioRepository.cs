@@ -54,10 +54,22 @@ public class PropostaHonorarioRepository : Repository<PropostaHonorario>, IPropo
         var ano = DateTime.UtcNow.Year;
         var prefixo = $"PROP-{ano}-";
 
-        var total = await _dbSet
+        var ultimoCodigo = await _dbSet
             .Where(p => p.Codigo.StartsWith(prefixo))
-            .CountAsync();
+            .OrderByDescending(p => p.Codigo)
+            .Select(p => p.Codigo)
+            .FirstOrDefaultAsync();
 
-        return $"{prefixo}{(total + 1):D4}";
+        var proximoNumero = 1;
+        if (!string.IsNullOrEmpty(ultimoCodigo) && ultimoCodigo.Length >= prefixo.Length)
+        {
+            var sufixo = ultimoCodigo[prefixo.Length..];
+            if (int.TryParse(sufixo, out var numeroAtual))
+            {
+                proximoNumero = numeroAtual + 1;
+            }
+        }
+
+        return $"{prefixo}{proximoNumero:D4}";
     }
 }

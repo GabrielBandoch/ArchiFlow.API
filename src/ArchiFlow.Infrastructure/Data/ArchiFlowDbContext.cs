@@ -248,6 +248,7 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(p => p.Id).HasColumnName("PH_Id");
             entity.Property(p => p.Titulo).HasColumnName("PH_Titulo").IsRequired().HasMaxLength(200);
             entity.Property(p => p.Codigo).HasColumnName("PH_Codigo").IsRequired().HasMaxLength(50);
+            entity.HasIndex(p => p.Codigo).IsUnique();
             entity.Property(p => p.ClienteId).HasColumnName("PH_Cliente_Id");
             entity.Property(p => p.ClienteNome).HasColumnName("PH_Cliente_Nome").HasMaxLength(200);
             entity.Property(p => p.LeadId).HasColumnName("PH_Lead_Id");

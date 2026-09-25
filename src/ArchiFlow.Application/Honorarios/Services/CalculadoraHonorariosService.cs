@@ -61,6 +61,7 @@ public class CalculadoraHonorariosService : ICalculadoraHonorariosService
         var custoProducaoAjustado = custoProducaoHoras + valorFatorPadrao;
 
         var valorFatorTipologia = tipologiaStrategy.CalcularFatorTipologia(custoProducaoHoras);
+        var valorEscopo = tipologiaStrategy.AjustarValorEscopo(custoProducaoAjustado, fatorEscopo);
 
         var custosDiretosAjustados = Math.Round(CustosDiretosPadrao * fatorEscopo, 2);
         var custoFixoRateado = CustoFixoRateadoPadrao;
@@ -98,7 +99,7 @@ public class CalculadoraHonorariosService : ICalculadoraHonorariosService
             tipologiaStrategy.Multiplicador,
             valorFatorTipologia,
             percentualInclusoTotal,
-            valorFatorPadrao,
+            valorEscopo,
             horasBase,
             valorHoraBase,
             custosDiretosAjustados,

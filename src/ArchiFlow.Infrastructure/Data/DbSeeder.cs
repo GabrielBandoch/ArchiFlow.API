@@ -121,6 +121,8 @@ public static class DbSeeder
                     ""IPE_Ordem"" integer NOT NULL,
                     CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
                 );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
             ");
         }
         catch (Exception ex)
