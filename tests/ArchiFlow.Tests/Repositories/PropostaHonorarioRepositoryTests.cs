@@ -77,6 +77,26 @@ public class PropostaHonorarioRepositoryTests
     }
 
     [Fact]
+    public async Task GerarProximoCodigo_Should_Increment_Based_On_Highest_Existing_Code()
+    {
+        using var context = GetInMemoryDbContext();
+        var repo = new PropostaHonorarioRepository(context);
+
+        var ano = DateTime.UtcNow.Year;
+        await repo.Create(new PropostaHonorario
+        {
+            Id = Guid.NewGuid(),
+            Titulo = "Proposta Existente",
+            Codigo = $"PROP-{ano}-0005",
+            CriadoEm = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        var proximoCodigo = await repo.GerarProximoCodigo();
+        proximoCodigo.Should().Be($"PROP-{ano}-0006");
+    }
+
+    [Fact]
     public async Task Delete_Should_Remove_Entity_When_Exists()
     {
         using var context = GetInMemoryDbContext();
