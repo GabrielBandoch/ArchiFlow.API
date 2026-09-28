@@ -61,4 +61,12 @@ public class PropostasController : ControllerBase
         var sucesso = await _facade.Excluir(id);
         return !sucesso ? NotFound() : NoContent();
     }
+
+    [HttpGet("configuracao")]
+    public async Task<IActionResult> ObterConfiguracao() =>
+        Ok(await _facade.ObterConfiguracaoAsync());
+
+    [HttpPut("configuracao")]
+    public async Task<IActionResult> SalvarConfiguracao([FromBody] SalvarConfiguracaoPropostaCommand command) =>
+        Ok(await _facade.SalvarConfiguracaoAsync(command));
 }

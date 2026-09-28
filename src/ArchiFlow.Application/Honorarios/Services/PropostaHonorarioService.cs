@@ -7,9 +7,11 @@ using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Projetos.Enum;
 using ArchiFlow.Domain.Shared;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace ArchiFlow.Application.Honorarios.Services;
@@ -20,20 +22,26 @@ public class PropostaHonorarioService : IPropostaHonorarioService
     private readonly IClienteRepository _clienteRepo;
     private readonly ILeadRepository _leadRepo;
     private readonly ICalculadoraHonorariosService _calculadora;
+    private readonly IConfiguracaoPropostaRepository _configPropostaRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     public PropostaHonorarioService(
         IPropostaHonorarioRepository propostaRepo,
         IClienteRepository clienteRepo,
         ILeadRepository leadRepo,
         ICalculadoraHonorariosService calculadora,
-        IUnitOfWork unitOfWork)
+        IConfiguracaoPropostaRepository configPropostaRepo,
+        IUnitOfWork unitOfWork,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _propostaRepo = propostaRepo;
         _clienteRepo = clienteRepo;
         _leadRepo = leadRepo;
         _calculadora = calculadora;
+        _configPropostaRepo = configPropostaRepo;
         _unitOfWork = unitOfWork;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<IEnumerable<PropostaHonorarioDto>> GetAll()
@@ -265,4 +273,171 @@ public class PropostaHonorarioService : IPropostaHonorarioService
         StatusProposta.Recusada => "Recusada",
         _ => "Rascunho"
     };
+
+    public async Task<ConfiguracaoPropostaDto> ObterConfiguracaoAsync()
+    {
+        var usuarioId = ObterUsuarioIdContexto();
+        var config = await _configPropostaRepo.ObterPorUsuarioIdAsync(usuarioId);
+
+        if (config == null)
+        {
+            return new ConfiguracaoPropostaDto(
+                null,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                null,
+                "#765538",
+                true,
+                true,
+                true,
+                false,
+                true,
+                true,
+                true,
+                "Apresentamos nossa proposta técnica e comercial para o desenvolvimento do projeto arquitetônico, estruturada com rigor metodológico, atendimento personalizado e foco em excelência e viabilidade construtiva.",
+                15,
+                "Entrada no aceite da proposta + saldo parcelado conforme entrega das etapas contratadas.",
+                null,
+                null,
+                "1. O escopo compreende estritamente as etapas e serviços descritos nesta proposta.\n2. Estão inclusas até 2 (duas) rodadas de revisões conceituais na fase de Estudo Preliminar.\n3. Projetos complementares e taxas de aprovação em órgãos públicos são de responsabilidade do contratante ou contratados à parte.\n4. Os prazos de execução passam a contar a partir da assinatura do contrato e fornecimento das informações necessárias.",
+                "Olá {cliente}! Segue a proposta comercial para o projeto *{projeto}* ({metragem} m²) elaborada por {escritorio}.\n\n💰 *Valor Total:* {valor}\n📅 *Validade:* {validade} dias\n\nFicamos à disposição para esclarecer qualquer dúvida!",
+                false,
+                null
+            );
+        }
+
+        return MapearConfiguracaoParaDto(config);
+    }
+
+    public async Task<ConfiguracaoPropostaDto> SalvarConfiguracaoAsync(SalvarConfiguracaoPropostaCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.NomeEscritorio))
+        {
+            throw new ArgumentException("O nome do escritório / razão social é obrigatório.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.Email))
+        {
+            throw new ArgumentException("O e-mail de contato do escritório é obrigatório.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.Telefone))
+        {
+            throw new ArgumentException("O telefone / WhatsApp do escritório é obrigatório.");
+        }
+
+        var usuarioId = ObterUsuarioIdContexto();
+        var config = await _configPropostaRepo.ObterPorUsuarioIdAsync(usuarioId);
+
+        if (config == null)
+        {
+            config = new ConfiguracaoProposta
+            {
+                UsuarioId = usuarioId,
+                NomeEscritorio = command.NomeEscritorio.Trim(),
+                Slogan = command.Slogan?.Trim() ?? string.Empty,
+                RegistroProfissional = command.RegistroProfissional?.Trim() ?? string.Empty,
+                Email = command.Email.Trim(),
+                Telefone = command.Telefone.Trim(),
+                Endereco = command.Endereco?.Trim() ?? string.Empty,
+                LogoUrl = command.LogoUrl,
+                CorPrimaria = string.IsNullOrWhiteSpace(command.CorPrimaria) ? "#765538" : command.CorPrimaria.Trim(),
+                ExibirCabecalho = command.ExibirCabecalho,
+                ExibirResumo = command.ExibirResumo,
+                ExibirTabelaEtapas = command.ExibirTabelaEtapas,
+                ExibirMemoriaCalculo = command.ExibirMemoriaCalculo,
+                ExibirCondicoesPagamento = command.ExibirCondicoesPagamento,
+                ExibirTermosGerais = command.ExibirTermosGerais,
+                ExibirAssinaturas = command.ExibirAssinaturas,
+                TextoApresentacao = command.TextoApresentacao?.Trim() ?? string.Empty,
+                ValidadeDias = command.ValidadeDias > 0 ? command.ValidadeDias : 15,
+                CondicoesPagamentoPadrao = command.CondicoesPagamentoPadrao?.Trim() ?? string.Empty,
+                ChavePix = command.ChavePix?.Trim(),
+                DadosBancarios = command.DadosBancarios?.Trim(),
+                TermosGerais = command.TermosGerais?.Trim() ?? string.Empty,
+                TemplateMensagemWhatsapp = command.TemplateMensagemWhatsapp?.Trim() ?? string.Empty,
+                Configurado = true,
+                AtualizadoEm = DateTime.UtcNow
+            };
+
+            await _configPropostaRepo.Create(config);
+        }
+        else
+        {
+            config.NomeEscritorio = command.NomeEscritorio.Trim();
+            config.Slogan = command.Slogan?.Trim() ?? string.Empty;
+            config.RegistroProfissional = command.RegistroProfissional?.Trim() ?? string.Empty;
+            config.Email = command.Email.Trim();
+            config.Telefone = command.Telefone.Trim();
+            config.Endereco = command.Endereco?.Trim() ?? string.Empty;
+            config.LogoUrl = command.LogoUrl;
+            config.CorPrimaria = string.IsNullOrWhiteSpace(command.CorPrimaria) ? "#765538" : command.CorPrimaria.Trim();
+            config.ExibirCabecalho = command.ExibirCabecalho;
+            config.ExibirResumo = command.ExibirResumo;
+            config.ExibirTabelaEtapas = command.ExibirTabelaEtapas;
+            config.ExibirMemoriaCalculo = command.ExibirMemoriaCalculo;
+            config.ExibirCondicoesPagamento = command.ExibirCondicoesPagamento;
+            config.ExibirTermosGerais = command.ExibirTermosGerais;
+            config.ExibirAssinaturas = command.ExibirAssinaturas;
+            config.TextoApresentacao = command.TextoApresentacao?.Trim() ?? string.Empty;
+            config.ValidadeDias = command.ValidadeDias > 0 ? command.ValidadeDias : 15;
+            config.CondicoesPagamentoPadrao = command.CondicoesPagamentoPadrao?.Trim() ?? string.Empty;
+            config.ChavePix = command.ChavePix?.Trim();
+            config.DadosBancarios = command.DadosBancarios?.Trim();
+            config.TermosGerais = command.TermosGerais?.Trim() ?? string.Empty;
+            config.TemplateMensagemWhatsapp = command.TemplateMensagemWhatsapp?.Trim() ?? string.Empty;
+            config.Configurado = true;
+            config.AtualizadoEm = DateTime.UtcNow;
+
+            await _configPropostaRepo.Update(config);
+        }
+
+        await _unitOfWork.Commit();
+        return MapearConfiguracaoParaDto(config);
+    }
+
+    private static ConfiguracaoPropostaDto MapearConfiguracaoParaDto(ConfiguracaoProposta c)
+    {
+        return new ConfiguracaoPropostaDto(
+            c.Id,
+            c.NomeEscritorio,
+            c.Slogan,
+            c.RegistroProfissional,
+            c.Email,
+            c.Telefone,
+            c.Endereco,
+            c.LogoUrl,
+            c.CorPrimaria,
+            c.ExibirCabecalho,
+            c.ExibirResumo,
+            c.ExibirTabelaEtapas,
+            c.ExibirMemoriaCalculo,
+            c.ExibirCondicoesPagamento,
+            c.ExibirTermosGerais,
+            c.ExibirAssinaturas,
+            c.TextoApresentacao,
+            c.ValidadeDias,
+            c.CondicoesPagamentoPadrao,
+            c.ChavePix,
+            c.DadosBancarios,
+            c.TermosGerais,
+            c.TemplateMensagemWhatsapp,
+            c.Configurado,
+            c.AtualizadoEm
+        );
+    }
+
+    private Guid ObterUsuarioIdContexto()
+    {
+        var user = _httpContextAccessor?.HttpContext?.User;
+        var claim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? user?.FindFirst("nameid")?.Value
+                 ?? user?.FindFirst("sub")?.Value;
+
+        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+    }
 }

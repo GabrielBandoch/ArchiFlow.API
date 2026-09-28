@@ -5,6 +5,7 @@ using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Chat;
 using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Dashboard;
+using ArchiFlow.Domain.Financeiro;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -29,6 +30,10 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<PropostaHonorario>    PropostasHonorarios   => Set<PropostaHonorario>();
     public DbSet<ItemPropostaEtapa>    ItensPropostasEtapas  => Set<ItemPropostaEtapa>();
     public DbSet<PreferenciaDashboard> PreferenciasDashboard => Set<PreferenciaDashboard>();
+    public DbSet<ContratoFinanceiro>   ContratosFinanceiros  => Set<ContratoFinanceiro>();
+    public DbSet<ParcelaFinanceira>    ParcelasFinanceiras   => Set<ParcelaFinanceira>();
+    public DbSet<DespesaProjeto>       DespesasProjetos      => Set<DespesaProjeto>();
+    public DbSet<ConfiguracaoProposta> ConfiguracoesProposta => Set<ConfiguracaoProposta>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -313,6 +318,117 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(p => p.AtualizadoEm).HasColumnName("PDB_Atualizado_Em").IsRequired();
 
             entity.HasIndex(p => p.UsuarioId).IsUnique();
+        });
+
+        modelBuilder.Entity<ContratoFinanceiro>(entity =>
+        {
+            entity.ToTable("Contratos_Financeiros");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("CTF_Id");
+            entity.Property(c => c.ProjetoId).HasColumnName("CTF_Projeto_Id").IsRequired();
+            entity.Property(c => c.ValorTotal).HasColumnName("CTF_Valor_Total").HasPrecision(18, 2).IsRequired();
+            entity.Property(c => c.CondicoesPagamento).HasColumnName("CTF_Condicoes_Pagamento").HasMaxLength(500);
+            entity.Property(c => c.Observacoes).HasColumnName("CTF_Observacoes");
+            entity.Property(c => c.CriadoEm).HasColumnName("CTF_Criado_Em").IsRequired();
+            entity.Property(c => c.AtualizadoEm).HasColumnName("CTF_Atualizado_Em");
+
+            entity.HasOne(c => c.Projeto)
+                  .WithMany()
+                  .HasForeignKey(c => c.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(c => c.Parcelas)
+                  .WithOne(p => p.ContratoFinanceiro)
+                  .HasForeignKey(p => p.ContratoFinanceiroId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParcelaFinanceira>(entity =>
+        {
+            entity.ToTable("Parcelas_Financeiras");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).HasColumnName("PAR_Id");
+            entity.Property(p => p.ProjetoId).HasColumnName("PAR_Projeto_Id").IsRequired();
+            entity.Property(p => p.ContratoFinanceiroId).HasColumnName("PAR_Contrato_Id");
+            entity.Property(p => p.NumeroParcela).HasColumnName("PAR_Numero_Parcela").IsRequired();
+            entity.Property(p => p.TotalParcelas).HasColumnName("PAR_Total_Parcelas").IsRequired();
+            entity.Property(p => p.Descricao).HasColumnName("PAR_Descricao").IsRequired().HasMaxLength(200);
+            entity.Property(p => p.Valor).HasColumnName("PAR_Valor").HasPrecision(18, 2).IsRequired();
+            entity.Property(p => p.DataVencimento).HasColumnName("PAR_Data_Vencimento").IsRequired();
+            entity.Property(p => p.DataPagamento).HasColumnName("PAR_Data_Pagamento");
+            entity.Property(p => p.Status).HasColumnName("PAR_Status").IsRequired();
+            entity.Property(p => p.FormaPagamento).HasColumnName("PAR_Forma_Pagamento");
+            entity.Property(p => p.Observacoes).HasColumnName("PAR_Observacoes");
+            entity.Property(p => p.ComprovanteUrl).HasColumnName("PAR_Comprovante_Url").HasMaxLength(1000);
+            entity.Property(p => p.CriadoEm).HasColumnName("PAR_Criado_Em").IsRequired();
+            entity.Property(p => p.AtualizadoEm).HasColumnName("PAR_Atualizado_Em");
+
+            entity.HasIndex(p => p.ProjetoId);
+            entity.HasIndex(p => p.DataVencimento);
+            entity.HasIndex(p => p.Status);
+
+            entity.HasOne(p => p.Projeto)
+                  .WithMany()
+                  .HasForeignKey(p => p.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DespesaProjeto>(entity =>
+        {
+            entity.ToTable("Despesas_Projetos");
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Id).HasColumnName("DSP_Id");
+            entity.Property(d => d.ProjetoId).HasColumnName("DSP_Projeto_Id").IsRequired();
+            entity.Property(d => d.Descricao).HasColumnName("DSP_Descricao").IsRequired().HasMaxLength(200);
+            entity.Property(d => d.Valor).HasColumnName("DSP_Valor").HasPrecision(18, 2).IsRequired();
+            entity.Property(d => d.DataDespesa).HasColumnName("DSP_Data_Despesa").IsRequired();
+            entity.Property(d => d.Categoria).HasColumnName("DSP_Categoria").IsRequired();
+            entity.Property(d => d.Observacoes).HasColumnName("DSP_Observacoes");
+            entity.Property(d => d.ComprovanteUrl).HasColumnName("DSP_Comprovante_Url").HasMaxLength(1000);
+            entity.Property(d => d.CriadoEm).HasColumnName("DSP_Criado_Em").IsRequired();
+            entity.Property(d => d.AtualizadoEm).HasColumnName("DSP_Atualizado_Em");
+
+            entity.HasIndex(d => d.ProjetoId);
+            entity.HasIndex(d => d.DataDespesa);
+
+            entity.HasOne(d => d.Projeto)
+                  .WithMany()
+                  .HasForeignKey(d => d.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ConfiguracaoProposta>(entity =>
+        {
+            entity.ToTable("Configuracoes_Proposta");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("CFP_Id");
+            entity.Property(c => c.UsuarioId).HasColumnName("CFP_Usuario_Id");
+            entity.Property(c => c.NomeEscritorio).HasColumnName("CFP_Nome_Escritorio").HasMaxLength(200);
+            entity.Property(c => c.Slogan).HasColumnName("CFP_Slogan").HasMaxLength(300);
+            entity.Property(c => c.RegistroProfissional).HasColumnName("CFP_Registro_Profissional").HasMaxLength(150);
+            entity.Property(c => c.Email).HasColumnName("CFP_Email").HasMaxLength(150);
+            entity.Property(c => c.Telefone).HasColumnName("CFP_Telefone").HasMaxLength(50);
+            entity.Property(c => c.Endereco).HasColumnName("CFP_Endereco").HasMaxLength(300);
+            entity.Property(c => c.LogoUrl).HasColumnName("CFP_Logo_Url");
+            entity.Property(c => c.CorPrimaria).HasColumnName("CFP_Cor_Primaria").HasMaxLength(20);
+            entity.Property(c => c.ExibirCabecalho).HasColumnName("CFP_Exibir_Cabecalho");
+            entity.Property(c => c.ExibirResumo).HasColumnName("CFP_Exibir_Resumo");
+            entity.Property(c => c.ExibirTabelaEtapas).HasColumnName("CFP_Exibir_Tabela_Etapas");
+            entity.Property(c => c.ExibirMemoriaCalculo).HasColumnName("CFP_Exibir_Memoria_Calculo");
+            entity.Property(c => c.ExibirCondicoesPagamento).HasColumnName("CFP_Exibir_Condicoes_Pagamento");
+            entity.Property(c => c.ExibirTermosGerais).HasColumnName("CFP_Exibir_Termos_Gerais");
+            entity.Property(c => c.ExibirAssinaturas).HasColumnName("CFP_Exibir_Assinaturas");
+            entity.Property(c => c.TextoApresentacao).HasColumnName("CFP_Texto_Apresentacao");
+            entity.Property(c => c.ValidadeDias).HasColumnName("CFP_Validade_Dias");
+            entity.Property(c => c.CondicoesPagamentoPadrao).HasColumnName("CFP_Condicoes_Pagamento_Padrao");
+            entity.Property(c => c.ChavePix).HasColumnName("CFP_Chave_Pix").HasMaxLength(100);
+            entity.Property(c => c.DadosBancarios).HasColumnName("CFP_Dados_Bancarios").HasMaxLength(300);
+            entity.Property(c => c.TermosGerais).HasColumnName("CFP_Termos_Gerais");
+            entity.Property(c => c.TemplateMensagemWhatsapp).HasColumnName("CFP_Template_Mensagem_Whatsapp");
+            entity.Property(c => c.Configurado).HasColumnName("CFP_Configurado");
+            entity.Property(c => c.AtualizadoEm).HasColumnName("CFP_Atualizado_Em");
+
+            entity.HasIndex(c => c.UsuarioId);
         });
     }
 }

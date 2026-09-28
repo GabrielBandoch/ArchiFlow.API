@@ -65,4 +65,14 @@ public class PropostaHonorarioFacade : IPropostaHonorarioFacade
     {
         return await _service.Excluir(id);
     }
+
+    public async Task<ConfiguracaoPropostaDto> ObterConfiguracaoAsync()
+    {
+        return await _service.ObterConfiguracaoAsync();
+    }
+
+    public async Task<ConfiguracaoPropostaDto> SalvarConfiguracaoAsync(SalvarConfiguracaoPropostaCommand command)
+    {
+        return await _service.SalvarConfiguracaoAsync(command);
+    }
 }

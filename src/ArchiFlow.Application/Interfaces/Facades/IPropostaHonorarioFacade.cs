@@ -17,4 +17,6 @@ public interface IPropostaHonorarioFacade
     Task<PropostaHonorarioDto> AtualizarStatus(Guid id, AtualizarStatusPropostaCommand command);
     Task<PropostaHonorarioDto> AjustarValor(Guid id, AjustarValorPropostaCommand command);
     Task<bool> Excluir(Guid id);
+    Task<ConfiguracaoPropostaDto> ObterConfiguracaoAsync();
+    Task<ConfiguracaoPropostaDto> SalvarConfiguracaoAsync(SalvarConfiguracaoPropostaCommand command);
 }

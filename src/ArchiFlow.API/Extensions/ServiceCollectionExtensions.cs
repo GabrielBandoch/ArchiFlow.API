@@ -65,7 +65,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
         services.AddScoped<IArquivoRepository, ArquivoRepository>();
         services.AddScoped<ArchiFlow.Domain.Honorarios.IPropostaHonorarioRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.PropostaHonorarioRepository>();
+        services.AddScoped<ArchiFlow.Domain.Honorarios.IConfiguracaoPropostaRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.ConfiguracaoPropostaRepository>();
         services.AddScoped<ArchiFlow.Domain.Dashboard.IPreferenciaDashboardRepository, ArchiFlow.Infrastructure.Repositories.Dashboard.PreferenciaDashboardRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IParcelaFinanceiraRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ParcelaFinanceiraRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IContratoFinanceiroRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ContratoFinanceiroRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IDespesaProjetoRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.DespesaProjetoRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
@@ -79,6 +83,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClienteFacade, ClienteFacade>();
         services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();
         services.AddScoped<IArquivoFacade, ArchiFlow.Application.Arquivos.Facades.ArquivoFacade>();
+        // Financeiro Services & Facades
+        services.AddScoped<IFinanceiroService, ArchiFlow.Application.Financeiro.Services.FinanceiroService>();
+        services.AddScoped<IFinanceiroFacade, ArchiFlow.Application.Financeiro.Facades.FinanceiroFacade>();
         // Honorários - Strategy, Factory & Builder Patterns (GoF)
         services.AddScoped<ICalculoHonorarioStrategy, ResidencialCalculoStrategy>();
         services.AddScoped<ICalculoHonorarioStrategy, ComercialCalculoStrategy>();
