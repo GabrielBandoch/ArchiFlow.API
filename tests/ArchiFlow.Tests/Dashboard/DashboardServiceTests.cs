@@ -15,8 +15,10 @@ using ArchiFlow.Infrastructure.Repositories.Leads;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using ArchiFlow.Tests.Common;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -24,7 +26,7 @@ namespace ArchiFlow.Tests.Dashboard;
 
 public class DashboardServiceTests
 {
-    private static (DashboardService service, ArchiFlowDbContext context) CreateService()
+    private static (DashboardService service, ArchiFlowDbContext context) CreateService(IHttpContextAccessor? httpContextAccessor = null)
     {
         var context = TestDbContextFactory.Create();
         var projetoRepo = new ProjetoRepository(context);
@@ -33,7 +35,7 @@ public class DashboardServiceTests
         var propostaRepo = new PropostaHonorarioRepository(context);
         var preferenciaRepo = new PreferenciaDashboardRepository(context);
         var unitOfWork = new UnitOfWork(context);
-        var service = new DashboardService(projetoRepo, clienteRepo, leadRepo, propostaRepo, preferenciaRepo, unitOfWork);
+        var service = new DashboardService(projetoRepo, clienteRepo, leadRepo, propostaRepo, preferenciaRepo, unitOfWork, httpContextAccessor);
 
         return (service, context);
     }
@@ -164,6 +166,48 @@ public class DashboardServiceTests
 
         resultado.LeadsRecentes.Should().HaveCount(2);
         resultado.PropostasRecentes.Should().HaveCount(1);
+        resultado.PropostasRecentes[0].ClienteOuLeadNome.Should().Be("Cliente Alpha");
+    }
+
+    [Fact]
+    public async Task ObterMetricasAsync_With_Different_Proposta_Destinatarios_Should_Map_Correctly()
+    {
+        var (service, context) = CreateService();
+
+        var propostaComLead = new PropostaHonorario
+        {
+            Id = Guid.NewGuid(),
+            Titulo = "Proposta Para Lead",
+            Codigo = "PROP-LEAD-001",
+            LeadNome = "Lead Fulano",
+            MetragemQuadrada = 100m,
+            ValorTotalSugerido = 10000m,
+            ValorFinalAjustado = 0m,
+            Status = StatusProposta.Rascunho,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        var propostaSemDestinatario = new PropostaHonorario
+        {
+            Id = Guid.NewGuid(),
+            Titulo = "Proposta Avulsa",
+            Codigo = "PROP-AVULSA-001",
+            MetragemQuadrada = 80m,
+            ValorTotalSugerido = 8000m,
+            ValorFinalAjustado = 0m,
+            Status = StatusProposta.Aprovada,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await context.PropostasHonorarios.AddRangeAsync(propostaComLead, propostaSemDestinatario);
+        await context.SaveChangesAsync();
+
+        var resultado = await service.ObterMetricasAsync();
+
+        resultado.PropostasRecentes.Should().HaveCount(2);
+        resultado.PropostasRecentes.Should().Contain(p => p.ClienteOuLeadNome == "Lead Fulano");
+        resultado.PropostasRecentes.Should().Contain(p => p.ClienteOuLeadNome == "Sem destinatário");
+        resultado.Kpis.ValorTotalPropostas.Should().Be(18000m);
     }
 
     [Fact]
@@ -187,5 +231,48 @@ public class DashboardServiceTests
         var updateCommand = new SalvarPreferenciaDashboardCommand("{\"widgets\":[]}");
         var updated = await service.SalvarPreferenciasAsync(usuarioId, updateCommand);
         updated.LayoutJson.Should().Be("{\"widgets\":[]}");
+    }
+
+    [Fact]
+    public async Task ObterPreferenciasAsync_When_Not_Found_Should_Return_Null()
+    {
+        var (service, _) = CreateService();
+        var resultado = await service.ObterPreferenciasAsync(Guid.NewGuid());
+        resultado.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Salvar_And_Obter_Preferencias_Via_HttpContextAccessor_Should_Work()
+    {
+        var usuarioId = Guid.NewGuid();
+        var httpContext = new DefaultHttpContext();
+        var claims = new Claim[]
+        {
+            new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
+            new(ClaimTypes.Role, "Administrador")
+        };
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var (service, _) = CreateService(httpContextAccessor);
+
+        var command = new SalvarPreferenciaDashboardCommand("{\"layout\":\"custom\"}");
+        var saved = await service.SalvarPreferenciasAsync(command);
+
+        saved.Should().NotBeNull();
+        saved.UsuarioId.Should().Be(usuarioId);
+        saved.LayoutJson.Should().Be("{\"layout\":\"custom\"}");
+
+        var fetched = await service.ObterPreferenciasAsync();
+        fetched.Should().NotBeNull();
+        fetched!.LayoutJson.Should().Be("{\"layout\":\"custom\"}");
+    }
+
+    [Fact]
+    public async Task ObterPreferencias_Without_HttpContext_User_Should_Return_Null()
+    {
+        var (service, _) = CreateService(null);
+        var fetched = await service.ObterPreferenciasAsync();
+        fetched.Should().BeNull();
     }
 }

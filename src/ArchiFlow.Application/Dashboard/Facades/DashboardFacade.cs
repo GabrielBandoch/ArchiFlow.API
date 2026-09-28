@@ -1,4 +1,4 @@
-﻿using ArchiFlow.Application.Dashboard.DTOs;
+using ArchiFlow.Application.Dashboard.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
 using System;
@@ -20,9 +20,19 @@ public class DashboardFacade : IDashboardFacade
         return _dashboardService.ObterMetricasAsync();
     }
 
+    public Task<PreferenciaDashboardDto?> ObterPreferenciasAsync()
+    {
+        return _dashboardService.ObterPreferenciasAsync();
+    }
+
     public Task<PreferenciaDashboardDto?> ObterPreferenciasAsync(Guid usuarioId)
     {
         return _dashboardService.ObterPreferenciasAsync(usuarioId);
+    }
+
+    public Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(SalvarPreferenciaDashboardCommand command)
+    {
+        return _dashboardService.SalvarPreferenciasAsync(command);
     }
 
     public Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(Guid usuarioId, SalvarPreferenciaDashboardCommand command)
