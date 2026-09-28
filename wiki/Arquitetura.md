@@ -33,6 +33,52 @@ ArchiFlow.sln
 
 ---
 
+## Diagramas de Arquitetura (Modelo C4)
+
+### 1. Nível 1 — Diagrama de Contexto do Sistema (C4 Context)
+
+```mermaid
+graph TD
+    Arquiteto["Arquiteto / Administrador<br/>(Usuário Principal)"]
+    Cliente["Cliente / Contratante<br/>(Usuário Externo)"]
+    Lead["Lead / Prospect<br/>(Potencial Cliente)"]
+
+    Sistema["<b>ArchiFlow Platform</b><br/>Gestão de Projetos, CRM de Leads, Precificação de Honorários e Finanças"]
+
+    WhatsApp["WhatsApp API / Web<br/>(Comunicação Externa)"]
+    EmailService["Serviço de E-mail / AWS SES<br/>(Notificações e Alertas)"]
+
+    Arquiteto -->|"Gerencia projetos, simula honorários, gera propostas e controla finanças"| Sistema
+    Cliente -->|"Acompanha evolução de etapas, arquivos e faturas no Portal do Cliente"| Sistema
+    Lead -->|"Recebe propostas comerciais e links de atendimento"| Sistema
+
+    Sistema -->|"Dispara mensagens formatadas de proposta"| WhatsApp
+    Sistema -->|"Envia e-mails de convite e notificações"| EmailService
+```
+
+### 2. Nível 2 — Diagrama de Contêineres (C4 Container)
+
+```mermaid
+graph TD
+    subgraph Cliente["Navegador Web / Dispositivo do Usuário"]
+        SPA["<b>Frontend Single Page App</b><br/>[Angular 17, TypeScript, SCSS]<br/>Interface web responsiva com Design System próprio"]
+    end
+
+    subgraph Backend["Ambiente de Servidor / Cloud"]
+        API["<b>Backend REST API</b><br/>[.NET 8 / ASP.NET Core]<br/>Clean Architecture, Controllers REST, Validações e Health Check"]
+        Auth["<b>Módulo de Segurança & JWT</b><br/>Autenticação stateless e RBAC"]
+        DB[("<b>Banco de Dados Relacional</b><br/>[PostgreSQL 16]<br/>Tabelas com suporte multi-tenant e EF Core")]
+        Storage["<b>Armazenamento de Arquivos</b><br/>[Local / AWS S3]<br/>Comprovantes financeiros e entregáveis técnicos"]
+    end
+
+    SPA -->|"HTTPS / REST JSON"| API
+    API -->|"Autentica requisições"| Auth
+    API -->|"Persiste e consulta dados (EF Core)"| DB
+    API -->|"Faz upload e streaming de anexos"| Storage
+```
+
+---
+
 ## Monitoramento e Resiliência (Health Checks)
 
 O backend possui o endpoint `/health` que realiza verificações ativas no banco de dados relacional.
