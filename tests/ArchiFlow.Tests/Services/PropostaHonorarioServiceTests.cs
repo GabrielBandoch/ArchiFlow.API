@@ -23,6 +23,7 @@ public class PropostaHonorarioServiceTests
     private readonly Mock<IClienteRepository> _mockClienteRepo;
     private readonly Mock<ILeadRepository> _mockLeadRepo;
     private readonly Mock<ICalculadoraHonorariosService> _mockCalculadora;
+    private readonly Mock<IConfiguracaoPropostaRepository> _mockConfigRepo;
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly PropostaHonorarioService _service;
 
@@ -32,6 +33,7 @@ public class PropostaHonorarioServiceTests
         _mockClienteRepo = new Mock<IClienteRepository>();
         _mockLeadRepo = new Mock<ILeadRepository>();
         _mockCalculadora = new Mock<ICalculadoraHonorariosService>();
+        _mockConfigRepo = new Mock<IConfiguracaoPropostaRepository>();
         _mockUow = new Mock<IUnitOfWork>();
 
         _service = new PropostaHonorarioService(
@@ -39,6 +41,7 @@ public class PropostaHonorarioServiceTests
             _mockClienteRepo.Object,
             _mockLeadRepo.Object,
             _mockCalculadora.Object,
+            _mockConfigRepo.Object,
             _mockUow.Object
         );
     }
@@ -214,5 +217,61 @@ public class PropostaHonorarioServiceTests
 
         result.Should().BeTrue();
         _mockRepo.Verify(r => r.Delete(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_Should_Return_Unconfigured_Default_When_No_Record()
+    {
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((ConfiguracaoProposta?)null);
+
+        var result = await _service.ObterConfiguracaoAsync();
+
+        result.Should().NotBeNull();
+        result.Configurado.Should().BeFalse();
+        result.NomeEscritorio.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SalvarConfiguracaoAsync_Should_Create_Or_Update_Config_And_Commit()
+    {
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((ConfiguracaoProposta?)null);
+        _mockConfigRepo.Setup(r => r.Create(It.IsAny<ConfiguracaoProposta>()))
+            .ReturnsAsync((ConfiguracaoProposta c) => c);
+        _mockUow.Setup(u => u.Commit(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var cmd = new SalvarConfiguracaoPropostaCommand(
+            "Studio Teste Arquitetura",
+            "Design moderno",
+            "CAU A123",
+            "teste@studio.com",
+            "47999999999",
+            "Rua Central",
+            null,
+            "#765538",
+            true,
+            true,
+            true,
+            false,
+            true,
+            true,
+            true,
+            "Apresentação",
+            15,
+            "À vista ou parcelado",
+            "123.456.789-00",
+            "Banco 001",
+            "Termos",
+            "Mensagem"
+        );
+
+        var result = await _service.SalvarConfiguracaoAsync(cmd);
+
+        result.Should().NotBeNull();
+        result.Configurado.Should().BeTrue();
+        result.NomeEscritorio.Should().Be("Studio Teste Arquitetura");
+        _mockConfigRepo.Verify(r => r.Create(It.IsAny<ConfiguracaoProposta>()), Times.Once);
+        _mockUow.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
