@@ -61,6 +61,18 @@ public class ExceptionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_QuandoUnauthorizedAccessExceptionLancada_DeveRetornar401()
+    {
+        var context = new DefaultHttpContext();
+        RequestDelegate next = (ctx) => throw new UnauthorizedAccessException("Não autorizado.");
+        var middleware = new ExceptionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be((int)HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task InvokeAsync_QuandoGenericExceptionLancada_DeveRetornar500()
     {
         var context = new DefaultHttpContext();

@@ -96,12 +96,12 @@ public record SalvarPreferenciaDashboardCommand(
 
 public record DashboardMetricasDto(
     DashboardKpisDto Kpis,
-    List<ProjetosPorStatusDto> ProjetosPorStatus,
-    List<ProjetosPorTipoDto> ProjetosPorTipo,
-    List<LeadsPorStatusDto> LeadsPorStatus,
-    List<LeadsPorOrigemDto> LeadsPorOrigem,
-    List<PropostasMensalDto> PropostasMensais,
-    List<ProjetoResumoDashboardDto> ProjetosRecentes,
-    List<LeadResumoDashboardDto> LeadsRecentes,
-    List<PropostaResumoDashboardDto> PropostasRecentes
+    IReadOnlyList<ProjetosPorStatusDto> ProjetosPorStatus,
+    IReadOnlyList<ProjetosPorTipoDto> ProjetosPorTipo,
+    IReadOnlyList<LeadsPorStatusDto> LeadsPorStatus,
+    IReadOnlyList<LeadsPorOrigemDto> LeadsPorOrigem,
+    IReadOnlyList<PropostasMensalDto> PropostasMensais,
+    IReadOnlyList<ProjetoResumoDashboardDto> ProjetosRecentes,
+    IReadOnlyList<LeadResumoDashboardDto> LeadsRecentes,
+    IReadOnlyList<PropostaResumoDashboardDto> PropostasRecentes
 );

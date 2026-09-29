@@ -25,18 +25,8 @@ public class DashboardFacade : IDashboardFacade
         return _dashboardService.ObterPreferenciasAsync();
     }
 
-    public Task<PreferenciaDashboardDto?> ObterPreferenciasAsync(Guid usuarioId)
-    {
-        return _dashboardService.ObterPreferenciasAsync(usuarioId);
-    }
-
     public Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(SalvarPreferenciaDashboardCommand command)
     {
         return _dashboardService.SalvarPreferenciasAsync(command);
-    }
-
-    public Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(Guid usuarioId, SalvarPreferenciaDashboardCommand command)
-    {
-        return _dashboardService.SalvarPreferenciasAsync(usuarioId, command);
     }
 }

@@ -23,6 +23,13 @@ public class ProjetoRepository : Repository<Projeto>, IProjetoRepository
             .OrderByDescending(p => p.CriadoEm)
             .ToListAsync();
 
+    public async Task<IEnumerable<Projeto>> GetAllParaDashboardAsync() =>
+        await _context.Projetos
+            .Include(p => p.Etapas)
+            .AsNoTracking()
+            .OrderByDescending(p => p.CriadoEm)
+            .ToListAsync();
+
     public async Task<IEnumerable<Projeto>> GetByClienteId(Guid clienteId) =>
         await _context.Projetos
             .Where(p => p.ClienteId == clienteId)
