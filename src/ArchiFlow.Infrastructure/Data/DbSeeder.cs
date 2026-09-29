@@ -123,6 +123,14 @@ public static class DbSeeder
                 );
 
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
+
+                CREATE TABLE IF NOT EXISTS ""Preferencias_Dashboard"" (
+                    ""PDB_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PDB_Usuario_Id"" uuid NOT NULL,
+                    ""PDB_Layout_Json"" text NOT NULL,
+                    ""PDB_Atualizado_Em"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""UQ_Preferencias_Dashboard_Usuario"" UNIQUE (""PDB_Usuario_Id"")
+                );
             ");
         }
         catch (Exception ex)

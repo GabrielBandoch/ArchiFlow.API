@@ -29,7 +29,15 @@ public class Repository<T> : IRepository<T> where T : class
 
     public Task<T> Update(T entity)
     {
-        _dbSet.Update(entity);
+        var entry = _context.Entry(entity);
+        if (entry.State == EntityState.Detached)
+        {
+            _dbSet.Update(entity);
+        }
+        else
+        {
+            entry.State = EntityState.Modified;
+        }
         return Task.FromResult(entity);
     }
 

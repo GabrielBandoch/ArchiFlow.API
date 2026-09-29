@@ -28,6 +28,10 @@ public class ExceptionMiddleware
         {
             await WriteResponse(context, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            await WriteResponse(context, HttpStatusCode.Unauthorized, ex.Message);
+        }
         catch (InvalidOperationException ex)
         {
             await WriteResponse(context, HttpStatusCode.BadRequest, ex.Message);

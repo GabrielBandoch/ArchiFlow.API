@@ -4,6 +4,7 @@ using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Chat;
 using ArchiFlow.Domain.Honorarios;
+using ArchiFlow.Domain.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -27,6 +28,7 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<MensagemChat>         MensagensChat         => Set<MensagemChat>();
     public DbSet<PropostaHonorario>    PropostasHonorarios   => Set<PropostaHonorario>();
     public DbSet<ItemPropostaEtapa>    ItensPropostasEtapas  => Set<ItemPropostaEtapa>();
+    public DbSet<PreferenciaDashboard> PreferenciasDashboard => Set<PreferenciaDashboard>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -299,6 +301,18 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(i => i.Valor).HasColumnName("IPE_Valor").HasPrecision(18, 2);
             entity.Property(i => i.HorasEstimadas).HasColumnName("IPE_Horas_Estimadas").HasPrecision(18, 2);
             entity.Property(i => i.Ordem).HasColumnName("IPE_Ordem");
+        });
+
+        modelBuilder.Entity<PreferenciaDashboard>(entity =>
+        {
+            entity.ToTable("Preferencias_Dashboard");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).HasColumnName("PDB_Id");
+            entity.Property(p => p.UsuarioId).HasColumnName("PDB_Usuario_Id").IsRequired();
+            entity.Property(p => p.LayoutJson).HasColumnName("PDB_Layout_Json").IsRequired();
+            entity.Property(p => p.AtualizadoEm).HasColumnName("PDB_Atualizado_Em").IsRequired();
+
+            entity.HasIndex(p => p.UsuarioId).IsUnique();
         });
     }
 }
