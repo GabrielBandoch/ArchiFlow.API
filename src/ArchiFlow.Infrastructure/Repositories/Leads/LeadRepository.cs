@@ -22,6 +22,13 @@ public class LeadRepository : Repository<Lead>, ILeadRepository
             .OrderByDescending(l => l.CriadoEm)
             .ToListAsync();
 
+    public async Task<IEnumerable<Lead>> GetAllParaDashboardAsync() =>
+        await _context.Leads
+            .Include(l => l.Origem)
+            .AsNoTracking()
+            .OrderByDescending(l => l.CriadoEm)
+            .ToListAsync();
+
     public async Task<Lead?> GetByEmail(string email) =>
         await _context.Leads
             .Include(l => l.Origem)

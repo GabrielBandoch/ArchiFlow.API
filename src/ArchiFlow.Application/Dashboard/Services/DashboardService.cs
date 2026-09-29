@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ArchiFlow.Application.Dashboard.Services;
@@ -85,13 +86,13 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardMetricasDto> ObterMetricasAsync()
     {
-        var projetosEnumerable = await _projetoRepo.GetAllWithEtapas();
+        var projetosEnumerable = await _projetoRepo.GetAllParaDashboardAsync();
         var projetos = projetosEnumerable.OrderByDescending(p => p.CriadoEm).ToList();
 
         var clientesEnumerable = await _clienteRepo.GetAll();
         var clientes = clientesEnumerable.ToList();
 
-        var leadsEnumerable = await _leadRepo.GetAllWithHistorico();
+        var leadsEnumerable = await _leadRepo.GetAllParaDashboardAsync();
         var leads = leadsEnumerable.OrderByDescending(l => l.CriadoEm).ToList();
 
         var propostasEnumerable = await _propostaRepo.GetAll();
@@ -122,6 +123,12 @@ public class DashboardService : IDashboardService
         );
     }
 
+    /// <summary>
+    /// Calcula os KPIs executivos do dashboard.
+    /// Regra de Negócio para Receita Potencial (ValorTotalPropostas):
+    /// Totaliza o valor de todas as propostas registradas no pipeline.
+    /// Utiliza ValorFinalAjustado caso tenha sido customizado (> 0); caso contrário, adota ValorTotalSugerido.
+    /// </summary>
     private static DashboardKpisDto CalcularKpis(
         List<Projeto> projetos,
         List<Cliente> clientes,
@@ -205,7 +212,7 @@ public class DashboardService : IDashboardService
     {
         var totalLeads = leads.Count;
         var lista = leads
-            .GroupBy(l => l.Origem?.Descricao ?? "Direto / Indicação")
+            .GroupBy(l => string.IsNullOrWhiteSpace(l.Origem?.Descricao) ? "Direto" : l.Origem.Descricao)
             .Select(g =>
             {
                 var qtd = g.Count();
@@ -331,14 +338,23 @@ public class DashboardService : IDashboardService
         return "Sem destinatário";
     }
 
+    private static readonly HashSet<string> KnownWidgetIds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "kpi_resumo",
+        "atalhos_rapidos",
+        "grafico_projetos_status",
+        "grafico_projetos_tipo",
+        "grafico_funil_leads",
+        "grafico_origens_lead",
+        "grafico_propostas_mensal",
+        "tabela_projetos_recentes",
+        "lista_leads_recentes",
+        "lista_propostas_recentes"
+    };
+
     public async Task<PreferenciaDashboardDto?> ObterPreferenciasAsync()
     {
         var usuarioId = ObterUsuarioIdContexto();
-        return await ObterPreferenciasAsync(usuarioId);
-    }
-
-    public async Task<PreferenciaDashboardDto?> ObterPreferenciasAsync(Guid usuarioId)
-    {
         var pref = await _preferenciaRepo.ObterPorUsuarioIdAsync(usuarioId);
         if (pref == null)
             return null;
@@ -349,11 +365,8 @@ public class DashboardService : IDashboardService
     public async Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(SalvarPreferenciaDashboardCommand command)
     {
         var usuarioId = ObterUsuarioIdContexto();
-        return await SalvarPreferenciasAsync(usuarioId, command);
-    }
+        ValidarLayoutJson(command.LayoutJson);
 
-    public async Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(Guid usuarioId, SalvarPreferenciaDashboardCommand command)
-    {
         var pref = await _preferenciaRepo.ObterPorUsuarioIdAsync(usuarioId);
 
         if (pref == null)
@@ -378,6 +391,78 @@ public class DashboardService : IDashboardService
         return new PreferenciaDashboardDto(pref.UsuarioId, pref.LayoutJson, pref.AtualizadoEm);
     }
 
+    private static void ValidarLayoutJson(string? layoutJson)
+    {
+        if (string.IsNullOrWhiteSpace(layoutJson))
+            throw new ArgumentException("O layout JSON não pode ser vazio.");
+
+        if (layoutJson.Length > 16384)
+            throw new ArgumentException("O tamanho do layout JSON excede o limite máximo permitido de 16KB.");
+
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(layoutJson);
+        }
+        catch (JsonException)
+        {
+            throw new ArgumentException("O formato do layout não é um JSON válido.");
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                throw new ArgumentException("O layout deve ser uma lista (array) de widgets.");
+
+            var arrayLength = doc.RootElement.GetArrayLength();
+            if (arrayLength == 0)
+                throw new ArgumentException("O layout deve conter pelo menos um widget configurado.");
+
+            if (arrayLength > 20)
+                throw new ArgumentException("O layout não pode conter mais de 20 widgets.");
+
+            var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind != JsonValueKind.Object)
+                    throw new ArgumentException("Cada item do layout deve ser um objeto representando um widget.");
+
+                if (!element.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
+                    throw new ArgumentException("Todo widget deve conter a propriedade 'id' do tipo string.");
+
+                var widgetId = idProp.GetString()?.Trim();
+                if (string.IsNullOrEmpty(widgetId) || !KnownWidgetIds.Contains(widgetId))
+                    throw new ArgumentException($"O identificador de widget '{widgetId}' é desconhecido ou inválido.");
+
+                if (!seenIds.Add(widgetId))
+                    throw new ArgumentException($"O widget '{widgetId}' está duplicado no layout.");
+
+                if (element.TryGetProperty("ordem", out var ordemProp))
+                {
+                    if (ordemProp.ValueKind != JsonValueKind.Number || !ordemProp.TryGetInt32(out var ordem) || ordem < 1 || ordem > 50)
+                        throw new ArgumentException($"A ordem do widget '{widgetId}' deve ser um número inteiro entre 1 e 50.");
+                }
+
+                if (element.TryGetProperty("visivel", out var visivelProp))
+                {
+                    if (visivelProp.ValueKind != JsonValueKind.True && visivelProp.ValueKind != JsonValueKind.False)
+                        throw new ArgumentException($"A propriedade 'visivel' do widget '{widgetId}' deve ser um booleano.");
+                }
+
+                if (element.TryGetProperty("largura", out var larguraProp))
+                {
+                    if (larguraProp.ValueKind != JsonValueKind.String)
+                        throw new ArgumentException($"A propriedade 'largura' do widget '{widgetId}' deve ser uma string.");
+
+                    var largura = larguraProp.GetString()?.Trim().ToLowerInvariant();
+                    if (largura != "full" && largura != "half")
+                        throw new ArgumentException($"A largura do widget '{widgetId}' deve ser 'full' ou 'half'.");
+                }
+            }
+        }
+    }
+
     private Guid ObterUsuarioIdContexto()
     {
         var user = _httpContextAccessor?.HttpContext?.User;
@@ -385,6 +470,11 @@ public class DashboardService : IDashboardService
                  ?? user?.FindFirst("nameid")?.Value
                  ?? user?.FindFirst("sub")?.Value;
 
-        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+        if (string.IsNullOrWhiteSpace(claim) || !Guid.TryParse(claim, out var id) || id == Guid.Empty)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado ou identidade inválida.");
+        }
+
+        return id;
     }
 }

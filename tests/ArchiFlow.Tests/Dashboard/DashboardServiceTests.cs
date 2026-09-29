@@ -211,68 +211,215 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task Salvar_And_Obter_Preferencias_Should_Persist_Layout_In_Database()
+    public async Task ObterMetricasAsync_Lead_Without_Origem_Should_Fallback_To_Direto()
     {
-        var (service, _) = CreateService();
-        var usuarioId = Guid.NewGuid();
+        var (service, context) = CreateService();
 
-        var layoutJson = "{\"widgets\":[{\"id\":\"kpi-projetos\",\"visible\":true,\"order\":1}]}";
+        var leadSemOrigem = new Lead
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Lead Direto",
+            Email = "direto@teste.com",
+            Status = StatusLead.Novo,
+            OrigemId = null,
+            Origem = null,
+            CriadoEm = DateTime.UtcNow
+        };
+        await context.Leads.AddAsync(leadSemOrigem);
+        await context.SaveChangesAsync();
+
+        var resultado = await service.ObterMetricasAsync();
+
+        resultado.LeadsPorOrigem.Should().Contain(o => o.Origem == "Direto");
+        resultado.LeadsRecentes[0].OrigemNome.Should().Be("Direto");
+    }
+
+    [Fact]
+    public async Task ObterMetricasAsync_ReceitaPotencial_Should_Prioritize_ValorFinalAjustado_Over_ValorTotalSugerido()
+    {
+        var (service, context) = CreateService();
+
+        var propostaAjustada = new PropostaHonorario
+        {
+            Id = Guid.NewGuid(),
+            Titulo = "Proposta Ajustada",
+            Codigo = "PROP-AJUSTADA",
+            MetragemQuadrada = 100m,
+            ValorTotalSugerido = 10000m,
+            ValorFinalAjustado = 9000m, // Deve usar 9000
+            Status = StatusProposta.Enviada,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        var propostaNaoAjustada = new PropostaHonorario
+        {
+            Id = Guid.NewGuid(),
+            Titulo = "Proposta Padrao",
+            Codigo = "PROP-PADRAO",
+            MetragemQuadrada = 100m,
+            ValorTotalSugerido = 5000m,
+            ValorFinalAjustado = 0m, // Deve usar 5000
+            Status = StatusProposta.Rascunho,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await context.PropostasHonorarios.AddRangeAsync(propostaAjustada, propostaNaoAjustada);
+        await context.SaveChangesAsync();
+
+        var resultado = await service.ObterMetricasAsync();
+
+        resultado.Kpis.ValorTotalPropostas.Should().Be(14000m);
+        resultado.Kpis.ValorMedioProposta.Should().Be(7000m);
+    }
+
+    [Fact]
+    public async Task ObterMetricasAsync_Active_Leads_KPI_Should_Exclude_Converted_And_Lost()
+    {
+        var (service, context) = CreateService();
+
+        var leads = new List<Lead>
+        {
+            new() { Id = Guid.NewGuid(), Nome = "L1", Email = "l1@t.com", Status = StatusLead.Novo, CriadoEm = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Nome = "L2", Email = "l2@t.com", Status = StatusLead.EmContato, CriadoEm = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Nome = "L3", Email = "l3@t.com", Status = StatusLead.Negociando, CriadoEm = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Nome = "L4", Email = "l4@t.com", Status = StatusLead.Convertido, CriadoEm = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Nome = "L5", Email = "l5@t.com", Status = StatusLead.Perdido, CriadoEm = DateTime.UtcNow }
+        };
+
+        await context.Leads.AddRangeAsync(leads);
+        await context.SaveChangesAsync();
+
+        var resultado = await service.ObterMetricasAsync();
+
+        resultado.Kpis.TotalLeadsAtivos.Should().Be(3);
+        resultado.Kpis.TotalLeadsConvertidos.Should().Be(1);
+    }
+
+    private static IHttpContextAccessor CreateHttpContextAccessor(string? claimType = null, string? claimValue = null)
+    {
+        var httpContext = new DefaultHttpContext();
+        if (!string.IsNullOrEmpty(claimType) && !string.IsNullOrEmpty(claimValue))
+        {
+            var claims = new Claim[] { new(claimType, claimValue) };
+            httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        }
+        return new HttpContextAccessor { HttpContext = httpContext };
+    }
+
+    [Fact]
+    public async Task Salvar_And_Obter_Preferencias_With_Valid_User_And_Layout_Should_Persist()
+    {
+        var usuarioId = Guid.NewGuid();
+        var accessor = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, usuarioId.ToString());
+        var (service, _) = CreateService(accessor);
+
+        var layoutJson = "[{\"id\":\"kpi_resumo\",\"ordem\":1,\"visivel\":true,\"largura\":\"full\"}]";
         var command = new SalvarPreferenciaDashboardCommand(layoutJson);
 
-        var saved = await service.SalvarPreferenciasAsync(usuarioId, command);
+        var saved = await service.SalvarPreferenciasAsync(command);
         saved.Should().NotBeNull();
         saved.UsuarioId.Should().Be(usuarioId);
         saved.LayoutJson.Should().Be(layoutJson);
 
-        var fetched = await service.ObterPreferenciasAsync(usuarioId);
+        var fetched = await service.ObterPreferenciasAsync();
         fetched.Should().NotBeNull();
         fetched!.LayoutJson.Should().Be(layoutJson);
 
-        var updateCommand = new SalvarPreferenciaDashboardCommand("{\"widgets\":[]}");
-        var updated = await service.SalvarPreferenciasAsync(usuarioId, updateCommand);
-        updated.LayoutJson.Should().Be("{\"widgets\":[]}");
+        var updateJson = "[{\"id\":\"kpi_resumo\",\"ordem\":1,\"visivel\":true,\"largura\":\"full\"},{\"id\":\"atalhos_rapidos\",\"ordem\":2,\"visivel\":false,\"largura\":\"half\"}]";
+        var updated = await service.SalvarPreferenciasAsync(new SalvarPreferenciaDashboardCommand(updateJson));
+        updated.LayoutJson.Should().Be(updateJson);
     }
 
     [Fact]
-    public async Task ObterPreferenciasAsync_When_Not_Found_Should_Return_Null()
+    public async Task ObterPreferenciasAsync_When_No_Preferences_Exist_Should_Return_Null()
     {
-        var (service, _) = CreateService();
-        var resultado = await service.ObterPreferenciasAsync(Guid.NewGuid());
+        var usuarioId = Guid.NewGuid();
+        var accessor = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, usuarioId.ToString());
+        var (service, _) = CreateService(accessor);
+
+        var resultado = await service.ObterPreferenciasAsync();
         resultado.Should().BeNull();
     }
 
     [Fact]
-    public async Task Salvar_And_Obter_Preferencias_Via_HttpContextAccessor_Should_Work()
+    public async Task ObterPreferencias_Without_User_Should_Throw_UnauthorizedAccessException()
     {
-        var usuarioId = Guid.NewGuid();
-        var httpContext = new DefaultHttpContext();
-        var claims = new Claim[]
-        {
-            new(ClaimTypes.NameIdentifier, usuarioId.ToString()),
-            new(ClaimTypes.Role, "Administrador")
-        };
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
-        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
-
-        var (service, _) = CreateService(httpContextAccessor);
-
-        var command = new SalvarPreferenciaDashboardCommand("{\"layout\":\"custom\"}");
-        var saved = await service.SalvarPreferenciasAsync(command);
-
-        saved.Should().NotBeNull();
-        saved.UsuarioId.Should().Be(usuarioId);
-        saved.LayoutJson.Should().Be("{\"layout\":\"custom\"}");
-
-        var fetched = await service.ObterPreferenciasAsync();
-        fetched.Should().NotBeNull();
-        fetched!.LayoutJson.Should().Be("{\"layout\":\"custom\"}");
+        var (service, _) = CreateService(null);
+        var act = async () => await service.ObterPreferenciasAsync();
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
     [Fact]
-    public async Task ObterPreferencias_Without_HttpContext_User_Should_Return_Null()
+    public async Task ObterPreferencias_With_Missing_Or_Invalid_Claim_Should_Throw_UnauthorizedAccessException()
     {
-        var (service, _) = CreateService(null);
-        var fetched = await service.ObterPreferenciasAsync();
-        fetched.Should().BeNull();
+        var accessorInvalid = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, "not-a-guid");
+        var (serviceInvalid, _) = CreateService(accessorInvalid);
+        var actInvalid = async () => await serviceInvalid.ObterPreferenciasAsync();
+        await actInvalid.Should().ThrowAsync<UnauthorizedAccessException>();
+
+        var accessorEmpty = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, Guid.Empty.ToString());
+        var (serviceEmpty, _) = CreateService(accessorEmpty);
+        var actEmpty = async () => await serviceEmpty.ObterPreferenciasAsync();
+        await actEmpty.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task ObterPreferencias_With_Sub_Claim_Fallback_Should_Succeed()
+    {
+        var usuarioId = Guid.NewGuid();
+        var accessorSub = CreateHttpContextAccessor("sub", usuarioId.ToString());
+        var (service, _) = CreateService(accessorSub);
+
+        var resultado = await service.ObterPreferenciasAsync();
+        resultado.Should().BeNull(); // No preferences exist yet, but authentication context succeeded
+    }
+
+    [Fact]
+    public async Task SalvarPreferencias_Without_User_Should_Throw_UnauthorizedAccessException_And_Never_Persist_GuidEmpty()
+    {
+        var (service, context) = CreateService(null);
+        var command = new SalvarPreferenciaDashboardCommand("[{\"id\":\"kpi_resumo\",\"ordem\":1,\"visivel\":true,\"largura\":\"full\"}]");
+
+        var act = async () => await service.SalvarPreferenciasAsync(command);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+
+        context.PreferenciasDashboard.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not a json")]
+    [InlineData("{\"id\":\"kpi_resumo\"}")] // Not an array
+    [InlineData("[]")] // Empty array
+    [InlineData("[{\"id\":\"widget_desconhecido\",\"ordem\":1,\"visivel\":true}]")] // Unknown ID
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":1},{\"id\":\"kpi_resumo\",\"ordem\":2}]")] // Duplicate ID
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":0}]")] // Ordem < 1
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":99}]")] // Ordem > 50
+    [InlineData("[{\"id\":\"kpi_resumo\",\"largura\":\"quarter\"}]")] // Invalid largura
+    public async Task SalvarPreferencias_With_Invalid_Layout_Should_Throw_ArgumentException(string invalidLayout)
+    {
+        var usuarioId = Guid.NewGuid();
+        var accessor = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, usuarioId.ToString());
+        var (service, context) = CreateService(accessor);
+
+        var act = async () => await service.SalvarPreferenciasAsync(new SalvarPreferenciaDashboardCommand(invalidLayout));
+        await act.Should().ThrowAsync<ArgumentException>();
+
+        context.PreferenciasDashboard.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SalvarPreferencias_Payload_Too_Large_Should_Throw_ArgumentException()
+    {
+        var usuarioId = Guid.NewGuid();
+        var accessor = CreateHttpContextAccessor(ClaimTypes.NameIdentifier, usuarioId.ToString());
+        var (service, context) = CreateService(accessor);
+
+        var largeComment = new string('x', 17000);
+        var act = async () => await service.SalvarPreferenciasAsync(new SalvarPreferenciaDashboardCommand(largeComment));
+        await act.Should().ThrowAsync<ArgumentException>();
+
+        context.PreferenciasDashboard.Should().BeEmpty();
     }
 }
