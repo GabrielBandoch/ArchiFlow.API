@@ -177,6 +177,37 @@ public static class DbSeeder
                     ""DSP_Atualizado_Em"" timestamp with time zone,
                     CONSTRAINT ""FK_Despesas_Projetos"" FOREIGN KEY (""DSP_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS ""Configuracoes_Proposta"" (
+                    ""CFP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CFP_Usuario_Id"" uuid NOT NULL,
+                    ""CFP_Nome_Escritorio"" character varying(200) NOT NULL DEFAULT '',
+                    ""CFP_Slogan"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Registro_Profissional"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Email"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Telefone"" character varying(50) NOT NULL DEFAULT '',
+                    ""CFP_Endereco"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Logo_Url"" text,
+                    ""CFP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
+                    ""CFP_Exibir_Cabecalho"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Resumo"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Tabela_Etapas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Memoria_Calculo"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Exibir_Condicoes_Pagamento"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Termos_Gerais"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Assinaturas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Texto_Apresentacao"" text NOT NULL DEFAULT '',
+                    ""CFP_Validade_Dias"" integer NOT NULL DEFAULT 15,
+                    ""CFP_Condicoes_Pagamento_Padrao"" text NOT NULL DEFAULT '',
+                    ""CFP_Chave_Pix"" character varying(100),
+                    ""CFP_Dados_Bancarios"" character varying(300),
+                    ""CFP_Termos_Gerais"" text NOT NULL DEFAULT '',
+                    ""CFP_Template_Mensagem_Whatsapp"" text NOT NULL DEFAULT '',
+                    ""CFP_Configurado"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
             ");
         }
         catch (Exception ex)
