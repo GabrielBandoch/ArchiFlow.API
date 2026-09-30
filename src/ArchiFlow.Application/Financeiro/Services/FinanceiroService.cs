@@ -562,14 +562,18 @@ public class FinanceiroService : IFinanceiroService
 
     private static List<ParcelaFinanceira> GerarParcelasContrato(Guid contratoId, CriarContratoCommand command)
     {
-        var parcelas = new List<ParcelaFinanceira>();
-        var valorPorParcela = Math.Round(command.ValorTotal / command.NumeroParcelas, 2);
-        var diferencaCentavos = command.ValorTotal - (valorPorParcela * command.NumeroParcelas);
+        if (command.NumeroParcelas <= 0 || command.NumeroParcelas > 120)
+            throw new ArgumentOutOfRangeException(nameof(command.NumeroParcelas), "O número de parcelas deve estar entre 1 e 120.");
+
+        var numeroParcelas = Math.Clamp(command.NumeroParcelas, 1, 120);
+        var parcelas = new List<ParcelaFinanceira>(numeroParcelas);
+        var valorPorParcela = Math.Round(command.ValorTotal / numeroParcelas, 2);
+        var diferencaCentavos = command.ValorTotal - (valorPorParcela * numeroParcelas);
         var dataAtual = command.DataPrimeiroVencimento;
 
-        for (var i = 1; i <= command.NumeroParcelas; i++)
+        for (var i = 1; i <= numeroParcelas; i++)
         {
-            var valorFinal = (i == command.NumeroParcelas) ? (valorPorParcela + diferencaCentavos) : valorPorParcela;
+            var valorFinal = (i == numeroParcelas) ? (valorPorParcela + diferencaCentavos) : valorPorParcela;
 
             parcelas.Add(new ParcelaFinanceira
             {
@@ -577,8 +581,8 @@ public class FinanceiroService : IFinanceiroService
                 ProjetoId = command.ProjetoId,
                 ContratoFinanceiroId = contratoId,
                 NumeroParcela = i,
-                TotalParcelas = command.NumeroParcelas,
-                Descricao = $"Parcela {i}/{command.NumeroParcelas}",
+                TotalParcelas = numeroParcelas,
+                Descricao = $"Parcela {i}/{numeroParcelas}",
                 Valor = valorFinal,
                 DataVencimento = dataAtual,
                 Status = dataAtual.Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
