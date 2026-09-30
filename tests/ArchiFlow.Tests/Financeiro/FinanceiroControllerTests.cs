@@ -153,5 +153,19 @@ public class FinanceiroControllerTests
         okResult!.StatusCode.Should().Be(200);
         okResult.Value.Should().BeEquivalentTo(expectedDto);
     }
+
+    [Fact]
+    public async Task ExcluirComprovante_Should_Return_NoContent()
+    {
+        var url = "https://s3.amazonaws.com/recibo.pdf";
+        _facadeMock.Setup(f => f.ExcluirComprovanteAsync(url)).Returns(Task.CompletedTask);
+
+        var result = await _controller.ExcluirComprovante(url);
+
+        var noContentResult = result as NoContentResult;
+        noContentResult.Should().NotBeNull();
+        noContentResult!.StatusCode.Should().Be(204);
+        _facadeMock.Verify(f => f.ExcluirComprovanteAsync(url), Times.Once);
+    }
 }
 

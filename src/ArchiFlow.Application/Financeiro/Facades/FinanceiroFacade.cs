@@ -65,4 +65,7 @@ public class FinanceiroFacade : IFinanceiroFacade
 
     public Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command) =>
         _financeiroService.UploadComprovanteAsync(command);
+
+    public Task ExcluirComprovanteAsync(string fileUrl) =>
+        _financeiroService.ExcluirComprovanteAsync(fileUrl);
 }
