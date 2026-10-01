@@ -563,7 +563,7 @@ public class FinanceiroService : IFinanceiroService
     private static List<ParcelaFinanceira> GerarParcelasContrato(Guid contratoId, CriarContratoCommand command)
     {
         if (command.NumeroParcelas <= 0 || command.NumeroParcelas > 120)
-            throw new ArgumentOutOfRangeException(nameof(command.NumeroParcelas), "O número de parcelas deve estar entre 1 e 120.");
+            throw new ArgumentOutOfRangeException(nameof(command), "O número de parcelas deve estar entre 1 e 120.");
 
         var numeroParcelas = Math.Clamp(command.NumeroParcelas, 1, 120);
         var parcelas = new List<ParcelaFinanceira>(numeroParcelas);
