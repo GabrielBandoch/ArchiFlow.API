@@ -112,6 +112,7 @@ public class SmtpEmailService : IEmailService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Falha no envio de e-mail via SMTP para {To}.", to);
             throw new InvalidOperationException($"Falha no envio de e-mail via SMTP para {to}.", ex);
         }
     }
