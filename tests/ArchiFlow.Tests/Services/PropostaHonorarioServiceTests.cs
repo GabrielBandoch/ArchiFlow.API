@@ -12,6 +12,8 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -23,7 +25,10 @@ public class PropostaHonorarioServiceTests
     private readonly Mock<IClienteRepository> _mockClienteRepo;
     private readonly Mock<ILeadRepository> _mockLeadRepo;
     private readonly Mock<ICalculadoraHonorariosService> _mockCalculadora;
+    private readonly Mock<IConfiguracaoPropostaRepository> _mockConfigRepo;
     private readonly Mock<IUnitOfWork> _mockUow;
+    private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+    private readonly Guid _defaultUserId = Guid.NewGuid();
     private readonly PropostaHonorarioService _service;
 
     public PropostaHonorarioServiceTests()
@@ -32,14 +37,24 @@ public class PropostaHonorarioServiceTests
         _mockClienteRepo = new Mock<IClienteRepository>();
         _mockLeadRepo = new Mock<ILeadRepository>();
         _mockCalculadora = new Mock<ICalculadoraHonorariosService>();
+        _mockConfigRepo = new Mock<IConfiguracaoPropostaRepository>();
         _mockUow = new Mock<IUnitOfWork>();
+
+        var httpContext = new DefaultHttpContext();
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, _defaultUserId.ToString()) };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        httpContext.User = new ClaimsPrincipal(identity);
+        _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
 
         _service = new PropostaHonorarioService(
             _mockRepo.Object,
             _mockClienteRepo.Object,
             _mockLeadRepo.Object,
             _mockCalculadora.Object,
-            _mockUow.Object
+            _mockConfigRepo.Object,
+            _mockUow.Object,
+            _mockHttpContextAccessor.Object
         );
     }
 
@@ -214,5 +229,140 @@ public class PropostaHonorarioServiceTests
 
         result.Should().BeTrue();
         _mockRepo.Verify(r => r.Delete(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_Should_Return_Unconfigured_Default_When_No_Record()
+    {
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((ConfiguracaoProposta?)null);
+
+        var result = await _service.ObterConfiguracaoAsync();
+
+        result.Should().NotBeNull();
+        result.Configurado.Should().BeFalse();
+        result.NomeEscritorio.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SalvarConfiguracaoAsync_Should_Create_Or_Update_Config_And_Commit()
+    {
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((ConfiguracaoProposta?)null);
+        _mockConfigRepo.Setup(r => r.Create(It.IsAny<ConfiguracaoProposta>()))
+            .ReturnsAsync((ConfiguracaoProposta c) => c);
+        _mockUow.Setup(u => u.Commit(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var cmd = new SalvarConfiguracaoPropostaCommand(
+            "Studio Teste Arquitetura",
+            "Design moderno",
+            "CAU A123",
+            "teste@studio.com",
+            "47999999999",
+            "Rua Central",
+            null,
+            "#765538",
+            true,
+            true,
+            true,
+            false,
+            true,
+            true,
+            true,
+            "Apresentação",
+            15,
+            "À vista ou parcelado",
+            "123.456.789-00",
+            "Banco 001",
+            "Termos",
+            "Mensagem"
+        );
+
+        var result = await _service.SalvarConfiguracaoAsync(cmd);
+
+        result.Should().NotBeNull();
+        result.Configurado.Should().BeTrue();
+        result.NomeEscritorio.Should().Be("Studio Teste Arquitetura");
+        _mockConfigRepo.Verify(r => r.Create(It.IsAny<ConfiguracaoProposta>()), Times.Once);
+        _mockUow.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_When_User_Has_No_Claim_Should_Throw_UnauthorizedAccessException()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity()); // empty identity
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var act = () => _service.ObterConfiguracaoAsync();
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não autenticado ou identidade inválida*");
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_When_Claim_Is_Invalid_Guid_Should_Throw_UnauthorizedAccessException()
+    {
+        var httpContext = new DefaultHttpContext();
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, "invalid-guid-string") };
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var act = () => _service.ObterConfiguracaoAsync();
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não autenticado ou identidade inválida*");
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_When_Claim_Is_Guid_Empty_Should_Throw_UnauthorizedAccessException()
+    {
+        var httpContext = new DefaultHttpContext();
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, Guid.Empty.ToString()) };
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        var act = () => _service.ObterConfiguracaoAsync();
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não autenticado ou identidade inválida*");
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_When_Sub_Claim_Is_Valid_Should_Succeed()
+    {
+        var expectedUserId = Guid.NewGuid();
+        var httpContext = new DefaultHttpContext();
+        var claims = new[] { new Claim("sub", expectedUserId.ToString()) };
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(expectedUserId))
+            .ReturnsAsync(new ConfiguracaoProposta { UsuarioId = expectedUserId, NomeEscritorio = "Studio Sub" });
+
+        var result = await _service.ObterConfiguracaoAsync();
+
+        result.Should().NotBeNull();
+        result.NomeEscritorio.Should().Be("Studio Sub");
+        _mockConfigRepo.Verify(r => r.ObterPorUsuarioIdAsync(expectedUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterConfiguracaoAsync_When_NameIdentifier_Claim_Is_Valid_Should_Succeed()
+    {
+        var expectedUserId = Guid.NewGuid();
+        var httpContext = new DefaultHttpContext();
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, expectedUserId.ToString()) };
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+        _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
+
+        _mockConfigRepo.Setup(r => r.ObterPorUsuarioIdAsync(expectedUserId))
+            .ReturnsAsync(new ConfiguracaoProposta { UsuarioId = expectedUserId, NomeEscritorio = "Studio NameId" });
+
+        var result = await _service.ObterConfiguracaoAsync();
+
+        result.Should().NotBeNull();
+        result.NomeEscritorio.Should().Be("Studio NameId");
+        _mockConfigRepo.Verify(r => r.ObterPorUsuarioIdAsync(expectedUserId), Times.Once);
     }
 }

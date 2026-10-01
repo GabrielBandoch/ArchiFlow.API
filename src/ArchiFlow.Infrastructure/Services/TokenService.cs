@@ -14,14 +14,20 @@ public class TokenService : ITokenService
 {
     public string GenerateToken(Usuario usuario)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
             new Claim(ClaimTypes.Name, usuario.Nome),
             new Claim(ClaimTypes.Email, usuario.Email),
             new Claim(ClaimTypes.Role, usuario.Role),
-            new Claim("user_type", "staff")
+            new Claim("user_type", "staff"),
+            new Claim("escritorio_id", (usuario.EscritorioId ?? usuario.Id).ToString())
         };
+
+        if (!string.IsNullOrWhiteSpace(usuario.Cargo))
+        {
+            claims.Add(new Claim("cargo", usuario.Cargo));
+        }
 
         return CreateToken(claims);
     }

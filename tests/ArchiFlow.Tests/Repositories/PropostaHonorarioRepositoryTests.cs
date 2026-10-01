@@ -120,4 +120,41 @@ public class PropostaHonorarioRepositoryTests
         var consultado = await repo.GetById(id);
         consultado.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ConfiguracaoPropostaRepository_ObterPorUsuarioIdAsync_Should_Return_Correct_Config()
+    {
+        using var context = GetInMemoryDbContext();
+        var repo = new ConfiguracaoPropostaRepository(context);
+
+        var usuarioId1 = Guid.NewGuid();
+        var usuarioId2 = Guid.NewGuid();
+
+        var config1 = new ConfiguracaoProposta
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId1,
+            NomeEscritorio = "Studio 1",
+            Configurado = true
+        };
+
+        var config2 = new ConfiguracaoProposta
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId2,
+            NomeEscritorio = "Studio 2",
+            Configurado = true
+        };
+
+        await repo.Create(config1);
+        await repo.Create(config2);
+        await context.SaveChangesAsync();
+
+        var res1 = await repo.ObterPorUsuarioIdAsync(usuarioId1);
+        res1.Should().NotBeNull();
+        res1!.NomeEscritorio.Should().Be("Studio 1");
+
+        var resInexistente = await repo.ObterPorUsuarioIdAsync(Guid.NewGuid());
+        resInexistente.Should().BeNull();
+    }
 }

@@ -1,6 +1,7 @@
 using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Projetos;
+using ArchiFlow.Domain.Financeiro;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -39,6 +40,10 @@ public static class DbSeeder
         {
             await context.Database.ExecuteSqlRawAsync(@"
                 ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Escritorio_Id"" uuid;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Cargo"" character varying(100);
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Telefone"" character varying(30);
+                CREATE INDEX IF NOT EXISTS ""IX_Usuarios_USR_Escritorio_Id"" ON ""Usuarios"" (""USR_Escritorio_Id"");
 
                 CREATE TABLE IF NOT EXISTS ""Tarefas_Etapa"" (
                     ""TAR_Id"" uuid NOT NULL PRIMARY KEY,
@@ -81,7 +86,7 @@ public static class DbSeeder
                     CONSTRAINT ""FK_Mensagens_Chat_Projetos"" FOREIGN KEY (""MSG_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
                 );
 
-                CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_MSG_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
+                CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
 
                 CREATE TABLE IF NOT EXISTS ""Propostas_Honorarios"" (
                     ""PH_Id"" uuid NOT NULL PRIMARY KEY,
@@ -131,6 +136,82 @@ public static class DbSeeder
                     ""PDB_Atualizado_Em"" timestamp with time zone NOT NULL,
                     CONSTRAINT ""UQ_Preferencias_Dashboard_Usuario"" UNIQUE (""PDB_Usuario_Id"")
                 );
+
+                CREATE TABLE IF NOT EXISTS ""Contratos_Financeiros"" (
+                    ""CTF_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CTF_Projeto_Id"" uuid NOT NULL,
+                    ""CTF_Valor_Total"" numeric(18,2) NOT NULL,
+                    ""CTF_Condicoes_Pagamento"" character varying(500),
+                    ""CTF_Observacoes"" text,
+                    ""CTF_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""CTF_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Contratos_Projetos"" FOREIGN KEY (""CTF_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Parcelas_Financeiras"" (
+                    ""PAR_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PAR_Projeto_Id"" uuid NOT NULL,
+                    ""PAR_Contrato_Id"" uuid,
+                    ""PAR_Numero_Parcela"" integer NOT NULL,
+                    ""PAR_Total_Parcelas"" integer NOT NULL,
+                    ""PAR_Descricao"" character varying(200) NOT NULL,
+                    ""PAR_Valor"" numeric(18,2) NOT NULL,
+                    ""PAR_Data_Vencimento"" timestamp with time zone NOT NULL,
+                    ""PAR_Data_Pagamento"" timestamp with time zone,
+                    ""PAR_Status"" integer NOT NULL,
+                    ""PAR_Forma_Pagamento"" integer,
+                    ""PAR_Observacoes"" text,
+                    ""PAR_Comprovante_Url"" character varying(1000),
+                    ""PAR_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""PAR_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Parcelas_Projetos"" FOREIGN KEY (""PAR_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_Parcelas_Contratos"" FOREIGN KEY (""PAR_Contrato_Id"") REFERENCES ""Contratos_Financeiros"" (""CTF_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Despesas_Projetos"" (
+                    ""DSP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""DSP_Projeto_Id"" uuid NOT NULL,
+                    ""DSP_Descricao"" character varying(200) NOT NULL,
+                    ""DSP_Valor"" numeric(18,2) NOT NULL,
+                    ""DSP_Data_Despesa"" timestamp with time zone NOT NULL,
+                    ""DSP_Categoria"" integer NOT NULL,
+                    ""DSP_Observacoes"" text,
+                    ""DSP_Comprovante_Url"" character varying(1000),
+                    ""DSP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""DSP_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Despesas_Projetos"" FOREIGN KEY (""DSP_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Configuracoes_Proposta"" (
+                    ""CFP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CFP_Usuario_Id"" uuid NOT NULL,
+                    ""CFP_Nome_Escritorio"" character varying(200) NOT NULL DEFAULT '',
+                    ""CFP_Slogan"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Registro_Profissional"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Email"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Telefone"" character varying(50) NOT NULL DEFAULT '',
+                    ""CFP_Endereco"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Logo_Url"" text,
+                    ""CFP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
+                    ""CFP_Exibir_Cabecalho"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Resumo"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Tabela_Etapas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Memoria_Calculo"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Exibir_Condicoes_Pagamento"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Termos_Gerais"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Assinaturas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Texto_Apresentacao"" text NOT NULL DEFAULT '',
+                    ""CFP_Validade_Dias"" integer NOT NULL DEFAULT 15,
+                    ""CFP_Condicoes_Pagamento_Padrao"" text NOT NULL DEFAULT '',
+                    ""CFP_Chave_Pix"" character varying(100),
+                    ""CFP_Dados_Bancarios"" character varying(300),
+                    ""CFP_Termos_Gerais"" text NOT NULL DEFAULT '',
+                    ""CFP_Template_Mensagem_Whatsapp"" text NOT NULL DEFAULT '',
+                    ""CFP_Configurado"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
             ");
         }
         catch (Exception ex)
@@ -145,6 +226,7 @@ public static class DbSeeder
         await SeedOrigensLeadAsync(context);
         await SeedTemplatesProjetoAsync(context);
         await SeedUsuariosAsync(context, isDevelopment);
+        await SeedFinanceiroAsync(context);
     }
 
     private static async Task SeedUsuariosAsync(ArchiFlowDbContext context, bool isDevelopment)
@@ -483,6 +565,168 @@ public static class DbSeeder
         };
 
         await context.TemplatesProjeto.AddRangeAsync(residencial, interiores, comercial, consultoria);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedFinanceiroAsync(ArchiFlowDbContext context)
+    {
+        if (await context.ParcelasFinanceiras.AnyAsync())
+        {
+            return;
+        }
+
+        var projetos = await context.Projetos.Take(5).ToListAsync();
+        if (projetos.Count == 0) return;
+
+        var hoje = DateTime.UtcNow.Date;
+        var random = new Random(42);
+
+        var p1 = projetos[0];
+        var ctf1 = new ContratoFinanceiro
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = p1.Id,
+            ValorTotal = 45000m,
+            CondicoesPagamento = "Entrada + 2 parcelas de 15k",
+            Observacoes = "Contrato de arquitetura residencial completa",
+            CriadoEm = hoje.AddDays(-60)
+        };
+        await context.ContratosFinanceiros.AddAsync(ctf1);
+
+        var parcelas = new List<ParcelaFinanceira>
+        {
+            new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p1.Id,
+                ContratoFinanceiroId = ctf1.Id,
+                NumeroParcela = 1,
+                TotalParcelas = 3,
+                Descricao = "Entrada / Estudo Preliminar",
+                Valor = 15000m,
+                DataVencimento = hoje.AddDays(-45),
+                DataPagamento = hoje.AddDays(-45),
+                Status = StatusParcela.Pago,
+                FormaPagamento = FormaPagamento.Pix,
+                CriadoEm = hoje.AddDays(-60)
+            },
+            new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p1.Id,
+                ContratoFinanceiroId = ctf1.Id,
+                NumeroParcela = 2,
+                TotalParcelas = 3,
+                Descricao = "Anteprojeto & Legal",
+                Valor = 15000m,
+                DataVencimento = hoje.AddDays(-5),
+                Status = StatusParcela.Atrasado,
+                CriadoEm = hoje.AddDays(-60)
+            },
+            new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p1.Id,
+                ContratoFinanceiroId = ctf1.Id,
+                NumeroParcela = 3,
+                TotalParcelas = 3,
+                Descricao = "Projeto Executivo & Entrega",
+                Valor = 15000m,
+                DataVencimento = hoje.AddDays(25),
+                Status = StatusParcela.Pendente,
+                CriadoEm = hoje.AddDays(-60)
+            }
+        };
+
+        if (projetos.Count > 1)
+        {
+            var p2 = projetos[1];
+            parcelas.Add(new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p2.Id,
+                NumeroParcela = 1,
+                TotalParcelas = 2,
+                Descricao = "Entrada - Reforma Comercial",
+                Valor = 25000m,
+                DataVencimento = hoje.AddDays(1),
+                Status = StatusParcela.Pendente,
+                CriadoEm = hoje.AddDays(-10)
+            });
+            parcelas.Add(new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p2.Id,
+                NumeroParcela = 2,
+                TotalParcelas = 2,
+                Descricao = "Finalização - Reforma Comercial",
+                Valor = 25000m,
+                DataVencimento = hoje.AddDays(30),
+                Status = StatusParcela.Pendente,
+                CriadoEm = hoje.AddDays(-10)
+            });
+        }
+
+        if (projetos.Count > 2)
+        {
+            var p3 = projetos[2];
+            parcelas.Add(new ParcelaFinanceira
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p3.Id,
+                NumeroParcela = 1,
+                TotalParcelas = 1,
+                Descricao = "Consultoria de Interiores",
+                Valor = 12000m,
+                DataVencimento = hoje.AddDays(-20),
+                DataPagamento = hoje.AddDays(-20),
+                Status = StatusParcela.Pago,
+                FormaPagamento = FormaPagamento.Transferencia,
+                CriadoEm = hoje.AddDays(-30)
+            });
+        }
+
+        await context.ParcelasFinanceiras.AddRangeAsync(parcelas);
+
+        var despesas = new List<DespesaProjeto>
+        {
+            new DespesaProjeto
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p1.Id,
+                Descricao = "Plotagem de Pranchas A0 e A1",
+                Valor = 480m,
+                DataDespesa = hoje.AddDays(-10),
+                Categoria = CategoriaDespesa.PlotagemImpressao,
+                CriadoEm = hoje.AddDays(-10)
+            },
+            new DespesaProjeto
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = p1.Id,
+                Descricao = "Visitas Técnicas de Acompanhamento (Uber/Combustível)",
+                Valor = 250m,
+                DataDespesa = hoje.AddDays(-5),
+                Categoria = CategoriaDespesa.DeslocamentoVisita,
+                CriadoEm = hoje.AddDays(-5)
+            }
+        };
+
+        if (projetos.Count > 1)
+        {
+            despesas.Add(new DespesaProjeto
+            {
+                Id = Guid.NewGuid(),
+                ProjetoId = projetos[1].Id,
+                Descricao = "Taxas de Aprovação Prefeitura",
+                Valor = 1250m,
+                DataDespesa = hoje.AddDays(-2),
+                Categoria = CategoriaDespesa.TaxasPrefeitura,
+                CriadoEm = hoje.AddDays(-2)
+            });
+        }
+
+        await context.DespesasProjetos.AddRangeAsync(despesas);
         await context.SaveChangesAsync();
     }
 }

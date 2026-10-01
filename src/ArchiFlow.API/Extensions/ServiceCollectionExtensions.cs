@@ -65,7 +65,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
         services.AddScoped<IArquivoRepository, ArquivoRepository>();
         services.AddScoped<ArchiFlow.Domain.Honorarios.IPropostaHonorarioRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.PropostaHonorarioRepository>();
+        services.AddScoped<ArchiFlow.Domain.Honorarios.IConfiguracaoPropostaRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.ConfiguracaoPropostaRepository>();
         services.AddScoped<ArchiFlow.Domain.Dashboard.IPreferenciaDashboardRepository, ArchiFlow.Infrastructure.Repositories.Dashboard.PreferenciaDashboardRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IParcelaFinanceiraRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ParcelaFinanceiraRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IContratoFinanceiroRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ContratoFinanceiroRepository>();
+        services.AddScoped<ArchiFlow.Domain.Financeiro.IDespesaProjetoRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.DespesaProjetoRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
@@ -79,6 +83,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClienteFacade, ClienteFacade>();
         services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();
         services.AddScoped<IArquivoFacade, ArchiFlow.Application.Arquivos.Facades.ArquivoFacade>();
+        // Financeiro Services & Facades
+        services.AddScoped<IFinanceiroService, ArchiFlow.Application.Financeiro.Services.FinanceiroService>();
+        services.AddScoped<IFinanceiroFacade, ArchiFlow.Application.Financeiro.Facades.FinanceiroFacade>();
         // Honorários - Strategy, Factory & Builder Patterns (GoF)
         services.AddScoped<ICalculoHonorarioStrategy, ResidencialCalculoStrategy>();
         services.AddScoped<ICalculoHonorarioStrategy, ComercialCalculoStrategy>();
@@ -95,6 +102,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPropostaHonorarioFacade, ArchiFlow.Application.Honorarios.Facades.PropostaHonorarioFacade>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUsuarioService, ArchiFlow.Application.Usuarios.Services.UsuarioService>();
+        services.AddScoped<IUsuarioFacade, ArchiFlow.Application.Usuarios.Facades.UsuarioFacade>();
 
         // Chat Repositories, Services & Facades
         services.AddScoped<ArchiFlow.Domain.Chat.IMensagemChatRepository, ArchiFlow.Infrastructure.Repositories.Chat.MensagemChatRepository>();
@@ -105,18 +114,30 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDashboardFacade, DashboardFacade>();
 
-        // Storage & Email (Automatic environment-based registration)
-        if (environment.IsProduction())
+        // Storage & Email (Automatic environment and configuration-based registration)
+        var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
+        if (!string.IsNullOrWhiteSpace(smtpUser))
         {
-            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else if (environment.IsProduction())
+        {
             services.AddScoped<Amazon.SimpleEmail.IAmazonSimpleEmailService, Amazon.SimpleEmail.AmazonSimpleEmailServiceClient>();
-            services.AddScoped<IStorageService, S3StorageService>();
             services.AddScoped<IEmailService, SesEmailService>();
         }
         else
         {
-            services.AddScoped<IStorageService, LocalStorageService>();
             services.AddScoped<IEmailService, ConsoleEmailService>();
+        }
+
+        if (environment.IsProduction())
+        {
+            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddScoped<IStorageService, S3StorageService>();
+        }
+        else
+        {
+            services.AddScoped<IStorageService, LocalStorageService>();
         }
 
         // SignalR
@@ -170,9 +191,16 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddAuthorizationBuilder()
-            .AddPolicy("ApenasAdmin", policy => policy.RequireRole("Administrador"))
-            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole("Administrador", "Gerente"))
-            .AddPolicy("AcessoArquiteto", policy => policy.RequireRole("Administrador", "Gerente", "Colaborador"))
+            .AddPolicy("ApenasAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.ArquitetoAdmin))
+            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.Gerente, Roles.ArquitetoAdmin))
+            .AddPolicy("AcessoArquiteto", policy => policy.RequireRole(
+                Roles.Administrador,
+                Roles.Gerente,
+                Roles.Colaborador,
+                Roles.ArquitetoAdmin,
+                Roles.ArquitetoColaborador,
+                Roles.Estagiario,
+                Roles.Financeiro))
             .AddPolicy("ProjetoOwner", policy =>
             {
                 policy.RequireAuthenticatedUser();
