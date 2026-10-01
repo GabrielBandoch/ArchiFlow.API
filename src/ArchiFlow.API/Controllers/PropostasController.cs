@@ -63,10 +63,12 @@ public class PropostasController : ControllerBase
     }
 
     [HttpGet("configuracao")]
+    [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> ObterConfiguracao() =>
         Ok(await _facade.ObterConfiguracaoAsync());
 
     [HttpPut("configuracao")]
+    [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> SalvarConfiguracao([FromBody] SalvarConfiguracaoPropostaCommand command) =>
         Ok(await _facade.SalvarConfiguracaoAsync(command));
 }
