@@ -438,6 +438,11 @@ public class PropostaHonorarioService : IPropostaHonorarioService
                  ?? user?.FindFirst("nameid")?.Value
                  ?? user?.FindFirst("sub")?.Value;
 
-        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+        if (string.IsNullOrWhiteSpace(claim) || !Guid.TryParse(claim, out var id) || id == Guid.Empty)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado ou identidade inválida.");
+        }
+
+        return id;
     }
 }

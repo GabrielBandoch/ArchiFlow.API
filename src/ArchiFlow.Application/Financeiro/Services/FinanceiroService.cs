@@ -4,11 +4,11 @@ using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Financeiro;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
-using AutoMapper;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,12 +16,26 @@ namespace ArchiFlow.Application.Financeiro.Services;
 
 public class FinanceiroService : IFinanceiroService
 {
+    private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
+
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".png", ".jpg", ".jpeg"
+    };
+
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/jpg"
+    };
+
     private readonly IParcelaFinanceiraRepository _parcelaRepository;
     private readonly IContratoFinanceiroRepository _contratoRepository;
     private readonly IDespesaProjetoRepository _despesaRepository;
     private readonly IProjetoRepository _projetoRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly ILogger<FinanceiroService> _logger;
     private readonly IStorageService? _storageService;
 
@@ -31,7 +45,6 @@ public class FinanceiroService : IFinanceiroService
         IDespesaProjetoRepository despesaRepository,
         IProjetoRepository projetoRepository,
         IUnitOfWork unitOfWork,
-        IMapper mapper,
         ILogger<FinanceiroService> logger,
         IStorageService? storageService = null)
     {
@@ -40,7 +53,6 @@ public class FinanceiroService : IFinanceiroService
         _despesaRepository = despesaRepository;
         _projetoRepository = projetoRepository;
         _unitOfWork = unitOfWork;
-        _mapper = mapper;
         _logger = logger;
         _storageService = storageService;
     }
@@ -81,8 +93,17 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<IEnumerable<ParcelaFinanceiraDto>> ObterParcelasAsync(Guid? projetoId, StatusParcela? status, DateTime? inicio, DateTime? fim)
     {
-        var parcelas = await _parcelaRepository.ObterComFiltroAsync(projetoId, status, inicio, fim);
-        return parcelas.Select(MapearParaDto);
+        var hoje = DateTime.UtcNow.Date;
+        var parcelas = (await _parcelaRepository.ObterComFiltroAsync(projetoId, null, inicio, fim)).ToList();
+        AtualizarStatusParcelasVencidas(parcelas, hoje);
+
+        var query = parcelas.AsEnumerable();
+        if (status.HasValue)
+        {
+            query = query.Where(p => p.Status == status.Value);
+        }
+
+        return query.Select(MapearParaDto);
     }
 
     public async Task<ParcelaFinanceiraDto?> ObterParcelaPorIdAsync(Guid id)
@@ -93,6 +114,24 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ContratoFinanceiroDto> CriarContratoAsync(CriarContratoCommand command)
     {
+        if (command.ProjetoId == Guid.Empty)
+            throw new ArgumentException("ProjetoId é obrigatório.");
+
+        if (command.ValorTotal <= 0)
+            throw new ArgumentException("O valor total do contrato deve ser maior que zero.");
+
+        if (command.NumeroParcelas <= 0)
+            throw new ArgumentException("O número de parcelas deve ser maior que zero.");
+
+        if (command.NumeroParcelas > 120)
+            throw new ArgumentException("O número de parcelas não pode ser superior a 120.");
+
+        if (command.IntervaloDias <= 0)
+            throw new ArgumentException("O intervalo de dias entre parcelas deve ser maior que zero.");
+
+        if (command.DataPrimeiroVencimento == default)
+            throw new ArgumentException("Data do primeiro vencimento é obrigatória.");
+
         var projeto = await _projetoRepository.GetById(command.ProjetoId);
         if (projeto is null)
             throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
@@ -133,6 +172,27 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ParcelaFinanceiraDto> RegistrarParcelaAsync(CriarParcelaCommand command)
     {
+        if (command.ProjetoId == Guid.Empty)
+            throw new ArgumentException("ProjetoId é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(command.Descricao))
+            throw new ArgumentException("A descrição da parcela é obrigatória.");
+
+        if (command.Valor <= 0)
+            throw new ArgumentException("O valor da parcela deve ser maior que zero.");
+
+        if (command.NumeroParcela <= 0)
+            throw new ArgumentException("O número da parcela deve ser maior que zero.");
+
+        if (command.TotalParcelas <= 0)
+            throw new ArgumentException("O total de parcelas deve ser maior que zero.");
+
+        if (command.NumeroParcela > command.TotalParcelas)
+            throw new ArgumentException("O número da parcela não pode ser maior que o total de parcelas.");
+
+        if (command.DataVencimento == default)
+            throw new ArgumentException("Data de vencimento é obrigatória.");
+
         var projeto = await _projetoRepository.GetById(command.ProjetoId);
         if (projeto is null)
             throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
@@ -142,9 +202,9 @@ public class FinanceiroService : IFinanceiroService
             Id = Guid.NewGuid(),
             ProjetoId = command.ProjetoId,
             ContratoFinanceiroId = command.ContratoFinanceiroId,
-            NumeroParcela = command.NumeroParcela > 0 ? command.NumeroParcela : 1,
-            TotalParcelas = command.TotalParcelas > 0 ? command.TotalParcelas : 1,
-            Descricao = command.Descricao,
+            NumeroParcela = command.NumeroParcela,
+            TotalParcelas = command.TotalParcelas,
+            Descricao = command.Descricao.Trim(),
             Valor = command.Valor,
             DataVencimento = command.DataVencimento,
             Status = command.DataVencimento.Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
@@ -163,11 +223,28 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ParcelaFinanceiraDto> AtualizarParcelaAsync(Guid id, AtualizarParcelaCommand command)
     {
+        if (string.IsNullOrWhiteSpace(command.Descricao))
+            throw new ArgumentException("A descrição da parcela é obrigatória.");
+
+        if (command.Valor <= 0)
+            throw new ArgumentException("O valor da parcela deve ser maior que zero.");
+
+        if (command.DataVencimento == default)
+            throw new ArgumentException("Data de vencimento é obrigatória.");
+
+        if (command.Status == StatusParcela.Pago)
+        {
+            if (!command.DataPagamento.HasValue || command.DataPagamento.Value == default)
+                throw new ArgumentException("Data de pagamento é obrigatória para parcelas com status Pago.");
+            if (!command.FormaPagamento.HasValue)
+                throw new ArgumentException("Forma de pagamento é obrigatória para parcelas com status Pago.");
+        }
+
         var parcela = await _parcelaRepository.GetById(id);
         if (parcela is null)
             throw new KeyNotFoundException($"Parcela com Id {id} não encontrada.");
 
-        parcela.Descricao = command.Descricao;
+        parcela.Descricao = command.Descricao.Trim();
         parcela.Valor = command.Valor;
         parcela.DataVencimento = command.DataVencimento;
         parcela.Status = command.Status;
@@ -185,9 +262,18 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ParcelaFinanceiraDto> DarBaixaParcelaAsync(Guid id, DarBaixaParcelaCommand command)
     {
+        if (command.DataPagamento == default)
+            throw new ArgumentException("Data de pagamento é obrigatória.");
+
+        if (command.DataPagamento > DateTime.UtcNow.AddDays(1))
+            throw new ArgumentException("Data de pagamento não pode ser futura.");
+
         var parcela = await _parcelaRepository.GetById(id);
         if (parcela is null)
             throw new KeyNotFoundException($"Parcela com Id {id} não encontrada.");
+
+        if (parcela.Status == StatusParcela.Cancelado)
+            throw new InvalidOperationException("Não é possível dar baixa em uma parcela cancelada.");
 
         parcela.Status = StatusParcela.Pago;
         parcela.DataPagamento = command.DataPagamento;
@@ -230,6 +316,18 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<DespesaProjetoDto> CriarDespesaAsync(CriarDespesaCommand command)
     {
+        if (command.ProjetoId == Guid.Empty)
+            throw new ArgumentException("ProjetoId é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(command.Descricao))
+            throw new ArgumentException("A descrição da despesa é obrigatória.");
+
+        if (command.Valor <= 0)
+            throw new ArgumentException("O valor da despesa deve ser maior que zero.");
+
+        if (command.DataDespesa == default)
+            throw new ArgumentException("Data da despesa é obrigatória.");
+
         var projeto = await _projetoRepository.GetById(command.ProjetoId);
         if (projeto is null)
             throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
@@ -238,7 +336,7 @@ public class FinanceiroService : IFinanceiroService
         {
             Id = Guid.NewGuid(),
             ProjetoId = command.ProjetoId,
-            Descricao = command.Descricao,
+            Descricao = command.Descricao.Trim(),
             Valor = command.Valor,
             DataDespesa = command.DataDespesa,
             Categoria = command.Categoria,
@@ -256,11 +354,20 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<DespesaProjetoDto> AtualizarDespesaAsync(Guid id, AtualizarDespesaCommand command)
     {
+        if (string.IsNullOrWhiteSpace(command.Descricao))
+            throw new ArgumentException("A descrição da despesa é obrigatória.");
+
+        if (command.Valor <= 0)
+            throw new ArgumentException("O valor da despesa deve ser maior que zero.");
+
+        if (command.DataDespesa == default)
+            throw new ArgumentException("Data da despesa é obrigatória.");
+
         var despesa = await _despesaRepository.GetById(id);
         if (despesa is null)
             throw new KeyNotFoundException($"Despesa com Id {id} não encontrada.");
 
-        despesa.Descricao = command.Descricao;
+        despesa.Descricao = command.Descricao.Trim();
         despesa.Valor = command.Valor;
         despesa.DataDespesa = command.DataDespesa;
         despesa.Categoria = command.Categoria;
@@ -293,16 +400,67 @@ public class FinanceiroService : IFinanceiroService
         return GerarAlertasFinanceiros(parcelas, hoje);
     }
 
-    #region Private Static Helper Methods (Clean Code & Low Cognitive Complexity)
+    public async Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command)
+    {
+        if (command.File == null || command.File.Length == 0)
+        {
+            throw new ArgumentException("Nenhum arquivo enviado.");
+        }
+
+        if (command.File.Length > MaxFileSize)
+        {
+            throw new ArgumentException("O arquivo excede o limite máximo permitido de 20 MB.");
+        }
+
+        var extension = Path.GetExtension(command.File.FileName);
+        if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
+        {
+            throw new ArgumentException("Extensão de arquivo não permitida. Apenas PDF, PNG, JPG e JPEG são suportados.");
+        }
+
+        var contentType = command.File.ContentType;
+        if (string.IsNullOrWhiteSpace(contentType) || !AllowedContentTypes.Contains(contentType))
+        {
+            throw new ArgumentException("Tipo de conteúdo de arquivo inválido.");
+        }
+
+        if (_storageService == null)
+        {
+            throw new InvalidOperationException("Serviço de armazenamento não configurado.");
+        }
+
+        var safeStorageFileName = $"{Guid.NewGuid()}{extension.ToLowerInvariant()}";
+
+        using var stream = command.File.OpenReadStream();
+        var url = await _storageService.UploadAsync(stream, safeStorageFileName, contentType);
+        return new ComprovanteUploadResultDto(url, command.File.FileName);
+    }
+
+    public async Task ExcluirComprovanteAsync(string fileUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl) || _storageService == null)
+            return;
+
+        await _storageService.DeleteAsync(fileUrl);
+    }
+
+    #region Helper Methods (Clean Code & Low Cognitive Complexity)
+
+    public static StatusParcela ObterStatusEfetivo(ParcelaFinanceira p, DateTime? dataReferencia = null)
+    {
+        var hoje = (dataReferencia ?? DateTime.UtcNow).Date;
+        if (p.Status == StatusParcela.Pendente && p.DataVencimento.Date < hoje)
+        {
+            return StatusParcela.Atrasado;
+        }
+        return p.Status;
+    }
 
     private static void AtualizarStatusParcelasVencidas(IEnumerable<ParcelaFinanceira> parcelas, DateTime hoje)
     {
         foreach (var parcela in parcelas)
         {
-            if (parcela.Status == StatusParcela.Pendente && parcela.DataVencimento.Date < hoje)
-            {
-                parcela.Status = StatusParcela.Atrasado;
-            }
+            parcela.Status = ObterStatusEfetivo(parcela, hoje);
         }
     }
 
@@ -404,14 +562,18 @@ public class FinanceiroService : IFinanceiroService
 
     private static List<ParcelaFinanceira> GerarParcelasContrato(Guid contratoId, CriarContratoCommand command)
     {
-        var parcelas = new List<ParcelaFinanceira>();
-        var valorPorParcela = Math.Round(command.ValorTotal / command.NumeroParcelas, 2);
-        var diferencaCentavos = command.ValorTotal - (valorPorParcela * command.NumeroParcelas);
+        if (command.NumeroParcelas <= 0 || command.NumeroParcelas > 120)
+            throw new ArgumentOutOfRangeException(nameof(command.NumeroParcelas), "O número de parcelas deve estar entre 1 e 120.");
+
+        var numeroParcelas = Math.Clamp(command.NumeroParcelas, 1, 120);
+        var parcelas = new List<ParcelaFinanceira>(numeroParcelas);
+        var valorPorParcela = Math.Round(command.ValorTotal / numeroParcelas, 2);
+        var diferencaCentavos = command.ValorTotal - (valorPorParcela * numeroParcelas);
         var dataAtual = command.DataPrimeiroVencimento;
 
-        for (var i = 1; i <= command.NumeroParcelas; i++)
+        for (var i = 1; i <= numeroParcelas; i++)
         {
-            var valorFinal = (i == command.NumeroParcelas) ? (valorPorParcela + diferencaCentavos) : valorPorParcela;
+            var valorFinal = (i == numeroParcelas) ? (valorPorParcela + diferencaCentavos) : valorPorParcela;
 
             parcelas.Add(new ParcelaFinanceira
             {
@@ -419,8 +581,8 @@ public class FinanceiroService : IFinanceiroService
                 ProjetoId = command.ProjetoId,
                 ContratoFinanceiroId = contratoId,
                 NumeroParcela = i,
-                TotalParcelas = command.NumeroParcelas,
-                Descricao = $"Parcela {i}/{command.NumeroParcelas}",
+                TotalParcelas = numeroParcelas,
+                Descricao = $"Parcela {i}/{numeroParcelas}",
                 Valor = valorFinal,
                 DataVencimento = dataAtual,
                 Status = dataAtual.Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
@@ -435,6 +597,7 @@ public class FinanceiroService : IFinanceiroService
 
     private static ParcelaFinanceiraDto MapearParaDto(ParcelaFinanceira p)
     {
+        var statusEfetivo = ObterStatusEfetivo(p);
         return new ParcelaFinanceiraDto(
             p.Id,
             p.ProjetoId,
@@ -448,8 +611,8 @@ public class FinanceiroService : IFinanceiroService
             p.Valor,
             p.DataVencimento,
             p.DataPagamento,
-            p.Status,
-            p.Status.ToString(),
+            statusEfetivo,
+            statusEfetivo.ToString(),
             p.FormaPagamento,
             p.FormaPagamento?.ToString(),
             p.Observacoes,
@@ -487,23 +650,6 @@ public class FinanceiroService : IFinanceiroService
             d.ComprovanteUrl,
             d.CriadoEm
         );
-    }
-
-    public async Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command)
-    {
-        if (command.File == null || command.File.Length == 0)
-        {
-            throw new ArgumentException("Nenhum arquivo enviado.");
-        }
-
-        if (_storageService == null)
-        {
-            throw new InvalidOperationException("Serviço de armazenamento não configurado.");
-        }
-
-        using var stream = command.File.OpenReadStream();
-        var url = await _storageService.UploadAsync(stream, command.File.FileName, command.File.ContentType);
-        return new ComprovanteUploadResultDto(url, command.File.FileName);
     }
 
     #endregion

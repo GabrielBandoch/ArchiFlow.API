@@ -25,4 +25,5 @@ public interface IFinanceiroService
     Task ExcluirDespesaAsync(Guid id);
     Task<IEnumerable<AlertaFinanceiroDto>> ObterAlertasAsync();
     Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command);
+    Task ExcluirComprovanteAsync(string fileUrl);
 }

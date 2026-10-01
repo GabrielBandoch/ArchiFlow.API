@@ -120,4 +120,12 @@ public class FinanceiroController : ControllerBase
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> UploadComprovante([FromForm] UploadComprovanteCommand command) =>
         Ok(await _facade.UploadComprovanteAsync(command));
+
+    [HttpDelete("comprovante")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> ExcluirComprovante([FromQuery] string url)
+    {
+        await _facade.ExcluirComprovanteAsync(url);
+        return NoContent();
+    }
 }
