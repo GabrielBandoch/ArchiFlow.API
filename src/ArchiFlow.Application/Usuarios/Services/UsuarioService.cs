@@ -17,6 +17,8 @@ namespace ArchiFlow.Application.Usuarios.Services;
 
 public class UsuarioService : IUsuarioService
 {
+    private const string MensagemSemPermissaoGerenciarMembro = "Você não possui permissão para gerenciar este membro.";
+
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
@@ -127,7 +129,7 @@ public class UsuarioService : IUsuarioService
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId)
-            throw new UnauthorizedAccessException("Você não possui permissão para gerenciar este membro.");
+            throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
         if (!string.IsNullOrWhiteSpace(command.Email))
         {
@@ -170,7 +172,7 @@ public class UsuarioService : IUsuarioService
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId)
-            throw new UnauthorizedAccessException("Você não possui permissão para gerenciar este membro.");
+            throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
         membro.Ativo = command.Ativo;
         membro.AtualizadoEm = DateTime.UtcNow;
@@ -191,7 +193,7 @@ public class UsuarioService : IUsuarioService
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId)
-            throw new UnauthorizedAccessException("Você não possui permissão para gerenciar este membro.");
+            throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
         var novaSenha = !string.IsNullOrWhiteSpace(command.NovaSenha) && command.NovaSenha.Length >= 6
             ? command.NovaSenha
@@ -230,7 +232,7 @@ public class UsuarioService : IUsuarioService
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId)
-            throw new UnauthorizedAccessException("Você não possui permissão para gerenciar este membro.");
+            throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
         await _usuarioRepository.Delete(id);
         await _unitOfWork.Commit();

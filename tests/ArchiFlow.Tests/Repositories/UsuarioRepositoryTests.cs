@@ -68,4 +68,51 @@ public class UsuarioRepositoryTests
 
         result.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ObterPorEscritorioIdAsync_DeveRetornarMembrosDoMesmoEscritorioOuOwner()
+    {
+        using var context = TestDbContextFactory.Create();
+        var repository = new UsuarioRepository(context);
+
+        var escritorioId = Guid.NewGuid();
+        var outroEscritorioId = Guid.NewGuid();
+
+        var admin = new Usuario
+        {
+            Id = escritorioId,
+            EscritorioId = null,
+            Nome = "Admin Owner",
+            Email = "admin@studio.com",
+            Role = "Administrador"
+        };
+
+        var colaborador = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = escritorioId,
+            Nome = "Colaborador",
+            Email = "colaborador@studio.com",
+            Role = "Colaborador"
+        };
+
+        var deOutroEscritorio = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = outroEscritorioId,
+            Nome = "Outro",
+            Email = "outro@studio.com",
+            Role = "Colaborador"
+        };
+
+        context.Usuarios.AddRange(admin, colaborador, deOutroEscritorio);
+        await context.SaveChangesAsync();
+
+        var result = await repository.ObterPorEscritorioIdAsync(escritorioId);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(u => u.Email == "admin@studio.com");
+        result.Should().Contain(u => u.Email == "colaborador@studio.com");
+        result.Should().NotContain(u => u.Email == "outro@studio.com");
+    }
 }

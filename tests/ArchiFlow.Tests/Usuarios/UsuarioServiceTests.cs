@@ -468,6 +468,143 @@ public class UsuarioServiceTests
 
         // Act & Assert
         var act = async () => await _service.ObterEquipeAsync();
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não autenticado ou identidade inválida*");
+    }
+
+    [Fact]
+    public async Task Contexto_QuandoClaimGuidEmpty_DeveLancarUnauthorizedAccessException()
+    {
+        // Arrange
+        SetupHttpContext(Guid.Empty);
+
+        // Act & Assert
+        var act = async () => await _service.ObterEquipeAsync();
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não autenticado ou identidade inválida*");
+    }
+
+    [Fact]
+    public async Task Contexto_QuandoClaimSub_DeveObterContextoComSucesso()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var claims = new[] { new Claim("sub", userId.ToString()) };
+        var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) };
+        _httpContextAccessorMock.Setup(h => h.HttpContext).Returns(httpContext);
+
+        var usuario = new Usuario { Id = userId, EscritorioId = userId, Nome = "Sub User", Email = "sub@test.com" };
+        _usuarioRepoMock.Setup(r => r.GetById(userId)).ReturnsAsync(usuario);
+        _usuarioRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(userId)).ReturnsAsync(new List<Usuario> { usuario });
+
+        // Act
+        var result = await _service.ObterEquipeAsync();
+
+        // Assert
+        result.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Contexto_QuandoClaimNameId_DeveObterContextoComSucesso()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var claims = new[] { new Claim("nameid", userId.ToString()) };
+        var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) };
+        _httpContextAccessorMock.Setup(h => h.HttpContext).Returns(httpContext);
+
+        var usuario = new Usuario { Id = userId, EscritorioId = userId, Nome = "NameId User", Email = "nameid@test.com" };
+        _usuarioRepoMock.Setup(r => r.GetById(userId)).ReturnsAsync(usuario);
+        _usuarioRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(userId)).ReturnsAsync(new List<Usuario> { usuario });
+
+        // Act
+        var result = await _service.ObterEquipeAsync();
+
+        // Assert
+        result.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Contexto_QuandoUsuarioAutenticadoNaoExisteNoBanco_DeveLancarUnauthorizedAccessException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        SetupHttpContext(userId);
+        _usuarioRepoMock.Setup(r => r.GetById(userId)).ReturnsAsync((Usuario?)null);
+
+        // Act & Assert
+        var act = async () => await _service.ObterEquipeAsync();
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*Usuário autenticado não encontrado*");
+    }
+
+    [Fact]
+    public async Task Contexto_QuandoUsuarioSemEscritorioId_DeveAtribuirProprioIdComoEscritorioId()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        SetupHttpContext(userId);
+        var usuario = new Usuario { Id = userId, EscritorioId = null, Nome = "Owner", Email = "owner@test.com" };
+        _usuarioRepoMock.Setup(r => r.GetById(userId)).ReturnsAsync(usuario);
+        _usuarioRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(userId)).ReturnsAsync(new List<Usuario> { usuario });
+
+        // Act
+        var result = await _service.ObterEquipeAsync();
+
+        // Assert
+        usuario.EscritorioId.Should().Be(userId);
+        _usuarioRepoMock.Verify(r => r.Update(usuario), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConvidarMembroAsync_QuandoEmailFalha_DeveRegistrarLogESalvarMembroComSucesso()
+    {
+        // Arrange
+        _emailServiceMock.Setup(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new InvalidOperationException("SMTP fora do ar"));
+
+        var command = new ConvidarMembroEquipeCommand(
+            "Maria Santos",
+            "maria@studio.com",
+            Roles.Colaborador,
+            "Arquiteta",
+            null,
+            null
+        );
+
+        // Act
+        var result = await _service.ConvidarMembroAsync(command);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Email.Should().Be("maria@studio.com");
+    }
+
+    [Fact]
+    public async Task RedefinirSenhaMembroAsync_QuandoEmailFalha_NaoDeveLancarExcecao()
+    {
+        // Arrange
+        var membroId = Guid.NewGuid();
+        var membro = new Usuario
+        {
+            Id = membroId,
+            EscritorioId = _escritorioId,
+            Nome = "Membro",
+            Email = "membro@studio.com",
+            Role = Roles.Colaborador
+        };
+
+        _usuarioRepoMock.Setup(r => r.GetById(membroId)).ReturnsAsync(membro);
+        _emailServiceMock.Setup(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new InvalidOperationException("SMTP fora do ar"));
+
+        var command = new RedefinirSenhaMembroCommand(null);
+
+        // Act
+        var act = async () => await _service.RedefinirSenhaMembroAsync(membroId, command);
+
+        // Assert
+        await act.Should().NotThrowAsync();
     }
 }

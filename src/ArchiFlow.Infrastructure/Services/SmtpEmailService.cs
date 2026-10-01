@@ -43,10 +43,6 @@ public class SmtpEmailService : IEmailService
             ?? Environment.GetEnvironmentVariable("SMTP_FROM_NAME") 
             ?? "ArchiFlow";
 
-        var enableSslStr = _configuration["SMTP_ENABLE_SSL"] 
-            ?? Environment.GetEnvironmentVariable("SMTP_ENABLE_SSL") 
-            ?? "true";
-
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
         {
             _logger.LogWarning("Configurações de SMTP_USER ou SMTP_PASSWORD não foram preenchidas. O e-mail para '{To}' não foi enviado via SMTP.", to);
@@ -54,12 +50,11 @@ public class SmtpEmailService : IEmailService
         }
 
         int port = int.TryParse(portStr, out var p) ? p : 587;
-        bool enableSsl = !bool.TryParse(enableSslStr, out var ssl) || ssl;
 
         using var client = new SmtpClient(host, port)
         {
             Credentials = new NetworkCredential(user, password),
-            EnableSsl = enableSsl,
+            EnableSsl = true,
             DeliveryMethod = SmtpDeliveryMethod.Network
         };
 
@@ -117,8 +112,7 @@ public class SmtpEmailService : IEmailService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao enviar e-mail via SMTP para {To}.", to);
-            throw;
+            throw new InvalidOperationException($"Falha no envio de e-mail via SMTP para {to}.", ex);
         }
     }
 }
