@@ -132,15 +132,19 @@ public class ArchiFlowDbContext : DbContext
             entity.ToTable("Usuarios");
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Id).HasColumnName("USR_Id");
+            entity.Property(u => u.EscritorioId).HasColumnName("USR_Escritorio_Id");
             entity.Property(u => u.Nome).HasColumnName("USR_Nome").IsRequired().HasMaxLength(200);
             entity.Property(u => u.Email).HasColumnName("USR_Email").IsRequired().HasMaxLength(256);
             entity.Property(u => u.SenhaHash).HasColumnName("USR_Senha_Hash").IsRequired();
             entity.Property(u => u.Role).HasColumnName("USR_Role").IsRequired().HasMaxLength(50);
+            entity.Property(u => u.Cargo).HasColumnName("USR_Cargo").HasMaxLength(100);
+            entity.Property(u => u.Telefone).HasColumnName("USR_Telefone").HasMaxLength(30);
             entity.Property(u => u.Ativo).HasColumnName("USR_Ativo");
             entity.Property(u => u.CriadoEm).HasColumnName("USR_Criado_Em");
             entity.Property(u => u.AtualizadoEm).HasColumnName("USR_Atualizado_Em");
 
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.EscritorioId);
         });
 
         modelBuilder.Entity<Cliente>(entity =>

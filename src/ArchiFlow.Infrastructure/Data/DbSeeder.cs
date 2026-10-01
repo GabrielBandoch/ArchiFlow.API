@@ -40,6 +40,10 @@ public static class DbSeeder
         {
             await context.Database.ExecuteSqlRawAsync(@"
                 ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Escritorio_Id"" uuid;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Cargo"" character varying(100);
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Telefone"" character varying(30);
+                CREATE INDEX IF NOT EXISTS ""IX_Usuarios_USR_Escritorio_Id"" ON ""Usuarios"" (""USR_Escritorio_Id"");
 
                 CREATE TABLE IF NOT EXISTS ""Tarefas_Etapa"" (
                     ""TAR_Id"" uuid NOT NULL PRIMARY KEY,

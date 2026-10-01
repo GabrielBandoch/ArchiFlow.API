@@ -102,6 +102,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPropostaHonorarioFacade, ArchiFlow.Application.Honorarios.Facades.PropostaHonorarioFacade>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUsuarioService, ArchiFlow.Application.Usuarios.Services.UsuarioService>();
+        services.AddScoped<IUsuarioFacade, ArchiFlow.Application.Usuarios.Facades.UsuarioFacade>();
 
         // Chat Repositories, Services & Facades
         services.AddScoped<ArchiFlow.Domain.Chat.IMensagemChatRepository, ArchiFlow.Infrastructure.Repositories.Chat.MensagemChatRepository>();
@@ -112,18 +114,30 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDashboardFacade, DashboardFacade>();
 
-        // Storage & Email (Automatic environment-based registration)
-        if (environment.IsProduction())
+        // Storage & Email (Automatic environment and configuration-based registration)
+        var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
+        if (!string.IsNullOrWhiteSpace(smtpUser))
         {
-            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else if (environment.IsProduction())
+        {
             services.AddScoped<Amazon.SimpleEmail.IAmazonSimpleEmailService, Amazon.SimpleEmail.AmazonSimpleEmailServiceClient>();
-            services.AddScoped<IStorageService, S3StorageService>();
             services.AddScoped<IEmailService, SesEmailService>();
         }
         else
         {
-            services.AddScoped<IStorageService, LocalStorageService>();
             services.AddScoped<IEmailService, ConsoleEmailService>();
+        }
+
+        if (environment.IsProduction())
+        {
+            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddScoped<IStorageService, S3StorageService>();
+        }
+        else
+        {
+            services.AddScoped<IStorageService, LocalStorageService>();
         }
 
         // SignalR
@@ -177,9 +191,16 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddAuthorizationBuilder()
-            .AddPolicy("ApenasAdmin", policy => policy.RequireRole("Administrador"))
-            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole("Administrador", "Gerente"))
-            .AddPolicy("AcessoArquiteto", policy => policy.RequireRole("Administrador", "Gerente", "Colaborador"))
+            .AddPolicy("ApenasAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.ArquitetoAdmin))
+            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.Gerente, Roles.ArquitetoAdmin))
+            .AddPolicy("AcessoArquiteto", policy => policy.RequireRole(
+                Roles.Administrador,
+                Roles.Gerente,
+                Roles.Colaborador,
+                Roles.ArquitetoAdmin,
+                Roles.ArquitetoColaborador,
+                Roles.Estagiario,
+                Roles.Financeiro))
             .AddPolicy("ProjetoOwner", policy =>
             {
                 policy.RequireAuthenticatedUser();
