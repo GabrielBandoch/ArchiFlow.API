@@ -1,21 +1,22 @@
 using System;
 
-namespace ArchiFlow.Domain.Agenda;
+namespace ArchiFlow.Application.Agenda.DTOs;
 
-public class ConfiguracaoAgendaEscritorio
+public class ConfiguracaoAgendaEscritorioDto
 {
     public Guid Id { get; set; }
     public Guid EscritorioId { get; set; }
     public string EmailAgendaEmpresa { get; set; } = string.Empty;
     public string? GoogleCalendarId { get; set; }
     public string? ChaveGoogleServiceAccountJson { get; set; }
-    public string? GoogleOAuthRefreshToken { get; set; }
+    public bool PossuiChaveServiceAccount { get; set; }
     public string? GoogleOAuthEmail { get; set; }
+    public bool PossuiOAuthConectado { get; set; }
     public string? GoogleClientId { get; set; }
-    public string? GoogleClientSecret { get; set; }
     public string TipoIntegracao { get; set; } = "ServiceAccount"; // "ServiceAccount", "OAuth", "Nenhum"
-    public string NomeAgenda { get; set; } = "Agenda Oficial do Escritório";
-    public bool SincronizacaoAutomaticaAtiva { get; set; } = true;
-    public DateTime ConectadoEm { get; set; } = DateTime.UtcNow;
+    public string NomeAgenda { get; set; } = string.Empty;
+    public bool SincronizacaoAutomaticaAtiva { get; set; }
+    public string LinkEmbedGoogleCalendar { get; set; } = string.Empty;
+    public DateTime ConectadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }
 }

@@ -43,6 +43,7 @@ public class Compromisso
     public Guid? UsuarioId { get; set; }
     public Guid? ProjetoId { get; set; }
     public Guid? ClienteId { get; set; }
+    public Guid? LeadId { get; set; }
 
     public string Titulo { get; set; } = string.Empty;
     public string? Descricao { get; set; }

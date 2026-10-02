@@ -16,4 +16,10 @@ public interface IAgendaFacade
     Task<CompromissoDto> AlterarStatusCompromissoAsync(Guid id, AlterarStatusCompromissoCommand command);
     Task ExcluirCompromissoAsync(Guid id);
     Task<string> ExportarIcsAsync(DateTime? inicio = null, DateTime? fim = null);
+    Task<ConfiguracaoAgendaEscritorioDto?> ObterConfiguracaoAgendaEscritorioAsync();
+    Task<ConfiguracaoAgendaEscritorioDto> SalvarConfiguracaoAgendaEscritorioAsync(SalvarConfiguracaoAgendaEscritorioCommand command);
+    Task<string> ObterLinkCompartilhadoGoogleAgendaAsync();
+    Task<string> ObterUrlGoogleOAuthAsync(string redirectUri);
+    Task<ConfiguracaoAgendaEscritorioDto> ConectarGoogleOAuthAsync(ConectarGoogleOAuthCommand command);
+    Task DesconectarGoogleOAuthAsync();
 }

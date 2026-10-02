@@ -21,6 +21,7 @@ namespace ArchiFlow.Tests.Agenda;
 public class AgendaServiceTests
 {
     private readonly Mock<ICompromissoRepository> _compromissoRepoMock;
+    private readonly Mock<IConfiguracaoAgendaRepository> _configuracaoRepoMock;
     private readonly Mock<IProjetoRepository> _projetoRepoMock;
     private readonly Mock<IClienteRepository> _clienteRepoMock;
     private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
@@ -35,6 +36,7 @@ public class AgendaServiceTests
     public AgendaServiceTests()
     {
         _compromissoRepoMock = new Mock<ICompromissoRepository>();
+        _configuracaoRepoMock = new Mock<IConfiguracaoAgendaRepository>();
         _projetoRepoMock = new Mock<IProjetoRepository>();
         _clienteRepoMock = new Mock<IClienteRepository>();
         _usuarioRepoMock = new Mock<IUsuarioRepository>();
@@ -54,13 +56,19 @@ public class AgendaServiceTests
         };
         _usuarioRepoMock.Setup(r => r.GetById(_usuarioLogadoId)).ReturnsAsync(usuarioLogado);
 
-        _googleCalendarMock.Setup(g => g.GerarLinkWebAdicionarEvento(It.IsAny<Compromisso>(), It.IsAny<string>(), It.IsAny<string>()))
+        _googleCalendarMock.Setup(g => g.GerarLinkWebAdicionarEvento(
+            It.IsAny<Compromisso>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()))
             .Returns("https://calendar.google.com/test");
         _googleCalendarMock.Setup(g => g.GerarLinkGoogleMeet(It.IsAny<string>()))
             .Returns("https://meet.google.com/xyz-test");
 
         _service = new AgendaService(
             _compromissoRepoMock.Object,
+            _configuracaoRepoMock.Object,
             _projetoRepoMock.Object,
             _clienteRepoMock.Object,
             _usuarioRepoMock.Object,
