@@ -25,6 +25,7 @@ using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using ArchiFlow.Infrastructure.Repositories.Usuarios;
 using ArchiFlow.Infrastructure.Repositories.Clientes;
+using ArchiFlow.Infrastructure.MultiTenancy;
 using ArchiFlow.Infrastructure.Repositories.Leads;
 using ArchiFlow.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -55,6 +56,9 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection ConfigureDependencyInjection(this IServiceCollection services, IWebHostEnvironment environment)
     {
         services.AddAutoMapper(typeof(ArchiFlowMappingProfile));
+
+        // Multi-Tenancy
+        services.AddScoped<ITenantContext, TenantContext>();
 
         // Repositories
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
