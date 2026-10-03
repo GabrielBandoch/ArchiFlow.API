@@ -60,6 +60,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("ArchiFlowPolicy");
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();

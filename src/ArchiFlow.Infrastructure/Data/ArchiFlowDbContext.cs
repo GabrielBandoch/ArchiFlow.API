@@ -6,6 +6,8 @@ using ArchiFlow.Domain.Chat;
 using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Dashboard;
 using ArchiFlow.Domain.Financeiro;
+using ArchiFlow.Domain.Fornecedores;
+using ArchiFlow.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -34,6 +36,12 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<ParcelaFinanceira>    ParcelasFinanceiras   => Set<ParcelaFinanceira>();
     public DbSet<DespesaProjeto>       DespesasProjetos      => Set<DespesaProjeto>();
     public DbSet<ConfiguracaoProposta> ConfiguracoesProposta => Set<ConfiguracaoProposta>();
+    public DbSet<ArchiFlow.Domain.Agenda.Compromisso> Compromissos => Set<ArchiFlow.Domain.Agenda.Compromisso>();
+    public DbSet<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio> ConfiguracoesAgendaEscritorio => Set<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio>();
+    public DbSet<Fornecedor>           Fornecedores          => Set<Fornecedor>();
+    public DbSet<AvaliacaoFornecedor>  AvaliacoesFornecedores=> Set<AvaliacaoFornecedor>();
+    public DbSet<ProjetoFornecedor>    ProjetosFornecedores  => Set<ProjetoFornecedor>();
+    public DbSet<OpcaoConfiguracao>    OpcoesConfiguracao    => Set<OpcaoConfiguracao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -382,7 +390,7 @@ public class ArchiFlowDbContext : DbContext
             entity.ToTable("Despesas_Projetos");
             entity.HasKey(d => d.Id);
             entity.Property(d => d.Id).HasColumnName("DSP_Id");
-            entity.Property(d => d.ProjetoId).HasColumnName("DSP_Projeto_Id").IsRequired();
+            entity.Property(d => d.ProjetoId).HasColumnName("DSP_Projeto_Id").IsRequired(false);
             entity.Property(d => d.Descricao).HasColumnName("DSP_Descricao").IsRequired().HasMaxLength(200);
             entity.Property(d => d.Valor).HasColumnName("DSP_Valor").HasPrecision(18, 2).IsRequired();
             entity.Property(d => d.DataDespesa).HasColumnName("DSP_Data_Despesa").IsRequired();
@@ -398,7 +406,8 @@ public class ArchiFlowDbContext : DbContext
             entity.HasOne(d => d.Projeto)
                   .WithMany()
                   .HasForeignKey(d => d.ProjetoId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ConfiguracaoProposta>(entity =>
@@ -433,6 +442,94 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(c => c.AtualizadoEm).HasColumnName("CFP_Atualizado_Em");
 
             entity.HasIndex(c => c.UsuarioId);
+        });
+
+        modelBuilder.Entity<ArchiFlow.Domain.Agenda.Compromisso>(entity =>
+        {
+            entity.ToTable("Compromissos_Agenda");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("CMP_Id");
+            entity.Property(c => c.EscritorioId).HasColumnName("CMP_Escritorio_Id").IsRequired();
+            entity.Property(c => c.UsuarioId).HasColumnName("CMP_Usuario_Id");
+            entity.Property(c => c.ProjetoId).HasColumnName("CMP_Projeto_Id");
+            entity.Property(c => c.ClienteId).HasColumnName("CMP_Cliente_Id");
+            entity.Property(c => c.LeadId).HasColumnName("CMP_Lead_Id");
+            entity.Property(c => c.Titulo).HasColumnName("CMP_Titulo").IsRequired().HasMaxLength(200);
+            entity.Property(c => c.Descricao).HasColumnName("CMP_Descricao");
+            entity.Property(c => c.Tipo).HasColumnName("CMP_Tipo").IsRequired().HasMaxLength(50);
+            entity.Property(c => c.Status).HasColumnName("CMP_Status").IsRequired().HasMaxLength(50);
+            entity.Property(c => c.DataHoraInicio).HasColumnName("CMP_Data_Hora_Inicio").IsRequired();
+            entity.Property(c => c.DataHoraFim).HasColumnName("CMP_Data_Hora_Fim").IsRequired();
+            entity.Property(c => c.Local).HasColumnName("CMP_Local").HasMaxLength(300);
+            entity.Property(c => c.LinkGoogleMeet).HasColumnName("CMP_Link_Google_Meet").HasMaxLength(500);
+            entity.Property(c => c.GoogleEventId).HasColumnName("CMP_Google_Event_Id").HasMaxLength(200);
+            entity.Property(c => c.CriadoEm).HasColumnName("CMP_Criado_Em").IsRequired();
+            entity.Property(c => c.AtualizadoEm).HasColumnName("CMP_Atualizado_Em");
+
+            entity.HasIndex(c => c.EscritorioId);
+            entity.HasIndex(c => new { c.EscritorioId, c.DataHoraInicio });
+        });
+
+        modelBuilder.Entity<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio>(entity =>
+        {
+            entity.ToTable("Configuracoes_Agenda_Escritorio");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("CAE_Id");
+            entity.Property(c => c.EscritorioId).HasColumnName("CAE_Escritorio_Id").IsRequired();
+            entity.Property(c => c.EmailAgendaEmpresa).HasColumnName("CAE_Email_Agenda_Empresa").IsRequired().HasMaxLength(256);
+            entity.Property(c => c.GoogleCalendarId).HasColumnName("CAE_Google_Calendar_Id").HasMaxLength(300);
+            entity.Property(c => c.ChaveGoogleServiceAccountJson).HasColumnName("CAE_Chave_Service_Account_Json");
+            entity.Property(c => c.GoogleOAuthRefreshToken).HasColumnName("CAE_Google_OAuth_Refresh_Token");
+            entity.Property(c => c.GoogleOAuthEmail).HasColumnName("CAE_Google_OAuth_Email").HasMaxLength(256);
+            entity.Property(c => c.GoogleClientId).HasColumnName("CAE_Google_Client_Id").HasMaxLength(300);
+            entity.Property(c => c.GoogleClientSecret).HasColumnName("CAE_Google_Client_Secret").HasMaxLength(300);
+            entity.Property(c => c.TipoIntegracao).HasColumnName("CAE_Tipo_Integracao").HasMaxLength(50);
+            entity.Property(c => c.NomeAgenda).HasColumnName("CAE_Nome_Agenda").HasMaxLength(200);
+            entity.Property(c => c.SincronizacaoAutomaticaAtiva).HasColumnName("CAE_Sincronizacao_Ativa");
+            entity.Property(c => c.ConectadoEm).HasColumnName("CAE_Conectado_Em");
+            entity.Property(c => c.AtualizadoEm).HasColumnName("CAE_Atualizado_Em");
+
+            entity.HasIndex(c => c.EscritorioId).IsUnique();
+        });
+
+        modelBuilder.Entity<Fornecedor>(entity =>
+        {
+            entity.ToTable("Fornecedores");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Nome).IsRequired().HasMaxLength(200);
+            entity.Property(f => f.Especialidade).IsRequired().HasMaxLength(100);
+            entity.Property(f => f.Email).HasMaxLength(200);
+            entity.Property(f => f.Telefone).HasMaxLength(50);
+            entity.Property(f => f.Cidade).HasMaxLength(100);
+            entity.Property(f => f.Estado).HasMaxLength(50);
+            entity.Property(f => f.AvaliacaoMedia).HasPrecision(3, 1);
+            entity.HasMany(f => f.Avaliacoes).WithOne(a => a.Fornecedor).HasForeignKey(a => a.FornecedorId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(f => f.ProjetosVinculados).WithOne(p => p.Fornecedor).HasForeignKey(p => p.FornecedorId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AvaliacaoFornecedor>(entity =>
+        {
+            entity.ToTable("Avaliacoes_Fornecedores");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Comentario).HasMaxLength(1000);
+            entity.Property(a => a.AutorNome).HasMaxLength(150);
+        });
+
+        modelBuilder.Entity<ProjetoFornecedor>(entity =>
+        {
+            entity.ToTable("Projetos_Fornecedores");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.FuncaoNoProjeto).HasMaxLength(150);
+        });
+
+        modelBuilder.Entity<OpcaoConfiguracao>(entity =>
+        {
+            entity.ToTable("Opcoes_Configuracao");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Categoria).IsRequired().HasMaxLength(100);
+            entity.Property(o => o.Chave).IsRequired().HasMaxLength(100);
+            entity.Property(o => o.Rotulo).IsRequired().HasMaxLength(200);
+            entity.HasIndex(o => new { o.Categoria, o.Chave }).IsUnique();
         });
     }
 }

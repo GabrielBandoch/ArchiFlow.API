@@ -212,6 +212,102 @@ public static class DbSeeder
                 );
 
                 CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Compromissos_Agenda"" (
+                    ""CMP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CMP_Escritorio_Id"" uuid NOT NULL,
+                    ""CMP_Usuario_Id"" uuid,
+                    ""CMP_Projeto_Id"" uuid,
+                    ""CMP_Cliente_Id"" uuid,
+                    ""CMP_Lead_Id"" uuid,
+                    ""CMP_Titulo"" character varying(200) NOT NULL,
+                    ""CMP_Descricao"" text,
+                    ""CMP_Tipo"" character varying(50) NOT NULL,
+                    ""CMP_Status"" character varying(50) NOT NULL,
+                    ""CMP_Data_Hora_Inicio"" timestamp with time zone NOT NULL,
+                    ""CMP_Data_Hora_Fim"" timestamp with time zone NOT NULL,
+                    ""CMP_Local"" character varying(300),
+                    ""CMP_Link_Google_Meet"" character varying(500),
+                    ""CMP_Google_Event_Id"" character varying(200),
+                    ""CMP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""CMP_Atualizado_Em"" timestamp with time zone
+                );
+
+                ALTER TABLE ""Compromissos_Agenda"" ADD COLUMN IF NOT EXISTS ""CMP_Lead_Id"" uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Escritorio_Id"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"");
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Lead_Id"" ON ""Compromissos_Agenda"" (""CMP_Lead_Id"");
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_Datas"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"", ""CMP_Data_Hora_Inicio"");
+
+                CREATE TABLE IF NOT EXISTS ""Configuracoes_Agenda_Escritorio"" (
+                    ""CAE_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CAE_Escritorio_Id"" uuid NOT NULL,
+                    ""CAE_Email_Agenda_Empresa"" character varying(256) NOT NULL,
+                    ""CAE_Google_Calendar_Id"" character varying(300),
+                    ""CAE_Nome_Agenda"" character varying(200),
+                    ""CAE_Sincronizacao_Ativa"" boolean NOT NULL DEFAULT true,
+                    ""CAE_Chave_Service_Account_Json"" text,
+                    ""CAE_Conectado_Em"" timestamp with time zone NOT NULL,
+                    ""CAE_Atualizado_Em"" timestamp with time zone
+                );
+
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Chave_Service_Account_Json"" text;
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Refresh_Token"" text;
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Email"" character varying(256);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Id"" character varying(300);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Secret"" character varying(300);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Tipo_Integracao"" character varying(50) DEFAULT 'ServiceAccount';
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Configuracoes_Agenda_Escritorio_EscritorioId"" ON ""Configuracoes_Agenda_Escritorio"" (""CAE_Escritorio_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Nome"" character varying(200) NOT NULL,
+                    ""Especialidade"" character varying(100) NOT NULL,
+                    ""Email"" character varying(200),
+                    ""Telefone"" character varying(50),
+                    ""Cidade"" character varying(100),
+                    ""Estado"" character varying(50),
+                    ""Descricao"" text,
+                    ""AvaliacaoMedia"" numeric(3,1) NOT NULL DEFAULT 5.0,
+                    ""TotalAvaliacoes"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DataCriacao"" timestamp with time zone NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Avaliacoes_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""ProjetoId"" uuid,
+                    ""Nota"" integer NOT NULL,
+                    ""Comentario"" character varying(1000),
+                    ""AutorNome"" character varying(150),
+                    ""DataAvaliacao"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Avaliacoes_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Projetos_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""ProjetoId"" uuid NOT NULL,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""FuncaoNoProjeto"" character varying(150),
+                    ""DataVinculo"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Projetos_Fornecedores_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Opcoes_Configuracao"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Categoria"" character varying(100) NOT NULL,
+                    ""Chave"" character varying(100) NOT NULL,
+                    ""Rotulo"" character varying(200) NOT NULL,
+                    ""SubRotulo"" text,
+                    ""Icone"" character varying(50),
+                    ""Cor"" character varying(20),
+                    ""CorFundo"" character varying(20),
+                    ""Ordem"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DadosExtrasJson"" text
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
             ");
         }
         catch (Exception ex)
@@ -579,7 +675,6 @@ public static class DbSeeder
         if (projetos.Count == 0) return;
 
         var hoje = DateTime.UtcNow.Date;
-        var random = new Random(42);
 
         var p1 = projetos[0];
         var ctf1 = new ContratoFinanceiro

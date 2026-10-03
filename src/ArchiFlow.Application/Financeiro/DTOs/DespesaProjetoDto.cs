@@ -5,7 +5,7 @@ namespace ArchiFlow.Application.Financeiro.DTOs;
 
 public record DespesaProjetoDto(
     Guid Id,
-    Guid ProjetoId,
+    Guid? ProjetoId,
     string ProjetoNome,
     string Descricao,
     decimal Valor,
