@@ -772,7 +772,6 @@ public class FinanceiroServiceTests
     }
 
     [Theory]
-    [InlineData("00000000-0000-0000-0000-000000000000", "Plotagem", 100)] // Empty ProjetoId
     [InlineData("11111111-1111-1111-1111-111111111111", "", 100)]         // Empty Descricao
     [InlineData("11111111-1111-1111-1111-111111111111", "   ", 100)]      // Whitespace Descricao
     [InlineData("11111111-1111-1111-1111-111111111111", "Plotagem", 0)]     // Valor <= 0
@@ -795,6 +794,29 @@ public class FinanceiroServiceTests
         var act = () => service.CriarDespesaAsync(command);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task CriarDespesaAsync_SemProjeto_DeveCriarDespesaGeralComSucesso()
+    {
+        var (service, _, _) = CreateService();
+
+        var command = new CriarDespesaCommand(
+            null,
+            "Aluguel Escritório",
+            3500m,
+            DateTime.UtcNow,
+            CategoriaDespesa.Outros,
+            "Despesa geral",
+            null
+        );
+
+        var res = await service.CriarDespesaAsync(command);
+
+        res.Should().NotBeNull();
+        res.ProjetoId.Should().BeNull();
+        res.Descricao.Should().Be("Aluguel Escritório");
+        res.Valor.Should().Be(3500m);
     }
 
     [Theory]
