@@ -11,6 +11,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
     public async Task<IEnumerable<Fornecedor>> ObterTodosComRelacionamentosAsync()
     {
         return await _dbSet
+            .AsSplitQuery()
             .Include(f => f.Avaliacoes)
             .Include(f => f.ProjetosVinculados)
             .OrderByDescending(f => f.AvaliacaoMedia)
@@ -20,6 +21,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
     public async Task<Fornecedor?> ObterPorIdComRelacionamentosAsync(Guid id)
     {
         return await _dbSet
+            .AsSplitQuery()
             .Include(f => f.Avaliacoes)
             .Include(f => f.ProjetosVinculados)
             .FirstOrDefaultAsync(f => f.Id == id);
@@ -29,6 +31,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
     {
         var esp = especialidade.Trim().ToLowerInvariant();
         return await _dbSet
+            .AsSplitQuery()
             .Include(f => f.Avaliacoes)
             .Include(f => f.ProjetosVinculados)
             .Where(f => f.Especialidade.ToLower() == esp || f.Especialidade.ToLower().Contains(esp))

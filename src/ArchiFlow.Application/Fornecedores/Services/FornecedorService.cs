@@ -85,7 +85,7 @@ public class FornecedorService : IFornecedorService
 
     public async Task<AvaliacaoFornecedorDto> AdicionarAvaliacaoAsync(AdicionarAvaliacaoCommand command)
     {
-        var fornecedor = await _repository.GetById(command.FornecedorId)
+        _ = await _repository.GetById(command.FornecedorId)
             ?? throw new KeyNotFoundException($"Fornecedor com ID {command.FornecedorId} não encontrado.");
 
         var avaliacao = new AvaliacaoFornecedor
@@ -177,24 +177,28 @@ public class FornecedorService : IFornecedorService
             Ativo = f.Ativo,
             DataCriacao = f.DataCriacao,
             TotalProjetosAtivos = f.ProjetosVinculados?.Count ?? 0,
-            Avaliacoes = f.Avaliacoes?.Select(a => new AvaliacaoFornecedorDto
-            {
-                Id = a.Id,
-                FornecedorId = a.FornecedorId,
-                ProjetoId = a.ProjetoId,
-                Nota = a.Nota,
-                Comentario = a.Comentario,
-                AutorNome = a.AutorNome,
-                DataAvaliacao = a.DataAvaliacao
-            }).OrderByDescending(a => a.DataAvaliacao).ToList() ?? new(),
-            ProjetosVinculados = f.ProjetosVinculados?.Select(p => new ProjetoFornecedorDto
-            {
-                Id = p.Id,
-                ProjetoId = p.ProjetoId,
-                FornecedorId = p.FornecedorId,
-                FuncaoNoProjeto = p.FuncaoNoProjeto,
-                DataVinculo = p.DataVinculo
-            }).ToList() ?? new()
+            Avaliacoes = f.Avaliacoes != null
+                ? f.Avaliacoes.Select(a => new AvaliacaoFornecedorDto
+                {
+                    Id = a.Id,
+                    FornecedorId = a.FornecedorId,
+                    ProjetoId = a.ProjetoId,
+                    Nota = a.Nota,
+                    Comentario = a.Comentario,
+                    AutorNome = a.AutorNome,
+                    DataAvaliacao = a.DataAvaliacao
+                }).OrderByDescending(a => a.DataAvaliacao).ToList()
+                : new List<AvaliacaoFornecedorDto>(),
+            ProjetosVinculados = f.ProjetosVinculados != null
+                ? f.ProjetosVinculados.Select(p => new ProjetoFornecedorDto
+                {
+                    Id = p.Id,
+                    ProjetoId = p.ProjetoId,
+                    FornecedorId = p.FornecedorId,
+                    FuncaoNoProjeto = p.FuncaoNoProjeto,
+                    DataVinculo = p.DataVinculo
+                }).ToList()
+                : new List<ProjetoFornecedorDto>()
         };
     }
 }

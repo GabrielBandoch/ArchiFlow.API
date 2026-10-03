@@ -118,4 +118,134 @@ public class FornecedorServiceTests
         result.FuncaoNoProjeto.Should().Be("Fornecimento de Esquadrias e Vidros");
         _repositoryMock.Verify(r => r.AdicionarVinculoProjetoAsync(It.IsAny<ProjetoFornecedor>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ObterPorIdAsync_QuandoExiste_DeveRetornarDto()
+    {
+        var id = Guid.NewGuid();
+        var fornecedor = new Fornecedor { Id = id, Nome = "Fornecedor Teste", Especialidade = "Geral" };
+        _repositoryMock.Setup(r => r.ObterPorIdComRelacionamentosAsync(id)).ReturnsAsync(fornecedor);
+
+        var result = await _service.ObterPorIdAsync(id);
+
+        result.Should().NotBeNull();
+        result!.Nome.Should().Be("Fornecedor Teste");
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_QuandoNaoExiste_DeveRetornarNull()
+    {
+        var id = Guid.NewGuid();
+        _repositoryMock.Setup(r => r.ObterPorIdComRelacionamentosAsync(id)).ReturnsAsync((Fornecedor?)null);
+
+        var result = await _service.ObterPorIdAsync(id);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_QuandoExiste_DeveAtualizarERetornarDto()
+    {
+        var id = Guid.NewGuid();
+        var fornecedor = new Fornecedor { Id = id, Nome = "Antigo", Especialidade = "Antiga" };
+        _repositoryMock.Setup(r => r.ObterPorIdComRelacionamentosAsync(id)).ReturnsAsync(fornecedor);
+
+        var cmd = new AtualizarFornecedorCommand
+        {
+            Id = id,
+            Nome = "Novo Nome",
+            Especialidade = "Nova Esp",
+            Ativo = true
+        };
+
+        var result = await _service.AtualizarAsync(cmd);
+
+        result.Should().NotBeNull();
+        result.Nome.Should().Be("Novo Nome");
+        _repositoryMock.Verify(r => r.Update(fornecedor), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_QuandoNaoExiste_DeveLancarKeyNotFoundException()
+    {
+        var id = Guid.NewGuid();
+        _repositoryMock.Setup(r => r.ObterPorIdComRelacionamentosAsync(id)).ReturnsAsync((Fornecedor?)null);
+
+        var cmd = new AtualizarFornecedorCommand { Id = id, Nome = "Novo", Especialidade = "Esp" };
+        var act = () => _service.AtualizarAsync(cmd);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task ExcluirAsync_QuandoExiste_DeveRemoverERetornarTrue()
+    {
+        var id = Guid.NewGuid();
+        var fornecedor = new Fornecedor { Id = id };
+        _repositoryMock.Setup(r => r.GetById(id)).ReturnsAsync(fornecedor);
+
+        var result = await _service.ExcluirAsync(id);
+
+        result.Should().BeTrue();
+        _repositoryMock.Verify(r => r.Delete(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExcluirAsync_QuandoNaoExiste_DeveRetornarFalse()
+    {
+        var id = Guid.NewGuid();
+        _repositoryMock.Setup(r => r.GetById(id)).ReturnsAsync((Fornecedor?)null);
+
+        var result = await _service.ExcluirAsync(id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DesvincularProjetoAsync_DeveDelegarParaRepositoryERetornarTrue()
+    {
+        var vinculoId = Guid.NewGuid();
+
+        var result = await _service.DesvincularProjetoAsync(vinculoId);
+
+        result.Should().BeTrue();
+        _repositoryMock.Verify(r => r.RemoverVinculoProjetoAsync(vinculoId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterFornecedoresDoProjetoAsync_DeveRetornarLista()
+    {
+        var projetoId = Guid.NewGuid();
+        var vinculos = new List<ProjetoFornecedor>
+        {
+            new ProjetoFornecedor { Id = Guid.NewGuid(), ProjetoId = projetoId, Fornecedor = new Fornecedor { Nome = "F1" } }
+        };
+        _repositoryMock.Setup(r => r.ObterFornecedoresDoProjetoAsync(projetoId)).ReturnsAsync(vinculos);
+
+        var result = await _service.ObterFornecedoresDoProjetoAsync(projetoId);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AdicionarAvaliacaoAsync_QuandoFornecedorNaoExiste_DeveLancarKeyNotFoundException()
+    {
+        var cmd = new AdicionarAvaliacaoCommand { FornecedorId = Guid.NewGuid(), Comentario = "Ok" };
+        _repositoryMock.Setup(r => r.GetById(cmd.FornecedorId)).ReturnsAsync((Fornecedor?)null);
+
+        var act = () => _service.AdicionarAvaliacaoAsync(cmd);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task VincularProjetoAsync_QuandoFornecedorNaoExiste_DeveLancarKeyNotFoundException()
+    {
+        var cmd = new VincularProjetoCommand { FornecedorId = Guid.NewGuid(), ProjetoId = Guid.NewGuid() };
+        _repositoryMock.Setup(r => r.GetById(cmd.FornecedorId)).ReturnsAsync((Fornecedor?)null);
+
+        var act = () => _service.VincularProjetoAsync(cmd);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
 }
