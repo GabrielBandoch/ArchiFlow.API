@@ -69,4 +69,30 @@ public class GoogleCalendarServiceTests
         ics.Should().Contain("LOCATION:Rua das Flores\\, 123");
         ics.Should().Contain("STATUS:CONFIRMED");
     }
+
+    [Fact]
+    public void GerarUrlAutorizacaoOAuth_DeveRetornarUrlValidaGoogleOAuth()
+    {
+        var url = _service.GerarUrlAutorizacaoOAuth("my-client-id", "https://app.archiflow.com/callback", "state-123");
+        url.Should().StartWith("https://accounts.google.com/o/oauth2/v2/auth");
+        url.Should().Contain("client_id=my-client-id");
+        url.Should().Contain("redirect_uri=" + Uri.EscapeDataString("https://app.archiflow.com/callback"));
+        url.Should().Contain("state=state-123");
+    }
+
+    [Fact]
+    public async Task CriarEventoDiretoNoGoogleCalendarAsync_SemCredenciais_DeveRetornarNull()
+    {
+        var compromisso = new Compromisso { Id = Guid.NewGuid(), Titulo = "Teste" };
+        var id = await _service.CriarEventoDiretoNoGoogleCalendarAsync(compromisso, "", "");
+        id.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CriarEventoViaOAuthAsync_SemCredenciais_DeveRetornarNull()
+    {
+        var compromisso = new Compromisso { Id = Guid.NewGuid(), Titulo = "Teste" };
+        var id = await _service.CriarEventoViaOAuthAsync(compromisso, "", "", "", "");
+        id.Should().BeNull();
+    }
 }

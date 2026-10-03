@@ -19,6 +19,7 @@ namespace ArchiFlow.Application.Agenda.Services;
 public class AgendaService : IAgendaService
 {
     private const string MensagemSemPermissao = "Você não possui permissão para gerenciar este compromisso.";
+    private const string IntegracaoOAuth = "OAuth";
 
     private readonly ICompromissoRepository _compromissoRepository;
     private readonly IConfiguracaoAgendaRepository _configuracaoAgendaRepository;
@@ -120,48 +121,52 @@ public class AgendaService : IAgendaService
             CriadoEm = DateTime.UtcNow
         };
 
-        var config = await _configuracaoAgendaRepository.ObterPorEscritorioIdAsync(escritorioId);
-        if (config != null)
-        {
-            var targetCalId = !string.IsNullOrWhiteSpace(config.GoogleCalendarId)
-                ? config.GoogleCalendarId
-                : config.EmailAgendaEmpresa;
-
-            if (config.TipoIntegracao == "OAuth" && !string.IsNullOrWhiteSpace(config.GoogleOAuthRefreshToken))
-            {
-                var clientId = config.GoogleClientId ?? _configuration?["GoogleCalendar:ClientId"] ?? string.Empty;
-                var clientSecret = config.GoogleClientSecret ?? _configuration?["GoogleCalendar:ClientSecret"] ?? string.Empty;
-
-                var googleEvtId = await _googleCalendarService.CriarEventoViaOAuthAsync(
-                    compromisso,
-                    targetCalId,
-                    config.GoogleOAuthRefreshToken,
-                    clientId,
-                    clientSecret);
-
-                if (!string.IsNullOrWhiteSpace(googleEvtId))
-                {
-                    compromisso.GoogleEventId = googleEvtId;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(config.ChaveGoogleServiceAccountJson))
-            {
-                var googleEvtId = await _googleCalendarService.CriarEventoDiretoNoGoogleCalendarAsync(
-                    compromisso,
-                    targetCalId,
-                    config.ChaveGoogleServiceAccountJson);
-
-                if (!string.IsNullOrWhiteSpace(googleEvtId))
-                {
-                    compromisso.GoogleEventId = googleEvtId;
-                }
-            }
-        }
+        await SincronizarCriacaoComGoogleCalendarAsync(compromisso, escritorioId);
 
         await _compromissoRepository.Create(compromisso);
         await _unitOfWork.Commit();
 
         return await MapearAsync(compromisso);
+    }
+
+    private async Task SincronizarCriacaoComGoogleCalendarAsync(Compromisso compromisso, Guid escritorioId)
+    {
+        var config = await _configuracaoAgendaRepository.ObterPorEscritorioIdAsync(escritorioId);
+        if (config == null) return;
+
+        var targetCalId = !string.IsNullOrWhiteSpace(config.GoogleCalendarId)
+            ? config.GoogleCalendarId
+            : config.EmailAgendaEmpresa;
+
+        if (config.TipoIntegracao == IntegracaoOAuth && !string.IsNullOrWhiteSpace(config.GoogleOAuthRefreshToken))
+        {
+            var clientId = config.GoogleClientId ?? _configuration?["GoogleCalendar:ClientId"] ?? string.Empty;
+            var clientSecret = config.GoogleClientSecret ?? _configuration?["GoogleCalendar:ClientSecret"] ?? string.Empty;
+
+            var googleEvtId = await _googleCalendarService.CriarEventoViaOAuthAsync(
+                compromisso,
+                targetCalId,
+                config.GoogleOAuthRefreshToken,
+                clientId,
+                clientSecret);
+
+            if (!string.IsNullOrWhiteSpace(googleEvtId))
+            {
+                compromisso.GoogleEventId = googleEvtId;
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(config.ChaveGoogleServiceAccountJson))
+        {
+            var googleEvtId = await _googleCalendarService.CriarEventoDiretoNoGoogleCalendarAsync(
+                compromisso,
+                targetCalId,
+                config.ChaveGoogleServiceAccountJson);
+
+            if (!string.IsNullOrWhiteSpace(googleEvtId))
+            {
+                compromisso.GoogleEventId = googleEvtId;
+            }
+        }
     }
 
     public async Task<CompromissoDto> AtualizarCompromissoAsync(Guid id, AtualizarCompromissoCommand command)
@@ -375,7 +380,7 @@ public class AgendaService : IAgendaService
 
         var calId = !string.IsNullOrWhiteSpace(command.GoogleCalendarId)
             ? command.GoogleCalendarId.Trim()
-            : (!string.IsNullOrWhiteSpace(command.EmailAgendaEmpresa) ? command.EmailAgendaEmpresa.Trim() : string.Empty);
+            : (command.EmailAgendaEmpresa?.Trim() ?? string.Empty);
 
         if (string.IsNullOrWhiteSpace(calId))
             throw new ArgumentException("O ID da Agenda do Google é obrigatório.");
@@ -409,32 +414,41 @@ public class AgendaService : IAgendaService
         }
         else
         {
-            config.EmailAgendaEmpresa = emailEmpresa;
-            config.GoogleCalendarId = calId;
-            if (!string.IsNullOrWhiteSpace(command.ChaveGoogleServiceAccountJson))
-            {
-                config.ChaveGoogleServiceAccountJson = command.ChaveGoogleServiceAccountJson.Trim();
-            }
-            if (!string.IsNullOrWhiteSpace(command.GoogleClientId))
-            {
-                config.GoogleClientId = command.GoogleClientId.Trim();
-            }
-            if (!string.IsNullOrWhiteSpace(command.GoogleClientSecret))
-            {
-                config.GoogleClientSecret = command.GoogleClientSecret.Trim();
-            }
-            if (!string.IsNullOrWhiteSpace(command.TipoIntegracao))
-            {
-                config.TipoIntegracao = command.TipoIntegracao.Trim();
-            }
-            config.NomeAgenda = string.IsNullOrWhiteSpace(command.NomeAgenda) ? "Agenda Oficial do Escritório" : command.NomeAgenda.Trim();
-            config.SincronizacaoAutomaticaAtiva = command.SincronizacaoAutomaticaAtiva;
-            config.AtualizadoEm = DateTime.UtcNow;
+            AtualizarConfiguracaoExistente(config, command, emailEmpresa, calId);
             await _configuracaoAgendaRepository.Update(config);
         }
 
         await _unitOfWork.Commit();
         return MapearConfiguracao(config);
+    }
+
+    private static void AtualizarConfiguracaoExistente(
+        ConfiguracaoAgendaEscritorio config,
+        SalvarConfiguracaoAgendaEscritorioCommand command,
+        string emailEmpresa,
+        string calId)
+    {
+        config.EmailAgendaEmpresa = emailEmpresa;
+        config.GoogleCalendarId = calId;
+        if (!string.IsNullOrWhiteSpace(command.ChaveGoogleServiceAccountJson))
+        {
+            config.ChaveGoogleServiceAccountJson = command.ChaveGoogleServiceAccountJson.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(command.GoogleClientId))
+        {
+            config.GoogleClientId = command.GoogleClientId.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(command.GoogleClientSecret))
+        {
+            config.GoogleClientSecret = command.GoogleClientSecret.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(command.TipoIntegracao))
+        {
+            config.TipoIntegracao = command.TipoIntegracao.Trim();
+        }
+        config.NomeAgenda = string.IsNullOrWhiteSpace(command.NomeAgenda) ? "Agenda Oficial do Escritório" : command.NomeAgenda.Trim();
+        config.SincronizacaoAutomaticaAtiva = command.SincronizacaoAutomaticaAtiva;
+        config.AtualizadoEm = DateTime.UtcNow;
     }
 
     public async Task<string> ObterUrlGoogleOAuthAsync(string redirectUri)
@@ -485,7 +499,7 @@ public class AgendaService : IAgendaService
                 GoogleOAuthEmail = emailFinal,
                 GoogleClientId = clientId,
                 GoogleClientSecret = clientSecret,
-                TipoIntegracao = "OAuth",
+                TipoIntegracao = IntegracaoOAuth,
                 NomeAgenda = "Agenda Google Corporativa (OAuth)",
                 SincronizacaoAutomaticaAtiva = true,
                 ConectadoEm = DateTime.UtcNow
@@ -498,7 +512,7 @@ public class AgendaService : IAgendaService
             config.GoogleOAuthEmail = emailFinal;
             config.GoogleClientId = clientId;
             config.GoogleClientSecret = clientSecret;
-            config.TipoIntegracao = "OAuth";
+            config.TipoIntegracao = IntegracaoOAuth;
             if (string.IsNullOrWhiteSpace(config.GoogleCalendarId))
             {
                 config.GoogleCalendarId = "primary";
@@ -526,7 +540,7 @@ public class AgendaService : IAgendaService
 
         config.GoogleOAuthRefreshToken = null;
         config.GoogleOAuthEmail = null;
-        if (config.TipoIntegracao == "OAuth")
+        if (config.TipoIntegracao == IntegracaoOAuth)
         {
             config.TipoIntegracao = !string.IsNullOrWhiteSpace(config.ChaveGoogleServiceAccountJson) ? "ServiceAccount" : "Nenhum";
         }
@@ -546,7 +560,7 @@ public class AgendaService : IAgendaService
         _configuration?["GOOGLE_CALENDAR_CLIENT_SECRET"] ??
         _configuration?["GoogleCalendar:ClientSecret"];
 
-    private ConfiguracaoAgendaEscritorioDto MapearConfiguracao(ConfiguracaoAgendaEscritorio config)
+    private static ConfiguracaoAgendaEscritorioDto MapearConfiguracao(ConfiguracaoAgendaEscritorio config)
     {
         var calId = !string.IsNullOrWhiteSpace(config.GoogleCalendarId) ? config.GoogleCalendarId : config.EmailAgendaEmpresa;
         var linkEmbed = GerarLinkEmbedGoogleCalendar(calId);
@@ -589,7 +603,7 @@ public class AgendaService : IAgendaService
     {
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
         var config = await _configuracaoAgendaRepository.ObterPorEscritorioIdAsync(escritorioId);
-        if (config is null || string.IsNullOrWhiteSpace(config.EmailAgendaEmpresa))
+        if (config is null || (string.IsNullOrWhiteSpace(config.EmailAgendaEmpresa) && string.IsNullOrWhiteSpace(config.GoogleCalendarId)))
             return string.Empty;
 
         var calId = !string.IsNullOrWhiteSpace(config.GoogleCalendarId) ? config.GoogleCalendarId : config.EmailAgendaEmpresa;

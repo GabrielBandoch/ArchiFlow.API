@@ -38,7 +38,6 @@ public class TenantResolutionMiddleware
 
     public static string ResolveTenant(HttpContext context)
     {
-        // 1. Prioridade: cabeçalho explícito (útil para desenvolvimento, testes e integrações)
         if (context.Request.Headers.TryGetValue(TenantHeaderName, out var headerValues))
         {
             var headerTenant = headerValues.FirstOrDefault()?.Trim().ToLowerInvariant();
@@ -48,8 +47,11 @@ public class TenantResolutionMiddleware
             }
         }
 
-        // 2. DNS / Hostname da requisição
-        var host = context.Request.Host.Host;
+        return ResolveTenantFromHost(context.Request.Host.Host);
+    }
+
+    private static string ResolveTenantFromHost(string? host)
+    {
         if (string.IsNullOrWhiteSpace(host) || 
             host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || 
             host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
@@ -58,7 +60,6 @@ public class TenantResolutionMiddleware
             return !string.IsNullOrWhiteSpace(envDefault) ? SanitizeTenant(envDefault) : "default";
         }
 
-        // Suporte a subdomínios (ex: duna.archiflow.com.br, alfa.escritorio.com.br)
         var parts = host.Split('.', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length > 2)
         {
@@ -72,13 +73,11 @@ public class TenantResolutionMiddleware
 
             if (parts.Length > 3 && (subdominio.Equals("api", StringComparison.OrdinalIgnoreCase) || subdominio.Equals("app", StringComparison.OrdinalIgnoreCase)))
             {
-                // Formato api.duna.archiflow.com.br
                 return SanitizeTenant(parts[1]);
             }
         }
         else if (parts.Length == 2)
         {
-            // Domínio customizado exclusivo do escritório (ex: dunaarquitetura.com -> dunaarquitetura)
             return SanitizeTenant(parts[0]);
         }
 
@@ -87,7 +86,7 @@ public class TenantResolutionMiddleware
 
     private static string SanitizeTenant(string input)
     {
-        var sanitized = Regex.Replace(input, @"[^a-zA-Z0-9_-]", "");
+        var sanitized = Regex.Replace(input, @"[^a-zA-Z0-9_-]", "", RegexOptions.None, TimeSpan.FromSeconds(1));
         return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized.ToLowerInvariant();
     }
 }

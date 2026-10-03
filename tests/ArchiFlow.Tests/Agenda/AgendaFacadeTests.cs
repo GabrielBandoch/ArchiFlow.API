@@ -63,5 +63,31 @@ public class AgendaFacadeTests
         _serviceMock.Setup(s => s.ExportarIcsAsync(null, null)).ReturnsAsync("ICS");
         var ics = await _facade.ExportarIcsAsync();
         ics.Should().Be("ICS");
+
+        var configDto = new ConfiguracaoAgendaEscritorioDto { Id = Guid.NewGuid(), EscritorioId = Guid.NewGuid() };
+        _serviceMock.Setup(s => s.ObterConfiguracaoAgendaEscritorioAsync()).ReturnsAsync(configDto);
+        var rConfig = await _facade.ObterConfiguracaoAgendaEscritorioAsync();
+        rConfig.Should().Be(configDto);
+
+        var cmdSalvar = new SalvarConfiguracaoAgendaEscritorioCommand { GoogleCalendarId = "cal@google.com" };
+        _serviceMock.Setup(s => s.SalvarConfiguracaoAgendaEscritorioAsync(cmdSalvar)).ReturnsAsync(configDto);
+        var rSalvar = await _facade.SalvarConfiguracaoAgendaEscritorioAsync(cmdSalvar);
+        rSalvar.Should().Be(configDto);
+
+        _serviceMock.Setup(s => s.ObterLinkCompartilhadoGoogleAgendaAsync()).ReturnsAsync("https://cal.link");
+        var rLink = await _facade.ObterLinkCompartilhadoGoogleAgendaAsync();
+        rLink.Should().Be("https://cal.link");
+
+        _serviceMock.Setup(s => s.ObterUrlGoogleOAuthAsync("http://redir")).ReturnsAsync("https://oauth.url");
+        var rOAuthUrl = await _facade.ObterUrlGoogleOAuthAsync("http://redir");
+        rOAuthUrl.Should().Be("https://oauth.url");
+
+        var cmdOAuth = new ConectarGoogleOAuthCommand { Code = "code123", RedirectUri = "http://redir" };
+        _serviceMock.Setup(s => s.ConectarGoogleOAuthAsync(cmdOAuth)).ReturnsAsync(configDto);
+        var rOAuth = await _facade.ConectarGoogleOAuthAsync(cmdOAuth);
+        rOAuth.Should().Be(configDto);
+
+        await _facade.DesconectarGoogleOAuthAsync();
+        _serviceMock.Verify(s => s.DesconectarGoogleOAuthAsync(), Times.Once);
     }
 }

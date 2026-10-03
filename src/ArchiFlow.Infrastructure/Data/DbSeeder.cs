@@ -624,7 +624,6 @@ public static class DbSeeder
         if (projetos.Count == 0) return;
 
         var hoje = DateTime.UtcNow.Date;
-        var random = new Random(42);
 
         var p1 = projetos[0];
         var ctf1 = new ContratoFinanceiro

@@ -72,8 +72,7 @@ public class GoogleCalendarService : IGoogleCalendarService
 
     public string GerarLinkGoogleMeet(string identificador)
     {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var bytes = md5.ComputeHash(Encoding.UTF8.GetBytes(identificador));
+        var bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(identificador));
         static char ToLetter(byte b) => (char)('a' + (b % 26));
 
         var part1 = new string(new[] { ToLetter(bytes[0]), ToLetter(bytes[1]), ToLetter(bytes[2]) });
@@ -143,9 +142,10 @@ public class GoogleCalendarService : IGoogleCalendarService
             if (string.IsNullOrWhiteSpace(chaveServiceAccountJson) || string.IsNullOrWhiteSpace(calendarId))
                 return null;
 
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(chaveServiceAccountJson));
-            var credential = GoogleCredential.FromStream(stream)
+#pragma warning disable CS0618
+            var credential = GoogleCredential.FromJson(chaveServiceAccountJson)
                 .CreateScoped(CalendarService.Scope.Calendar);
+#pragma warning restore CS0618
 
             using var service = new CalendarService(new BaseClientService.Initializer
             {
@@ -182,9 +182,8 @@ public class GoogleCalendarService : IGoogleCalendarService
 
             return eventoCriado?.Id;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[GoogleCalendarService] Falha ao sincronizar diretamente com a Google Calendar API: {ex.Message}");
             return null;
         }
     }
@@ -220,11 +219,9 @@ public class GoogleCalendarService : IGoogleCalendarService
                 { "grant_type", "authorization_code" }
             };
 
-            var response = await httpClient.PostAsync("https://oauth2.googleapis.com/token", new System.Net.Http.FormUrlEncodedContent(payload));
+            using var response = await httpClient.PostAsync("https://oauth2.googleapis.com/token", new System.Net.Http.FormUrlEncodedContent(payload));
             if (!response.IsSuccessStatusCode)
             {
-                var errBody = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[GoogleCalendarService] Erro ao trocar code por token: {response.StatusCode} - {errBody}");
                 return (null, null);
             }
 
@@ -240,7 +237,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 {
                     using var userInfoReq = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
                     userInfoReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                    var userInfoResp = await httpClient.SendAsync(userInfoReq);
+                    using var userInfoResp = await httpClient.SendAsync(userInfoReq);
                     if (userInfoResp.IsSuccessStatusCode)
                     {
                         using var userDoc = await System.Text.Json.JsonDocument.ParseAsync(await userInfoResp.Content.ReadAsStreamAsync());
@@ -258,9 +255,8 @@ public class GoogleCalendarService : IGoogleCalendarService
 
             return (refreshToken, email);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[GoogleCalendarService] Exceção ao trocar código OAuth: {ex.Message}");
             return (null, null);
         }
     }
@@ -333,9 +329,8 @@ public class GoogleCalendarService : IGoogleCalendarService
 
             return eventoCriado?.Id;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[GoogleCalendarService] Falha ao criar evento via OAuth: {ex.Message}");
             return null;
         }
     }

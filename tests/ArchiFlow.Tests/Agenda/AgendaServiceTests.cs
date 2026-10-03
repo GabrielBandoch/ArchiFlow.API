@@ -304,4 +304,138 @@ public class AgendaServiceTests
 
         result.Should().Contain("VCALENDAR");
     }
+
+    [Fact]
+    public async Task ObterConfiguracaoAgendaEscritorioAsync_QuandoNaoExiste_DeveRetornarNull()
+    {
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+
+        var result = await _service.ObterConfiguracaoAgendaEscritorioAsync();
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SalvarConfiguracaoAgendaEscritorioAsync_QuandoValido_DeveSalvar()
+    {
+        var configExistente = new ConfiguracaoAgendaEscritorio { Id = Guid.NewGuid(), EscritorioId = _escritorioId };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(configExistente);
+
+        var cmd = new SalvarConfiguracaoAgendaEscritorioCommand
+        {
+            GoogleCalendarId = "c1@group.calendar.google.com",
+            EmailAgendaEmpresa = "empresa@studio.com",
+            TipoIntegracao = "ServiceAccount",
+            ChaveGoogleServiceAccountJson = "{}",
+            SincronizacaoAutomaticaAtiva = true
+        };
+
+        var result = await _service.SalvarConfiguracaoAgendaEscritorioAsync(cmd);
+
+        result.GoogleCalendarId.Should().Be("c1@group.calendar.google.com");
+        _configuracaoRepoMock.Verify(r => r.Update(configExistente), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DesconectarGoogleOAuthAsync_DeveLimparTokens()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            GoogleOAuthRefreshToken = "token-secret"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        await _service.DesconectarGoogleOAuthAsync();
+
+        config.GoogleOAuthRefreshToken.Should().BeNull();
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterUrlGoogleOAuthAsync_DeveRetornarUrl()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            GoogleClientId = "mock-client-id"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        _googleCalendarMock.Setup(g => g.GerarUrlAutorizacaoOAuth("mock-client-id", "http://localhost:4200", _escritorioId.ToString()))
+            .Returns("https://accounts.google.com/auth");
+
+        var url = await _service.ObterUrlGoogleOAuthAsync("http://localhost:4200");
+
+        url.Should().StartWith("https://accounts.google.com");
+    }
+
+    [Fact]
+    public async Task CriarCompromissoAsync_ComDataLocal_DeveConverterParaUtc()
+    {
+        var inicioLocal = DateTime.SpecifyKind(DateTime.Now.AddDays(1), DateTimeKind.Local);
+        var fimLocal = inicioLocal.AddHours(1);
+        var cmd = new CriarCompromissoCommand("Reunião Local", inicioLocal, fimLocal, null, null, null, null, null, null);
+
+        var result = await _service.CriarCompromissoAsync(cmd);
+
+        result.DataHoraInicio.Kind.Should().Be(DateTimeKind.Utc);
+        result.DataHoraFim.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    [Fact]
+    public async Task ConectarGoogleOAuthAsync_ComSucesso_DeveAtualizarConfiguracao()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            GoogleClientId = "cid",
+            GoogleClientSecret = "csec"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+        _googleCalendarMock.Setup(g => g.TrocarCodigoPorRefreshTokenAsync("code", "cid", "csec", "http://redir"))
+            .ReturnsAsync(("new-refresh-token", "empresa@gmail.com"));
+
+        var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir" };
+        var result = await _service.ConectarGoogleOAuthAsync(cmd);
+
+        result.PossuiOAuthConectado.Should().BeTrue();
+        result.GoogleOAuthEmail.Should().Be("empresa@gmail.com");
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterLinkCompartilhadoGoogleAgendaAsync_DeveRetornarEmbedLink()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            EmailAgendaEmpresa = "empresa@studio.com",
+            GoogleCalendarId = "empresa@group.calendar.google.com"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        var link = await _service.ObterLinkCompartilhadoGoogleAgendaAsync();
+
+        link.Should().Contain("calendar.google.com/calendar/embed");
+    }
+
+    [Fact]
+    public async Task SalvarConfiguracaoAgendaEscritorioAsync_SemCalendarIdNemEmail_DeveLancarArgumentException()
+    {
+        var cmd = new SalvarConfiguracaoAgendaEscritorioCommand
+        {
+            GoogleCalendarId = "",
+            EmailAgendaEmpresa = ""
+        };
+
+        var act = () => _service.SalvarConfiguracaoAgendaEscritorioAsync(cmd);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
 }
