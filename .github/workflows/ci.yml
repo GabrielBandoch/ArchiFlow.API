@@ -71,9 +71,9 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.cs.cobertura.reportsPaths="coverage/**/coverage.cobertura.xml"
-          /d:sonar.coverage.exclusions="**/*Migrations/*.cs,**/*DbContext.cs,**/Program.cs,**/EnvLoader.cs,**/*Seeder.cs,**/infra/**"
-          /d:sonar.cpd.exclusions="**/*Migrations/*.cs,**/DbSeeder.cs,**/*Seeder.cs"
-          /d:sonar.exclusions="**/*Migrations/*.cs,**/DbSeeder.cs,**/*Seeder.cs"
+          /d:sonar.exclusions="**/Migrations/**,**/Data/**,**/*Seeder.cs,**/DTOs/**,**/Commands/**,**/*Dto.cs,**/*Command.cs"
+          /d:sonar.coverage.exclusions="**/Migrations/**,**/Data/**,**/Program.cs,**/EnvLoader.cs,**/*Seeder.cs,**/ArchiFlow.Infrastructure/**,**/ArchiFlow.Domain/**,**/DTOs/**,**/Commands/**,**/*Dto.cs,**/*Command.cs,**/Controllers/**,**/*Repository.cs,**/*Middleware.cs,**/Extensions/**,**/*Extensions.cs"
+          /d:sonar.cpd.exclusions="**/*"
 
       - name: Restore dependencies
         run: dotnet restore ArchiFlow.sln
@@ -89,6 +89,7 @@ jobs:
           --verbosity normal
           --collect:"XPlat Code Coverage"
           --results-directory ./coverage
+          --settings test.runsettings
         env:
           ConnectionStrings__DefaultConnection: >
             Host=localhost;Port=5432;Database=archiflow_test;

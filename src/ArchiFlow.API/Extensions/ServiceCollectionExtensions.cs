@@ -25,6 +25,7 @@ using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using ArchiFlow.Infrastructure.Repositories.Usuarios;
 using ArchiFlow.Infrastructure.Repositories.Clientes;
+using ArchiFlow.Infrastructure.MultiTenancy;
 using ArchiFlow.Infrastructure.Repositories.Leads;
 using ArchiFlow.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -56,6 +57,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddAutoMapper(typeof(ArchiFlowMappingProfile));
 
+        // Multi-Tenancy
+        services.AddScoped<ITenantContext, TenantContext>();
+
         // Repositories
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
         services.AddScoped<ITemplateProjetoRepository, TemplateProjetoRepository>();
@@ -70,6 +74,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ArchiFlow.Domain.Financeiro.IParcelaFinanceiraRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ParcelaFinanceiraRepository>();
         services.AddScoped<ArchiFlow.Domain.Financeiro.IContratoFinanceiroRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ContratoFinanceiroRepository>();
         services.AddScoped<ArchiFlow.Domain.Financeiro.IDespesaProjetoRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.DespesaProjetoRepository>();
+        services.AddScoped<ArchiFlow.Domain.Agenda.ICompromissoRepository, ArchiFlow.Infrastructure.Repositories.Agenda.CompromissoRepository>();
+        services.AddScoped<ArchiFlow.Domain.Agenda.IConfiguracaoAgendaRepository, ArchiFlow.Infrastructure.Repositories.Agenda.ConfiguracaoAgendaRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
@@ -113,6 +119,11 @@ public static class ServiceCollectionExtensions
         // Dashboard Services & Facades
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDashboardFacade, DashboardFacade>();
+
+        // Agenda Services & Facades
+        services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
+        services.AddScoped<IAgendaService, ArchiFlow.Application.Agenda.Services.AgendaService>();
+        services.AddScoped<IAgendaFacade, ArchiFlow.Application.Agenda.Facades.AgendaFacade>();
 
         // Storage & Email (Automatic environment and configuration-based registration)
         var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
