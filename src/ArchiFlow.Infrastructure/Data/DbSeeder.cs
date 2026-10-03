@@ -257,6 +257,57 @@ public static class DbSeeder
                 ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Secret"" character varying(300);
                 ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Tipo_Integracao"" character varying(50) DEFAULT 'ServiceAccount';
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Configuracoes_Agenda_Escritorio_EscritorioId"" ON ""Configuracoes_Agenda_Escritorio"" (""CAE_Escritorio_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Nome"" character varying(200) NOT NULL,
+                    ""Especialidade"" character varying(100) NOT NULL,
+                    ""Email"" character varying(200),
+                    ""Telefone"" character varying(50),
+                    ""Cidade"" character varying(100),
+                    ""Estado"" character varying(50),
+                    ""Descricao"" text,
+                    ""AvaliacaoMedia"" numeric(3,1) NOT NULL DEFAULT 5.0,
+                    ""TotalAvaliacoes"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DataCriacao"" timestamp with time zone NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Avaliacoes_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""ProjetoId"" uuid,
+                    ""Nota"" integer NOT NULL,
+                    ""Comentario"" character varying(1000),
+                    ""AutorNome"" character varying(150),
+                    ""DataAvaliacao"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Avaliacoes_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Projetos_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""ProjetoId"" uuid NOT NULL,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""FuncaoNoProjeto"" character varying(150),
+                    ""DataVinculo"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Projetos_Fornecedores_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Opcoes_Configuracao"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Categoria"" character varying(100) NOT NULL,
+                    ""Chave"" character varying(100) NOT NULL,
+                    ""Rotulo"" character varying(200) NOT NULL,
+                    ""SubRotulo"" text,
+                    ""Icone"" character varying(50),
+                    ""Cor"" character varying(20),
+                    ""CorFundo"" character varying(20),
+                    ""Ordem"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DadosExtrasJson"" text
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
             ");
         }
         catch (Exception ex)
