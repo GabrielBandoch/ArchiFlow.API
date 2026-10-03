@@ -316,9 +316,6 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<DespesaProjetoDto> CriarDespesaAsync(CriarDespesaCommand command)
     {
-        if (command.ProjetoId == Guid.Empty)
-            throw new ArgumentException("ProjetoId é obrigatório.");
-
         if (string.IsNullOrWhiteSpace(command.Descricao))
             throw new ArgumentException("A descrição da despesa é obrigatória.");
 
@@ -328,14 +325,18 @@ public class FinanceiroService : IFinanceiroService
         if (command.DataDespesa == default)
             throw new ArgumentException("Data da despesa é obrigatória.");
 
-        var projeto = await _projetoRepository.GetById(command.ProjetoId);
-        if (projeto is null)
-            throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
+        Projeto? projeto = null;
+        if (command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty)
+        {
+            projeto = await _projetoRepository.GetById(command.ProjetoId.Value);
+            if (projeto is null)
+                throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
+        }
 
         var despesa = new DespesaProjeto
         {
             Id = Guid.NewGuid(),
-            ProjetoId = command.ProjetoId,
+            ProjetoId = (command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty) ? command.ProjetoId.Value : null,
             Descricao = command.Descricao.Trim(),
             Valor = command.Valor,
             DataDespesa = command.DataDespesa,

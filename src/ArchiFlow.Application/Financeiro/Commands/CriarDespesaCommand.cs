@@ -4,7 +4,7 @@ using System;
 namespace ArchiFlow.Application.Financeiro.Commands;
 
 public record CriarDespesaCommand(
-    Guid ProjetoId,
+    Guid? ProjetoId,
     string Descricao,
     decimal Valor,
     DateTime DataDespesa,

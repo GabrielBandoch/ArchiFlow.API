@@ -6,7 +6,7 @@ namespace ArchiFlow.Domain.Financeiro;
 public class DespesaProjeto
 {
     public Guid Id { get; set; }
-    public Guid ProjetoId { get; set; }
+    public Guid? ProjetoId { get; set; }
     public string Descricao { get; set; } = string.Empty;
     public decimal Valor { get; set; }
     public DateTime DataDespesa { get; set; }
