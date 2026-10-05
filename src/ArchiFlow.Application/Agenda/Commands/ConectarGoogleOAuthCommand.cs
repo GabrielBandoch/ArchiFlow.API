@@ -10,6 +10,9 @@ public class ConectarGoogleOAuthCommand
     [Required(ErrorMessage = "A URI de redirecionamento é obrigatória.")]
     public string RedirectUri { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "O estado OAuth (CSRF) é obrigatório.")]
+    public string State { get; set; } = string.Empty;
+
     public string? ClientId { get; set; }
 
     public string? ClientSecret { get; set; }

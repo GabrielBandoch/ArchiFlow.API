@@ -142,7 +142,10 @@ public class AgendaController : ControllerBase
             return BadRequest(new { message = "A URL de redirecionamento é obrigatória." });
 
         var url = await _agendaFacade.ObterUrlGoogleOAuthAsync(redirectUri);
-        return Ok(new { url });
+        var uri = new Uri(url);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var state = queryParams["state"];
+        return Ok(new { url, state });
     }
 
     [HttpPost("oauth/conectar")]

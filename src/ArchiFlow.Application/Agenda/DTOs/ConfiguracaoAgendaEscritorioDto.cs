@@ -8,7 +8,6 @@ public class ConfiguracaoAgendaEscritorioDto
     public Guid EscritorioId { get; set; }
     public string EmailAgendaEmpresa { get; set; } = string.Empty;
     public string? GoogleCalendarId { get; set; }
-    public string? ChaveGoogleServiceAccountJson { get; set; }
     public bool PossuiChaveServiceAccount { get; set; }
     public string? GoogleOAuthEmail { get; set; }
     public bool PossuiOAuthConectado { get; set; }

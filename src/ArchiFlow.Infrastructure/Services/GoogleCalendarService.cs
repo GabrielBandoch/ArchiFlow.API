@@ -1,18 +1,39 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using ArchiFlow.Application.Agenda.DTOs;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Agenda;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiFlow.Infrastructure.Services;
 
 public class GoogleCalendarService : IGoogleCalendarService
 {
+    private const string AppName = "ArchiFlow";
+    private const string PrimaryCalendarId = "primary";
+
+    private static readonly Uri GoogleTokenUri = new("https://oauth2.googleapis.com/token");
+    private static readonly Uri GoogleUserInfoUri = new("https://www.googleapis.com/oauth2/v2/userinfo");
+
+    private readonly ILogger<GoogleCalendarService>? _logger;
+    private readonly HttpClient? _httpClient;
+
+    public GoogleCalendarService(ILogger<GoogleCalendarService>? logger = null, HttpClient? httpClient = null)
+    {
+        _logger = logger;
+        _httpClient = httpClient;
+    }
+
     public string GerarLinkWebAdicionarEvento(Compromisso compromisso, string? nomeProjeto = null, string? nomeCliente = null, string? nomeLead = null, string? emailAgendaEmpresa = null)
     {
         var sbDescricao = new StringBuilder();
@@ -70,18 +91,6 @@ public class GoogleCalendarService : IGoogleCalendarService
         return query.ToString();
     }
 
-    public string GerarLinkGoogleMeet(string identificador)
-    {
-        var bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(identificador));
-        static char ToLetter(byte b) => (char)('a' + (b % 26));
-
-        var part1 = new string(new[] { ToLetter(bytes[0]), ToLetter(bytes[1]), ToLetter(bytes[2]) });
-        var part2 = new string(new[] { ToLetter(bytes[3]), ToLetter(bytes[4]), ToLetter(bytes[5]), ToLetter(bytes[6]) });
-        var part3 = new string(new[] { ToLetter(bytes[7]), ToLetter(bytes[8]), ToLetter(bytes[9]) });
-
-        return $"https://meet.google.com/{part1}-{part2}-{part3}";
-    }
-
     public string ExportarIcs(IEnumerable<Compromisso> compromissos, string nomeCalendario = "ArchiFlow - Agenda")
     {
         var sb = new StringBuilder();
@@ -129,65 +138,6 @@ public class GoogleCalendarService : IGoogleCalendarService
                    .Replace("\n", "\\n");
     }
 
-    public async Task<string?> CriarEventoDiretoNoGoogleCalendarAsync(
-        Compromisso compromisso,
-        string calendarId,
-        string chaveServiceAccountJson,
-        string? nomeProjeto = null,
-        string? nomeCliente = null,
-        string? nomeLead = null)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(chaveServiceAccountJson) || string.IsNullOrWhiteSpace(calendarId))
-                return null;
-
-#pragma warning disable CS0618
-            var credential = GoogleCredential.FromJson(chaveServiceAccountJson)
-                .CreateScoped(CalendarService.Scope.Calendar);
-#pragma warning restore CS0618
-
-            using var service = new CalendarService(new BaseClientService.Initializer
-            {
-                HttpClientInitializer = credential,
-                ApplicationName = "ArchiFlow"
-            });
-
-            var sbDescricao = new StringBuilder();
-            if (!string.IsNullOrWhiteSpace(compromisso.Descricao))
-            {
-                sbDescricao.AppendLine(compromisso.Descricao);
-                sbDescricao.AppendLine();
-            }
-            if (!string.IsNullOrWhiteSpace(nomeProjeto)) sbDescricao.AppendLine($"Projeto: {nomeProjeto}");
-            if (!string.IsNullOrWhiteSpace(nomeCliente)) sbDescricao.AppendLine($"Cliente: {nomeCliente}");
-            if (!string.IsNullOrWhiteSpace(nomeLead)) sbDescricao.AppendLine($"Lead: {nomeLead}");
-            if (!string.IsNullOrWhiteSpace(compromisso.LinkGoogleMeet)) sbDescricao.AppendLine($"Google Meet: {compromisso.LinkGoogleMeet}");
-
-            var targetCalendar = calendarId.Trim();
-            var novoEvento = MontarEvento(compromisso, sbDescricao.ToString().Trim());
-            var insertRequest = service.Events.Insert(novoEvento, targetCalendar);
-            if (!string.IsNullOrWhiteSpace(compromisso.LinkGoogleMeet))
-            {
-                insertRequest.ConferenceDataVersion = 1;
-            }
-            var eventoCriado = await insertRequest.ExecuteAsync();
-
-            var meetUrlReal = eventoCriado?.HangoutLink
-                ?? eventoCriado?.ConferenceData?.EntryPoints?.FirstOrDefault(e => e.EntryPointType == "video")?.Uri;
-            if (!string.IsNullOrWhiteSpace(meetUrlReal))
-            {
-                compromisso.LinkGoogleMeet = meetUrlReal;
-            }
-
-            return eventoCriado?.Id;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public string GerarUrlAutorizacaoOAuth(string clientId, string redirectUri, string state)
     {
         var scopes = Uri.EscapeDataString("https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email");
@@ -209,7 +159,8 @@ public class GoogleCalendarService : IGoogleCalendarService
     {
         try
         {
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var localClient = _httpClient == null ? new HttpClient() : null;
+            var client = _httpClient ?? localClient!;
             var payload = new Dictionary<string, string>
             {
                 { "code", code },
@@ -219,13 +170,14 @@ public class GoogleCalendarService : IGoogleCalendarService
                 { "grant_type", "authorization_code" }
             };
 
-            using var response = await httpClient.PostAsync("https://oauth2.googleapis.com/token", new System.Net.Http.FormUrlEncodedContent(payload));
+            using var response = await client.PostAsync(GoogleTokenUri, new FormUrlEncodedContent(payload));
             if (!response.IsSuccessStatusCode)
             {
+                _logger?.LogWarning("Falha ao trocar código por refresh token: {StatusCode}", response.StatusCode);
                 return (null, null);
             }
 
-            using var doc = await System.Text.Json.JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
             var root = doc.RootElement;
             var refreshToken = root.TryGetProperty("refresh_token", out var rtProp) ? rtProp.GetString() : null;
             var accessToken = root.TryGetProperty("access_token", out var atProp) ? atProp.GetString() : null;
@@ -235,107 +187,277 @@ public class GoogleCalendarService : IGoogleCalendarService
             {
                 try
                 {
-                    using var userInfoReq = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
-                    userInfoReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                    using var userInfoResp = await httpClient.SendAsync(userInfoReq);
+                    using var userInfoReq = new HttpRequestMessage(HttpMethod.Get, GoogleUserInfoUri);
+                    userInfoReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                    using var userInfoResp = await client.SendAsync(userInfoReq);
                     if (userInfoResp.IsSuccessStatusCode)
                     {
-                        using var userDoc = await System.Text.Json.JsonDocument.ParseAsync(await userInfoResp.Content.ReadAsStreamAsync());
+                        using var userDoc = await JsonDocument.ParseAsync(await userInfoResp.Content.ReadAsStreamAsync());
                         if (userDoc.RootElement.TryGetProperty("email", out var emailProp))
                         {
                             email = emailProp.GetString();
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Falha silenciosa na leitura do e-mail
+                    _logger?.LogWarning(ex, "Falha na leitura do e-mail de perfil do usuário Google");
                 }
             }
 
             return (refreshToken, email);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogError(ex, "Erro na comunicação com os servidores do Google OAuth");
             return (null, null);
         }
     }
 
-    public async Task<string?> CriarEventoViaOAuthAsync(
-        Compromisso compromisso,
-        string calendarId,
-        string refreshToken,
-        string clientId,
-        string clientSecret,
-        string? nomeProjeto = null,
-        string? nomeCliente = null,
-        string? nomeLead = null)
+    public async Task<GoogleCalendarSyncResult> CriarEventoDiretoNoGoogleCalendarAsync(
+        GoogleCalendarEventRequest request,
+        string chaveServiceAccountJson)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(refreshToken) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
-                return null;
+            if (string.IsNullOrWhiteSpace(chaveServiceAccountJson) || string.IsNullOrWhiteSpace(request.CalendarId))
+                return new GoogleCalendarSyncResult { Sucesso = false };
 
-            var flow = new Google.Apis.Auth.OAuth2.Flows.GoogleAuthorizationCodeFlow(
-                new Google.Apis.Auth.OAuth2.Flows.GoogleAuthorizationCodeFlow.Initializer
-                {
-                    ClientSecrets = new ClientSecrets
-                    {
-                        ClientId = clientId,
-                        ClientSecret = clientSecret
-                    },
-                    Scopes = new[] { CalendarService.Scope.CalendarEvents }
-                });
-
-            var token = new Google.Apis.Auth.OAuth2.Responses.TokenResponse
-            {
-                RefreshToken = refreshToken
-            };
-
-            var credential = new UserCredential(flow, "user", token);
+#pragma warning disable CS0618
+            var credential = GoogleCredential.FromJson(chaveServiceAccountJson)
+                .CreateScoped(CalendarService.Scope.Calendar);
+#pragma warning restore CS0618
 
             using var service = new CalendarService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
-                ApplicationName = "ArchiFlow"
+                ApplicationName = AppName
             });
 
-            var sbDescricao = new StringBuilder();
-            if (!string.IsNullOrWhiteSpace(compromisso.Descricao))
-            {
-                sbDescricao.AppendLine(compromisso.Descricao);
-                sbDescricao.AppendLine();
-            }
-            if (!string.IsNullOrWhiteSpace(nomeProjeto)) sbDescricao.AppendLine($"Projeto: {nomeProjeto}");
-            if (!string.IsNullOrWhiteSpace(nomeCliente)) sbDescricao.AppendLine($"Cliente: {nomeCliente}");
-            if (!string.IsNullOrWhiteSpace(nomeLead)) sbDescricao.AppendLine($"Lead: {nomeLead}");
-            if (!string.IsNullOrWhiteSpace(compromisso.LinkGoogleMeet)) sbDescricao.AppendLine($"Google Meet: {compromisso.LinkGoogleMeet}");
-
-            var targetCalendar = string.IsNullOrWhiteSpace(calendarId) ? "primary" : calendarId.Trim();
-            var novoEvento = MontarEvento(compromisso, sbDescricao.ToString().Trim());
+            var sbDescricao = MontarDescricao(request);
+            var targetCalendar = request.CalendarId.Trim();
+            var novoEvento = MontarEvento(request.Compromisso, sbDescricao, request.SolicitarGoogleMeet);
             var insertRequest = service.Events.Insert(novoEvento, targetCalendar);
-            if (!string.IsNullOrWhiteSpace(compromisso.LinkGoogleMeet))
+            if (request.SolicitarGoogleMeet)
             {
                 insertRequest.ConferenceDataVersion = 1;
             }
+
             var eventoCriado = await insertRequest.ExecuteAsync();
+            var meetUrlReal = ExtrairMeetUrl(eventoCriado);
 
-            var meetUrlReal = eventoCriado?.HangoutLink
-                ?? eventoCriado?.ConferenceData?.EntryPoints?.FirstOrDefault(e => e.EntryPointType == "video")?.Uri;
-            if (!string.IsNullOrWhiteSpace(meetUrlReal))
+            return new GoogleCalendarSyncResult
             {
-                compromisso.LinkGoogleMeet = meetUrlReal;
-            }
-
-            return eventoCriado?.Id;
+                Sucesso = true,
+                GoogleEventId = eventoCriado?.Id,
+                LinkGoogleMeet = meetUrlReal
+            };
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            _logger?.LogError(ex, "Erro ao criar evento via Service Account no Google Calendar");
+            return new GoogleCalendarSyncResult { Sucesso = false };
         }
     }
 
-    private static Event MontarEvento(Compromisso compromisso, string descricao)
+    public async Task<GoogleCalendarSyncResult> CriarEventoViaOAuthAsync(
+        GoogleCalendarEventRequest request,
+        string refreshToken,
+        string clientId,
+        string clientSecret)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+                return new GoogleCalendarSyncResult { Sucesso = false };
+
+            using var service = CriarCalendarServiceComOAuth(refreshToken, clientId, clientSecret);
+            var sbDescricao = MontarDescricao(request);
+            var targetCalendar = string.IsNullOrWhiteSpace(request.CalendarId) ? PrimaryCalendarId : request.CalendarId.Trim();
+            var novoEvento = MontarEvento(request.Compromisso, sbDescricao, request.SolicitarGoogleMeet);
+            var insertRequest = service.Events.Insert(novoEvento, targetCalendar);
+            if (request.SolicitarGoogleMeet)
+            {
+                insertRequest.ConferenceDataVersion = 1;
+            }
+
+            var eventoCriado = await insertRequest.ExecuteAsync();
+            var meetUrlReal = ExtrairMeetUrl(eventoCriado);
+
+            return new GoogleCalendarSyncResult
+            {
+                Sucesso = true,
+                GoogleEventId = eventoCriado?.Id,
+                LinkGoogleMeet = meetUrlReal
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Erro ao criar evento via OAuth no Google Calendar");
+            return new GoogleCalendarSyncResult { Sucesso = false };
+        }
+    }
+
+    public async Task<bool> AtualizarEventoDiretoAsync(
+        GoogleCalendarEventRequest request,
+        string chaveServiceAccountJson)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Compromisso.GoogleEventId) || string.IsNullOrWhiteSpace(chaveServiceAccountJson))
+                return false;
+
+#pragma warning disable CS0618
+            var credential = GoogleCredential.FromJson(chaveServiceAccountJson)
+                .CreateScoped(CalendarService.Scope.Calendar);
+#pragma warning restore CS0618
+
+            using var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = AppName
+            });
+
+            var targetCalendar = string.IsNullOrWhiteSpace(request.CalendarId) ? PrimaryCalendarId : request.CalendarId.Trim();
+            var evt = MontarEvento(request.Compromisso, MontarDescricao(request), false);
+            await service.Events.Update(evt, targetCalendar, request.Compromisso.GoogleEventId).ExecuteAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Falha ao atualizar evento no Google Calendar via Service Account");
+            return false;
+        }
+    }
+
+    public async Task<bool> AtualizarEventoViaOAuthAsync(
+        GoogleCalendarEventRequest request,
+        string refreshToken,
+        string clientId,
+        string clientSecret)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Compromisso.GoogleEventId) || string.IsNullOrWhiteSpace(refreshToken))
+                return false;
+
+            using var service = CriarCalendarServiceComOAuth(refreshToken, clientId, clientSecret);
+            var targetCalendar = string.IsNullOrWhiteSpace(request.CalendarId) ? PrimaryCalendarId : request.CalendarId.Trim();
+            var evt = MontarEvento(request.Compromisso, MontarDescricao(request), false);
+            await service.Events.Update(evt, targetCalendar, request.Compromisso.GoogleEventId).ExecuteAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Falha ao atualizar evento no Google Calendar via OAuth");
+            return false;
+        }
+    }
+
+    public async Task<bool> ExcluirEventoDiretoAsync(
+        string googleEventId,
+        string calendarId,
+        string chaveServiceAccountJson)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(googleEventId) || string.IsNullOrWhiteSpace(chaveServiceAccountJson))
+                return false;
+
+#pragma warning disable CS0618
+            var credential = GoogleCredential.FromJson(chaveServiceAccountJson)
+                .CreateScoped(CalendarService.Scope.Calendar);
+#pragma warning restore CS0618
+
+            using var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = AppName
+            });
+
+            var targetCalendar = string.IsNullOrWhiteSpace(calendarId) ? PrimaryCalendarId : calendarId.Trim();
+            await service.Events.Delete(targetCalendar, googleEventId).ExecuteAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Falha ao excluir evento no Google Calendar via Service Account");
+            return false;
+        }
+    }
+
+    public async Task<bool> ExcluirEventoViaOAuthAsync(
+        string googleEventId,
+        string calendarId,
+        string refreshToken,
+        string clientId,
+        string clientSecret)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(googleEventId) || string.IsNullOrWhiteSpace(refreshToken))
+                return false;
+
+            using var service = CriarCalendarServiceComOAuth(refreshToken, clientId, clientSecret);
+            var targetCalendar = string.IsNullOrWhiteSpace(calendarId) ? PrimaryCalendarId : calendarId.Trim();
+            await service.Events.Delete(targetCalendar, googleEventId).ExecuteAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Falha ao excluir evento no Google Calendar via OAuth");
+            return false;
+        }
+    }
+
+    private static CalendarService CriarCalendarServiceComOAuth(string refreshToken, string clientId, string clientSecret)
+    {
+        var flow = new Google.Apis.Auth.OAuth2.Flows.GoogleAuthorizationCodeFlow(
+            new Google.Apis.Auth.OAuth2.Flows.GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets
+                {
+                    ClientId = clientId,
+                    ClientSecret = clientSecret
+                },
+                Scopes = new[] { CalendarService.Scope.CalendarEvents }
+            });
+
+        var token = new Google.Apis.Auth.OAuth2.Responses.TokenResponse
+        {
+            RefreshToken = refreshToken
+        };
+
+        var credential = new UserCredential(flow, "user", token);
+        return new CalendarService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = AppName
+        });
+    }
+
+    private static string MontarDescricao(GoogleCalendarEventRequest request)
+    {
+        var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(request.Compromisso.Descricao))
+        {
+            sb.AppendLine(request.Compromisso.Descricao);
+            sb.AppendLine();
+        }
+        if (!string.IsNullOrWhiteSpace(request.NomeProjeto)) sb.AppendLine($"Projeto: {request.NomeProjeto}");
+        if (!string.IsNullOrWhiteSpace(request.NomeCliente)) sbDescricaoAdd(sb, "Cliente", request.NomeCliente);
+        if (!string.IsNullOrWhiteSpace(request.NomeLead)) sbDescricaoAdd(sb, "Lead", request.NomeLead);
+        if (!string.IsNullOrWhiteSpace(request.Compromisso.LinkGoogleMeet)) sbDescricaoAdd(sb, "Google Meet", request.Compromisso.LinkGoogleMeet);
+
+        return sb.ToString().Trim();
+    }
+
+    private static void sbDescricaoAdd(StringBuilder sb, string label, string value)
+    {
+        sb.AppendLine($"{label}: {value}");
+    }
+
+    internal static Event MontarEvento(Compromisso compromisso, string descricao, bool gerarMeet)
     {
         var evt = new Event
         {
@@ -354,7 +476,12 @@ public class GoogleCalendarService : IGoogleCalendarService
             }
         };
 
-        if (!string.IsNullOrWhiteSpace(compromisso.LinkGoogleMeet))
+        if (compromisso.Status == StatusCompromisso.Cancelado)
+        {
+            evt.Status = "cancelled";
+        }
+
+        if (gerarMeet)
         {
             evt.ConferenceData = new ConferenceData
             {
@@ -370,5 +497,11 @@ public class GoogleCalendarService : IGoogleCalendarService
         }
 
         return evt;
+    }
+
+    internal static string? ExtrairMeetUrl(Event? evt)
+    {
+        return evt?.HangoutLink
+            ?? evt?.ConferenceData?.EntryPoints?.FirstOrDefault(e => e.EntryPointType == "video")?.Uri;
     }
 }

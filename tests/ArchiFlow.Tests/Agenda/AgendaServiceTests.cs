@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Agenda.Commands;
+using ArchiFlow.Application.Agenda.DTOs;
 using ArchiFlow.Application.Agenda.Services;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Agenda;
-using ArchiFlow.Domain.Clientes;
-using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
 using ArchiFlow.Domain.Usuarios;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -20,14 +18,13 @@ namespace ArchiFlow.Tests.Agenda;
 
 public class AgendaServiceTests
 {
-    private readonly Mock<ICompromissoRepository> _compromissoRepoMock;
-    private readonly Mock<IConfiguracaoAgendaRepository> _configuracaoRepoMock;
-    private readonly Mock<IProjetoRepository> _projetoRepoMock;
-    private readonly Mock<IClienteRepository> _clienteRepoMock;
-    private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
-    private readonly Mock<IGoogleCalendarService> _googleCalendarMock;
-    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
-    private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
+    private readonly Mock<ICompromissoRepository> _compromissoRepoMock = new();
+    private readonly Mock<IConfiguracaoAgendaRepository> _configuracaoRepoMock = new();
+    private readonly Mock<IGoogleCalendarService> _googleCalendarMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
+    private readonly Mock<IUserContextService> _userContextMock = new();
+    private readonly Mock<IAgendaValidationService> _validationMock = new();
+    private readonly Mock<IOAuthStateService> _oauthStateMock = new();
 
     private readonly Guid _usuarioLogadoId = Guid.NewGuid();
     private readonly Guid _escritorioId = Guid.NewGuid();
@@ -35,17 +32,6 @@ public class AgendaServiceTests
 
     public AgendaServiceTests()
     {
-        _compromissoRepoMock = new Mock<ICompromissoRepository>();
-        _configuracaoRepoMock = new Mock<IConfiguracaoAgendaRepository>();
-        _projetoRepoMock = new Mock<IProjetoRepository>();
-        _clienteRepoMock = new Mock<IClienteRepository>();
-        _usuarioRepoMock = new Mock<IUsuarioRepository>();
-        _googleCalendarMock = new Mock<IGoogleCalendarService>();
-        _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-
-        SetupHttpContext(_usuarioLogadoId);
-
         var usuarioLogado = new Usuario
         {
             Id = _usuarioLogadoId,
@@ -54,7 +40,8 @@ public class AgendaServiceTests
             Email = "gestor@studio.com",
             Role = Roles.Administrador
         };
-        _usuarioRepoMock.Setup(r => r.GetById(_usuarioLogadoId)).ReturnsAsync(usuarioLogado);
+        _userContextMock.Setup(u => u.ObterUsuarioContextoAsync())
+            .ReturnsAsync((usuarioLogado, _escritorioId));
 
         _googleCalendarMock.Setup(g => g.GerarLinkWebAdicionarEvento(
             It.IsAny<Compromisso>(),
@@ -63,38 +50,27 @@ public class AgendaServiceTests
             It.IsAny<string>(),
             It.IsAny<string>()))
             .Returns("https://calendar.google.com/test");
-        _googleCalendarMock.Setup(g => g.GerarLinkGoogleMeet(It.IsAny<string>()))
-            .Returns("https://meet.google.com/xyz-test");
+
+        _validationMock.Setup(v => v.ObterNomesRelacionadosAsync(
+            It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>()))
+            .ReturnsAsync(("Casa Moderna", "Roberto Dias", "Lead Alpha", "Arquiteto Gestor"));
+
+        _validationMock.Setup(v => v.ObterNomesEmLoteAsync(It.IsAny<IEnumerable<Compromisso>>()))
+            .ReturnsAsync(new NomesRelacionadosBatch());
 
         _service = new AgendaService(
             _compromissoRepoMock.Object,
             _configuracaoRepoMock.Object,
-            _projetoRepoMock.Object,
-            _clienteRepoMock.Object,
-            _usuarioRepoMock.Object,
             _googleCalendarMock.Object,
             _unitOfWorkMock.Object,
-            _httpContextAccessorMock.Object
+            _userContextMock.Object,
+            _validationMock.Object,
+            _oauthStateMock.Object
         );
     }
 
-    private void SetupHttpContext(Guid? userId)
-    {
-        if (userId.HasValue)
-        {
-            var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString()) };
-            var identity = new ClaimsIdentity(claims, "Test");
-            var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-            _httpContextAccessorMock.Setup(h => h.HttpContext).Returns(httpContext);
-        }
-        else
-        {
-            _httpContextAccessorMock.Setup(h => h.HttpContext).Returns((HttpContext?)null);
-        }
-    }
-
     [Fact]
-    public async Task CriarCompromissoAsync_ComDadosValidos_DeveCriarECommitar()
+    public async Task CriarCompromissoAsync_ComDadosValidos_DevePersistirLocalmenteEConectarGoogleSeHouver()
     {
         var inicio = DateTime.UtcNow.AddDays(1);
         var fim = inicio.AddHours(2);
@@ -111,29 +87,84 @@ public class AgendaServiceTests
             GerarGoogleMeet: true
         );
 
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            TipoIntegracao = "ServiceAccount",
+            ChaveGoogleServiceAccountJson = "{\"type\":\"service_account\"}",
+            GoogleCalendarId = "calendar@google.com",
+            SincronizacaoAutomaticaAtiva = true
+        };
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        _googleCalendarMock.Setup(g => g.CriarEventoDiretoNoGoogleCalendarAsync(It.IsAny<GoogleCalendarEventRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(new GoogleCalendarSyncResult
+            {
+                Sucesso = true,
+                GoogleEventId = "evt-google-123",
+                LinkGoogleMeet = "https://meet.google.com/real-meet-room"
+            });
+
         var result = await _service.CriarCompromissoAsync(cmd);
 
         result.Should().NotBeNull();
         result.Titulo.Should().Be("Medição no Terreno");
         result.Tipo.Should().Be(TiposCompromisso.MedicaoTecnica);
-        result.LinkGoogleMeet.Should().Be("https://meet.google.com/xyz-test");
-        result.LinkGoogleCalendarWeb.Should().Be("https://calendar.google.com/test");
+        result.GoogleEventId.Should().Be("evt-google-123");
+        result.LinkGoogleMeet.Should().Be("https://meet.google.com/real-meet-room");
 
         _compromissoRepoMock.Verify(r => r.Create(It.IsAny<Compromisso>()), Times.Once);
-        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task CriarCompromissoAsync_SemIntegracaoGoogle_NaoDeveGerarLinkFakeDeMeet()
+    {
+        var inicio = DateTime.UtcNow.AddDays(1);
+        var fim = inicio.AddHours(1);
+        var cmd = new CriarCompromissoCommand("Reunião Simples", inicio, fim, null, null, null, null, null, null, GerarGoogleMeet: true);
+
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId))
+            .ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+
+        var result = await _service.CriarCompromissoAsync(cmd);
+
+        result.LinkGoogleMeet.Should().BeNull();
+        result.GoogleEventId.Should().BeNull();
     }
 
     [Fact]
     public async Task CriarCompromissoAsync_QuandoHorarioFimMenorOuIgualInicio_DeveLancarArgumentException()
     {
         var inicio = DateTime.UtcNow.AddDays(1);
-        var fim = inicio.AddHours(-1); // Fim antes do inicio
+        var fim = inicio.AddHours(-1);
         var cmd = new CriarCompromissoCommand("Teste", inicio, fim, null, null, null, null, null, null);
 
         var act = async () => await _service.CriarCompromissoAsync(cmd);
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*data/hora de término deve ser posterior*");
+            .WithMessage("*término deve ser posterior*");
+    }
+
+    [Fact]
+    public async Task CriarCompromissoAsync_ComUsuarioDeOutroEscritorio_DeveLancarUnauthorizedAccessException()
+    {
+        var inicio = DateTime.UtcNow.AddDays(1);
+        var fim = inicio.AddHours(1);
+        var usuarioOutroEscritorioId = Guid.NewGuid();
+
+        _validationMock.Setup(v => v.ValidarEntidadesRelacionadasAsync(
+            _escritorioId, usuarioOutroEscritorioId, null, null, null))
+            .ThrowsAsync(new UnauthorizedAccessException("O usuário pertence a outro escritório."));
+
+        var cmd = new CriarCompromissoCommand(
+            "Reunião", inicio, fim, null, null, null, null, null, usuarioOutroEscritorioId);
+
+        var act = async () => await _service.CriarCompromissoAsync(cmd);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*outro escritório*");
     }
 
     [Fact]
@@ -169,10 +200,11 @@ public class AgendaServiceTests
 
         _compromissoRepoMock.Setup(r => r.ObterPorPeriodoAsync(_escritorioId, inicio, fim, null, null))
             .ReturnsAsync(lista);
-        _projetoRepoMock.Setup(p => p.GetById(projetoId))
-            .ReturnsAsync(new Projeto { Id = projetoId, Nome = "Casa Moderna" });
-        _clienteRepoMock.Setup(c => c.GetById(clienteId))
-            .ReturnsAsync(new Cliente { Id = clienteId, Nome = "Roberto Dias" });
+
+        var batch = new NomesRelacionadosBatch();
+        batch.Projetos[projetoId] = "Casa Moderna";
+        batch.Clientes[clienteId] = "Roberto Dias";
+        _validationMock.Setup(v => v.ObterNomesEmLoteAsync(lista)).ReturnsAsync(batch);
 
         var result = await _service.ObterPorPeriodoAsync(inicio, fim);
 
@@ -208,7 +240,7 @@ public class AgendaServiceTests
     }
 
     [Fact]
-    public async Task AtualizarCompromissoAsync_ComDadosValidos_DeveAtualizarECommitar()
+    public async Task AtualizarCompromissoAsync_ComDadosValidos_DeveAtualizarECommitarESincronizarGoogle()
     {
         var id = Guid.NewGuid();
         var compromisso = new Compromisso
@@ -218,10 +250,21 @@ public class AgendaServiceTests
             Titulo = "Titulo Antigo",
             Tipo = TiposCompromisso.Geral,
             Status = StatusCompromisso.Agendado,
+            GoogleEventId = "evt-google-123",
             DataHoraInicio = DateTime.UtcNow.AddDays(1),
             DataHoraFim = DateTime.UtcNow.AddDays(1).AddHours(1)
         };
         _compromissoRepoMock.Setup(r => r.GetById(id)).ReturnsAsync(compromisso);
+
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            TipoIntegracao = "ServiceAccount",
+            ChaveGoogleServiceAccountJson = "{\"type\":\"service_account\"}",
+            GoogleCalendarId = "calendar@google.com"
+        };
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
 
         var cmd = new AtualizarCompromissoCommand(
             "Titulo Atualizado",
@@ -242,6 +285,7 @@ public class AgendaServiceTests
         result.Titulo.Should().Be("Titulo Atualizado");
         result.Tipo.Should().Be(TiposCompromisso.VisitaObra);
         _compromissoRepoMock.Verify(r => r.Update(compromisso), Times.Once);
+        _googleCalendarMock.Verify(g => g.AtualizarEventoDiretoAsync(It.IsAny<GoogleCalendarEventRequest>(), It.IsAny<string>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -279,14 +323,30 @@ public class AgendaServiceTests
     }
 
     [Fact]
-    public async Task ExcluirCompromissoAsync_ComIdValido_DeveRemoverECommitar()
+    public async Task ExcluirCompromissoAsync_ComGoogleEventId_DeveExcluirDoGoogleEDoBanco()
     {
         var id = Guid.NewGuid();
-        var compromisso = new Compromisso { Id = id, EscritorioId = _escritorioId };
+        var compromisso = new Compromisso
+        {
+            Id = id,
+            EscritorioId = _escritorioId,
+            GoogleEventId = "evt-google-123"
+        };
         _compromissoRepoMock.Setup(r => r.GetById(id)).ReturnsAsync(compromisso);
+
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            TipoIntegracao = "ServiceAccount",
+            ChaveGoogleServiceAccountJson = "{\"type\":\"service_account\"}",
+            GoogleCalendarId = "calendar@google.com"
+        };
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
 
         await _service.ExcluirCompromissoAsync(id);
 
+        _googleCalendarMock.Verify(g => g.ExcluirEventoDiretoAsync("evt-google-123", "calendar@google.com", It.IsAny<string>()), Times.Once);
         _compromissoRepoMock.Verify(r => r.Delete(id), Times.Once);
         _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -316,46 +376,7 @@ public class AgendaServiceTests
     }
 
     [Fact]
-    public async Task SalvarConfiguracaoAgendaEscritorioAsync_QuandoValido_DeveSalvar()
-    {
-        var configExistente = new ConfiguracaoAgendaEscritorio { Id = Guid.NewGuid(), EscritorioId = _escritorioId };
-        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(configExistente);
-
-        var cmd = new SalvarConfiguracaoAgendaEscritorioCommand
-        {
-            GoogleCalendarId = "c1@group.calendar.google.com",
-            EmailAgendaEmpresa = "empresa@studio.com",
-            TipoIntegracao = "ServiceAccount",
-            ChaveGoogleServiceAccountJson = "{}",
-            SincronizacaoAutomaticaAtiva = true
-        };
-
-        var result = await _service.SalvarConfiguracaoAgendaEscritorioAsync(cmd);
-
-        result.GoogleCalendarId.Should().Be("c1@group.calendar.google.com");
-        _configuracaoRepoMock.Verify(r => r.Update(configExistente), Times.Once);
-        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task DesconectarGoogleOAuthAsync_DeveLimparTokens()
-    {
-        var config = new ConfiguracaoAgendaEscritorio
-        {
-            Id = Guid.NewGuid(),
-            EscritorioId = _escritorioId,
-            GoogleOAuthRefreshToken = "token-secret"
-        };
-        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
-
-        await _service.DesconectarGoogleOAuthAsync();
-
-        config.GoogleOAuthRefreshToken.Should().BeNull();
-        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task ObterUrlGoogleOAuthAsync_DeveRetornarUrl()
+    public async Task ObterUrlGoogleOAuthAsync_DeveGerarStateSeguro()
     {
         var config = new ConfiguracaoAgendaEscritorio
         {
@@ -364,31 +385,38 @@ public class AgendaServiceTests
             GoogleClientId = "mock-client-id"
         };
         _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+        _oauthStateMock.Setup(s => s.GerarState(_usuarioLogadoId, _escritorioId))
+            .Returns("crypto-random-state-999");
 
-        _googleCalendarMock.Setup(g => g.GerarUrlAutorizacaoOAuth("mock-client-id", "http://localhost:4200", _escritorioId.ToString()))
-            .Returns("https://accounts.google.com/auth");
+        _googleCalendarMock.Setup(g => g.GerarUrlAutorizacaoOAuth("mock-client-id", "http://localhost:4200", "crypto-random-state-999"))
+            .Returns("https://accounts.google.com/auth?state=crypto-random-state-999");
 
         var url = await _service.ObterUrlGoogleOAuthAsync("http://localhost:4200");
 
-        url.Should().StartWith("https://accounts.google.com");
+        url.Should().Contain("state=crypto-random-state-999");
+        _oauthStateMock.Verify(s => s.GerarState(_usuarioLogadoId, _escritorioId), Times.Once);
     }
 
     [Fact]
-    public async Task CriarCompromissoAsync_ComDataLocal_DeveConverterParaUtc()
+    public async Task ConectarGoogleOAuthAsync_ComStateInvalido_DeveLancarInvalidOperationException()
     {
-        var inicioLocal = DateTime.SpecifyKind(DateTime.Now.AddDays(1), DateTimeKind.Local);
-        var fimLocal = inicioLocal.AddHours(1);
-        var cmd = new CriarCompromissoCommand("Reunião Local", inicioLocal, fimLocal, null, null, null, null, null, null);
+        _oauthStateMock.Setup(s => s.ValidarEConsumirState("bad-state", _usuarioLogadoId, _escritorioId))
+            .Returns(false);
 
-        var result = await _service.CriarCompromissoAsync(cmd);
+        var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir", State = "bad-state" };
 
-        result.DataHoraInicio.Kind.Should().Be(DateTimeKind.Utc);
-        result.DataHoraFim.Kind.Should().Be(DateTimeKind.Utc);
+        var act = async () => await _service.ConectarGoogleOAuthAsync(cmd);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Estado OAuth inválido*");
     }
 
     [Fact]
-    public async Task ConectarGoogleOAuthAsync_ComSucesso_DeveAtualizarConfiguracao()
+    public async Task ConectarGoogleOAuthAsync_ComStateValido_DeveAtualizarConfiguracao()
     {
+        _oauthStateMock.Setup(s => s.ValidarEConsumirState("valid-state", _usuarioLogadoId, _escritorioId))
+            .Returns(true);
+
         var config = new ConfiguracaoAgendaEscritorio
         {
             Id = Guid.NewGuid(),
@@ -400,7 +428,7 @@ public class AgendaServiceTests
         _googleCalendarMock.Setup(g => g.TrocarCodigoPorRefreshTokenAsync("code", "cid", "csec", "http://redir"))
             .ReturnsAsync(("new-refresh-token", "empresa@gmail.com"));
 
-        var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir" };
+        var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir", State = "valid-state" };
         var result = await _service.ConectarGoogleOAuthAsync(cmd);
 
         result.PossuiOAuthConectado.Should().BeTrue();
@@ -409,33 +437,172 @@ public class AgendaServiceTests
     }
 
     [Fact]
-    public async Task ObterLinkCompartilhadoGoogleAgendaAsync_DeveRetornarEmbedLink()
+    public async Task ConectarGoogleOAuthAsync_QuandoConfiguracaoNaoExiste_DeveCriarNovaConfiguracao()
+    {
+        Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID", "mock-env-client-id");
+        Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET", "mock-env-client-secret");
+
+        try
+        {
+            _oauthStateMock.Setup(s => s.ValidarEConsumirState("valid-state-novo", _usuarioLogadoId, _escritorioId))
+                .Returns(true);
+
+            _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+            _googleCalendarMock.Setup(g => g.TrocarCodigoPorRefreshTokenAsync("code", "mock-env-client-id", "mock-env-client-secret", "http://redir"))
+                .ReturnsAsync(("new-refresh-token", "empresa-nova@gmail.com"));
+
+            var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir", State = "valid-state-novo" };
+            var result = await _service.ConectarGoogleOAuthAsync(cmd);
+
+            result.PossuiOAuthConectado.Should().BeTrue();
+            result.EmailAgendaEmpresa.Should().Be("empresa-nova@gmail.com");
+            _configuracaoRepoMock.Verify(r => r.Create(It.IsAny<ConfiguracaoAgendaEscritorio>()), Times.Once);
+            _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID", null);
+            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET", null);
+        }
+    }
+
+    [Fact]
+    public async Task DesconectarGoogleOAuthAsync_DeveLimparRefreshTokenEAtualizar()
     {
         var config = new ConfiguracaoAgendaEscritorio
         {
             Id = Guid.NewGuid(),
             EscritorioId = _escritorioId,
-            EmailAgendaEmpresa = "empresa@studio.com",
-            GoogleCalendarId = "empresa@group.calendar.google.com"
+            GoogleOAuthRefreshToken = "rt-active",
+            GoogleOAuthEmail = "user@test.com",
+            TipoIntegracao = "OAuth"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        await _service.DesconectarGoogleOAuthAsync();
+
+        config.GoogleOAuthRefreshToken.Should().BeNull();
+        config.GoogleOAuthEmail.Should().BeNull();
+        config.TipoIntegracao.Should().Be("Nenhum");
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterLinkCompartilhadoGoogleAgendaAsync_ComEmailConfigurado_DeveRetornarUrlEmbed()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            GoogleCalendarId = "calendario-oficial@group.calendar.google.com"
         };
         _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
 
         var link = await _service.ObterLinkCompartilhadoGoogleAgendaAsync();
 
         link.Should().Contain("calendar.google.com/calendar/embed");
+        link.Should().Contain(Uri.EscapeDataString("calendario-oficial@group.calendar.google.com"));
     }
 
     [Fact]
-    public async Task SalvarConfiguracaoAgendaEscritorioAsync_SemCalendarIdNemEmail_DeveLancarArgumentException()
+    public async Task SalvarConfiguracaoAgendaEscritorioAsync_QuandoConfiguracaoExiste_DeveAtualizarCampos()
     {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            NomeAgenda = "Agenda Antiga"
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
         var cmd = new SalvarConfiguracaoAgendaEscritorioCommand
         {
-            GoogleCalendarId = "",
-            EmailAgendaEmpresa = ""
+            EmailAgendaEmpresa = "contato@empresa.com",
+            GoogleCalendarId = "cal-id-123",
+            ChaveGoogleServiceAccountJson = "{\"json\":true}",
+            GoogleClientId = "cid-123",
+            GoogleClientSecret = "csec-123",
+            TipoIntegracao = "ServiceAccount",
+            NomeAgenda = "Nova Agenda Oficial",
+            SincronizacaoAutomaticaAtiva = true
         };
 
-        var act = () => _service.SalvarConfiguracaoAgendaEscritorioAsync(cmd);
+        var result = await _service.SalvarConfiguracaoAgendaEscritorioAsync(cmd);
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        result.NomeAgenda.Should().Be("Nova Agenda Oficial");
+        result.EmailAgendaEmpresa.Should().Be("contato@empresa.com");
+        result.PossuiChaveServiceAccount.Should().BeTrue();
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SincronizacaoOAuth_NaCriacaoAtualizacaoExclusao_DeveChamarMetodosOAuth()
+    {
+        var config = new ConfiguracaoAgendaEscritorio
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = _escritorioId,
+            GoogleOAuthRefreshToken = "rt-active",
+            GoogleClientId = "cid",
+            GoogleClientSecret = "csec",
+            TipoIntegracao = "OAuth",
+            SincronizacaoAutomaticaAtiva = true
+        };
+        _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync(config);
+
+        _googleCalendarMock.Setup(g => g.CriarEventoViaOAuthAsync(
+            It.IsAny<GoogleCalendarEventRequest>(), "rt-active", "cid", "csec"))
+            .ReturnsAsync(new GoogleCalendarSyncResult { Sucesso = true, GoogleEventId = "evt-oauth-123" });
+
+        var inicio = DateTime.UtcNow.AddDays(1);
+        var fim = inicio.AddHours(1);
+        var cmdCriar = new CriarCompromissoCommand(
+            "Reuniao via OAuth",
+            inicio,
+            fim,
+            TiposCompromisso.ReuniaoCliente,
+            "Descricao",
+            "Local",
+            null,
+            null,
+            null,
+            GerarGoogleMeet: true
+        );
+
+        var criado = await _service.CriarCompromissoAsync(cmdCriar);
+        criado.GoogleEventId.Should().Be("evt-oauth-123");
+
+        var compromissoExistente = new Compromisso
+        {
+            Id = criado.Id,
+            EscritorioId = _escritorioId,
+            UsuarioId = _usuarioLogadoId,
+            GoogleEventId = "evt-oauth-123",
+            Titulo = "Reuniao via OAuth",
+            DataHoraInicio = inicio,
+            DataHoraFim = fim
+        };
+        _compromissoRepoMock.Setup(r => r.GetById(criado.Id)).ReturnsAsync(compromissoExistente);
+
+        var cmdAtualizar = new AtualizarCompromissoCommand(
+            "Reuniao Atualizada via OAuth",
+            inicio.AddDays(1),
+            fim.AddDays(1),
+            TiposCompromisso.ReuniaoCliente,
+            StatusCompromisso.Agendado,
+            "Nova desc",
+            "Novo local",
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+
+        await _service.AtualizarCompromissoAsync(criado.Id, cmdAtualizar);
+        _googleCalendarMock.Verify(g => g.AtualizarEventoViaOAuthAsync(It.IsAny<GoogleCalendarEventRequest>(), "rt-active", "cid", "csec"), Times.Once);
+
+        await _service.ExcluirCompromissoAsync(criado.Id);
+        _googleCalendarMock.Verify(g => g.ExcluirEventoViaOAuthAsync("evt-oauth-123", "primary", "rt-active", "cid", "csec"), Times.Once);
     }
 }

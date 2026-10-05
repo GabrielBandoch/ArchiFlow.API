@@ -49,9 +49,9 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection ConfigureDatabase(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<ArchiFlowDbContext>((serviceProvider, options) =>
+        services.AddDbContext<ArchiFlowDbContext>((sp, options) =>
         {
-            var tenantContext = serviceProvider.GetService<ITenantContext>();
+            var tenantContext = sp.GetService<ITenantContext>();
             var effectiveConnectionString = tenantContext != null && tenantContext.IsResolved
                 ? tenantContext.BuildConnectionString(connectionString)
                 : connectionString;
@@ -137,6 +137,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDashboardFacade, DashboardFacade>();
 
         // Agenda Services & Facades
+        services.AddScoped<IUserContextService, UserContextService>();
+        services.AddScoped<IAgendaValidationService, ArchiFlow.Application.Agenda.Services.AgendaValidationService>();
+        services.AddSingleton<IOAuthStateService, OAuthStateService>();
         services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
         services.AddScoped<IAgendaService, ArchiFlow.Application.Agenda.Services.AgendaService>();
         services.AddScoped<IAgendaFacade, ArchiFlow.Application.Agenda.Facades.AgendaFacade>();
