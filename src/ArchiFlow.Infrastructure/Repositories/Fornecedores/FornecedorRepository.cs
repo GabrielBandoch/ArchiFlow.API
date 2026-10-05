@@ -13,7 +13,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
         return await _dbSet
             .AsSplitQuery()
             .Include(f => f.Avaliacoes)
-            .Include(f => f.ProjetosVinculados)
+            .Include(f => f.ProjetosVinculados).ThenInclude(pv => pv.Projeto)
             .OrderByDescending(f => f.AvaliacaoMedia)
             .ToListAsync();
     }
@@ -23,7 +23,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
         return await _dbSet
             .AsSplitQuery()
             .Include(f => f.Avaliacoes)
-            .Include(f => f.ProjetosVinculados)
+            .Include(f => f.ProjetosVinculados).ThenInclude(pv => pv.Projeto)
             .FirstOrDefaultAsync(f => f.Id == id);
     }
 
@@ -33,7 +33,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
         return await _dbSet
             .AsSplitQuery()
             .Include(f => f.Avaliacoes)
-            .Include(f => f.ProjetosVinculados)
+            .Include(f => f.ProjetosVinculados).ThenInclude(pv => pv.Projeto)
             .Where(f => f.Especialidade.ToLower() == esp || f.Especialidade.ToLower().Contains(esp))
             .OrderByDescending(f => f.AvaliacaoMedia)
             .ToListAsync();
@@ -43,6 +43,7 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
     {
         return await _context.ProjetosFornecedores
             .Include(pf => pf.Fornecedor)
+            .Include(pf => pf.Projeto)
             .Where(pf => pf.ProjetoId == projetoId)
             .ToListAsync();
     }
@@ -50,29 +51,22 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
     public async Task AdicionarAvaliacaoAsync(AvaliacaoFornecedor avaliacao)
     {
         await _context.AvaliacoesFornecedores.AddAsync(avaliacao);
-        await _context.SaveChangesAsync();
-
-        var fornecedor = await ObterPorIdComRelacionamentosAsync(avaliacao.FornecedorId);
-        if (fornecedor != null)
-        {
-            fornecedor.RecalcularMedia();
-            await _context.SaveChangesAsync();
-        }
     }
 
     public async Task AdicionarVinculoProjetoAsync(ProjetoFornecedor vinculo)
     {
         await _context.ProjetosFornecedores.AddAsync(vinculo);
-        await _context.SaveChangesAsync();
     }
 
-    public async Task RemoverVinculoProjetoAsync(Guid vinculoId)
+    public async Task<bool> RemoverVinculoProjetoAsync(Guid vinculoId)
     {
         var vinculo = await _context.ProjetosFornecedores.FindAsync(vinculoId);
-        if (vinculo != null)
+        if (vinculo == null)
         {
-            _context.ProjetosFornecedores.Remove(vinculo);
-            await _context.SaveChangesAsync();
+            return false;
         }
+
+        _context.ProjetosFornecedores.Remove(vinculo);
+        return true;
     }
 }

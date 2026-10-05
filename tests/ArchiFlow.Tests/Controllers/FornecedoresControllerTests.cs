@@ -102,4 +102,72 @@ public class FornecedoresControllerTests
 
         result.Should().BeOfType<NotFoundResult>();
     }
+
+    [Fact]
+    public async Task AdicionarAvaliacao_DeveRetornarCreatedComDto()
+    {
+        var id = Guid.NewGuid();
+        var cmd = new AdicionarAvaliacaoCommand { Nota = 5, Comentario = "Top" };
+        var dto = new AvaliacaoFornecedorDto { Id = Guid.NewGuid(), FornecedorId = id, Nota = 5 };
+        _serviceMock.Setup(s => s.AdicionarAvaliacaoAsync(cmd)).ReturnsAsync(dto);
+
+        var result = await _controller.AdicionarAvaliacao(id, cmd);
+
+        var created = result.Should().BeOfType<CreatedResult>().Subject;
+        created.Value.Should().Be(dto);
+        cmd.FornecedorId.Should().Be(id);
+    }
+
+    [Fact]
+    public async Task VincularProjeto_DeveRetornarCreatedComDto()
+    {
+        var id = Guid.NewGuid();
+        var cmd = new VincularProjetoCommand { ProjetoId = Guid.NewGuid(), FuncaoNoProjeto = "Eletrica" };
+        var dto = new ProjetoFornecedorDto { Id = Guid.NewGuid(), FornecedorId = id, FuncaoNoProjeto = "Eletrica" };
+        _serviceMock.Setup(s => s.VincularProjetoAsync(cmd)).ReturnsAsync(dto);
+
+        var result = await _controller.VincularProjeto(id, cmd);
+
+        var created = result.Should().BeOfType<CreatedResult>().Subject;
+        created.Value.Should().Be(dto);
+        cmd.FornecedorId.Should().Be(id);
+    }
+
+    [Fact]
+    public async Task DesvincularProjeto_QuandoExiste_DeveRetornarNoContent()
+    {
+        var vinculoId = Guid.NewGuid();
+        _serviceMock.Setup(s => s.DesvincularProjetoAsync(vinculoId)).ReturnsAsync(true);
+
+        var result = await _controller.DesvincularProjeto(vinculoId);
+
+        result.Should().BeOfType<NoContentResult>();
+    }
+
+    [Fact]
+    public async Task DesvincularProjeto_QuandoNaoExiste_DeveRetornarNotFound()
+    {
+        var vinculoId = Guid.NewGuid();
+        _serviceMock.Setup(s => s.DesvincularProjetoAsync(vinculoId)).ReturnsAsync(false);
+
+        var result = await _controller.DesvincularProjeto(vinculoId);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task ObterFornecedoresDoProjeto_DeveRetornarOkComLista()
+    {
+        var projetoId = Guid.NewGuid();
+        var lista = new List<ProjetoFornecedorDto>
+        {
+            new() { Id = Guid.NewGuid(), ProjetoId = projetoId, FornecedorNome = "F1" }
+        };
+        _serviceMock.Setup(s => s.ObterFornecedoresDoProjetoAsync(projetoId)).ReturnsAsync(lista);
+
+        var result = await _controller.ObterFornecedoresDoProjeto(projetoId);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().BeEquivalentTo(lista);
+    }
 }

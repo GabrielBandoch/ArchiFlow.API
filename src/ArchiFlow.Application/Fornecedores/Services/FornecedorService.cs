@@ -1,6 +1,8 @@
 using ArchiFlow.Application.Fornecedores.Commands;
 using ArchiFlow.Application.Fornecedores.DTOs;
 using ArchiFlow.Domain.Fornecedores;
+using ArchiFlow.Domain.Projetos;
+using ArchiFlow.Domain.Projetos.Enum;
 using ArchiFlow.Domain.Shared;
 
 namespace ArchiFlow.Application.Fornecedores.Services;
@@ -8,11 +10,16 @@ namespace ArchiFlow.Application.Fornecedores.Services;
 public class FornecedorService : IFornecedorService
 {
     private readonly IFornecedorRepository _repository;
+    private readonly IProjetoRepository _projetoRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public FornecedorService(IFornecedorRepository repository, IUnitOfWork unitOfWork)
+    public FornecedorService(
+        IFornecedorRepository repository,
+        IProjetoRepository projetoRepository,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
+        _projetoRepository = projetoRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -43,7 +50,7 @@ public class FornecedorService : IFornecedorService
             Cidade = command.Cidade?.Trim(),
             Estado = command.Estado?.Trim(),
             Descricao = command.Descricao?.Trim(),
-            AvaliacaoMedia = 5.0m,
+            AvaliacaoMedia = 0.0m,
             TotalAvaliacoes = 0,
             Ativo = true,
             DataCriacao = DateTime.UtcNow
@@ -85,8 +92,14 @@ public class FornecedorService : IFornecedorService
 
     public async Task<AvaliacaoFornecedorDto> AdicionarAvaliacaoAsync(AdicionarAvaliacaoCommand command)
     {
-        _ = await _repository.GetById(command.FornecedorId)
+        var fornecedor = await _repository.ObterPorIdComRelacionamentosAsync(command.FornecedorId)
             ?? throw new KeyNotFoundException($"Fornecedor com ID {command.FornecedorId} não encontrado.");
+
+        if (command.ProjetoId.HasValue)
+        {
+            _ = await _projetoRepository.GetById(command.ProjetoId.Value)
+                ?? throw new KeyNotFoundException($"Projeto com ID {command.ProjetoId.Value} não encontrado.");
+        }
 
         var avaliacao = new AvaliacaoFornecedor
         {
@@ -100,6 +113,9 @@ public class FornecedorService : IFornecedorService
         };
 
         await _repository.AdicionarAvaliacaoAsync(avaliacao);
+        fornecedor.Avaliacoes.Add(avaliacao);
+        fornecedor.RecalcularMedia();
+        await _unitOfWork.Commit();
 
         return new AvaliacaoFornecedorDto
         {
@@ -118,21 +134,28 @@ public class FornecedorService : IFornecedorService
         var fornecedor = await _repository.GetById(command.FornecedorId)
             ?? throw new KeyNotFoundException($"Fornecedor com ID {command.FornecedorId} não encontrado.");
 
+        var projeto = await _projetoRepository.GetById(command.ProjetoId)
+            ?? throw new KeyNotFoundException($"Projeto com ID {command.ProjetoId} não encontrado.");
+
         var vinculo = new ProjetoFornecedor
         {
             Id = Guid.NewGuid(),
             ProjetoId = command.ProjetoId,
             FornecedorId = command.FornecedorId,
             FuncaoNoProjeto = command.FuncaoNoProjeto.Trim(),
-            DataVinculo = DateTime.UtcNow
+            DataVinculo = DateTime.UtcNow,
+            Projeto = projeto,
+            Fornecedor = fornecedor
         };
 
         await _repository.AdicionarVinculoProjetoAsync(vinculo);
+        await _unitOfWork.Commit();
 
         return new ProjetoFornecedorDto
         {
             Id = vinculo.Id,
             ProjetoId = vinculo.ProjetoId,
+            ProjetoNome = projeto.Nome,
             FornecedorId = vinculo.FornecedorId,
             FornecedorNome = fornecedor.Nome,
             FuncaoNoProjeto = vinculo.FuncaoNoProjeto,
@@ -142,17 +165,27 @@ public class FornecedorService : IFornecedorService
 
     public async Task<bool> DesvincularProjetoAsync(Guid vinculoId)
     {
-        await _repository.RemoverVinculoProjetoAsync(vinculoId);
+        var removido = await _repository.RemoverVinculoProjetoAsync(vinculoId);
+        if (!removido)
+        {
+            return false;
+        }
+
+        await _unitOfWork.Commit();
         return true;
     }
 
     public async Task<IEnumerable<ProjetoFornecedorDto>> ObterFornecedoresDoProjetoAsync(Guid projetoId)
     {
+        var projeto = await _projetoRepository.GetById(projetoId)
+            ?? throw new KeyNotFoundException($"Projeto com ID {projetoId} não encontrado.");
+
         var vinculos = await _repository.ObterFornecedoresDoProjetoAsync(projetoId);
         return vinculos.Select(v => new ProjetoFornecedorDto
         {
             Id = v.Id,
             ProjetoId = v.ProjetoId,
+            ProjetoNome = v.Projeto?.Nome ?? projeto.Nome,
             FornecedorId = v.FornecedorId,
             FornecedorNome = v.Fornecedor?.Nome,
             FuncaoNoProjeto = v.FuncaoNoProjeto,
@@ -176,7 +209,7 @@ public class FornecedorService : IFornecedorService
             TotalAvaliacoes = f.TotalAvaliacoes,
             Ativo = f.Ativo,
             DataCriacao = f.DataCriacao,
-            TotalProjetosAtivos = f.ProjetosVinculados?.Count ?? 0,
+            TotalProjetosAtivos = f.ProjetosVinculados?.Count(p => p.Projeto == null || (p.Projeto.Status != StatusProjeto.Concluido && p.Projeto.Status != StatusProjeto.Cancelado)) ?? 0,
             Avaliacoes = f.Avaliacoes != null
                 ? f.Avaliacoes.Select(a => new AvaliacaoFornecedorDto
                 {
@@ -194,7 +227,9 @@ public class FornecedorService : IFornecedorService
                 {
                     Id = p.Id,
                     ProjetoId = p.ProjetoId,
+                    ProjetoNome = p.Projeto?.Nome,
                     FornecedorId = p.FornecedorId,
+                    FornecedorNome = f.Nome,
                     FuncaoNoProjeto = p.FuncaoNoProjeto,
                     DataVinculo = p.DataVinculo
                 }).ToList()

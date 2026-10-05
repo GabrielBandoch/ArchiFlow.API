@@ -520,6 +520,10 @@ public class ArchiFlowDbContext : DbContext
             entity.ToTable("Projetos_Fornecedores");
             entity.HasKey(p => p.Id);
             entity.Property(p => p.FuncaoNoProjeto).HasMaxLength(150);
+            entity.HasOne(p => p.Projeto)
+                  .WithMany()
+                  .HasForeignKey(p => p.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OpcaoConfiguracao>(entity =>

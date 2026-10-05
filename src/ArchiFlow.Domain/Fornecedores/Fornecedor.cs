@@ -10,7 +10,7 @@ public class Fornecedor
     public string? Cidade { get; set; }
     public string? Estado { get; set; }
     public string? Descricao { get; set; }
-    public decimal AvaliacaoMedia { get; set; } = 5.0m;
+    public decimal AvaliacaoMedia { get; set; } = 0.0m;
     public int TotalAvaliacoes { get; set; } = 0;
     public bool Ativo { get; set; } = true;
     public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
@@ -22,7 +22,7 @@ public class Fornecedor
     {
         if (Avaliacoes == null || Avaliacoes.Count == 0)
         {
-            AvaliacaoMedia = 5.0m;
+            AvaliacaoMedia = 0.0m;
             TotalAvaliacoes = 0;
             return;
         }

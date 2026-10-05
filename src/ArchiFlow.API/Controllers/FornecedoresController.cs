@@ -80,8 +80,8 @@ public class FornecedoresController : ControllerBase
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> DesvincularProjeto(Guid vinculoId)
     {
-        await _service.DesvincularProjetoAsync(vinculoId);
-        return NoContent();
+        var result = await _service.DesvincularProjetoAsync(vinculoId);
+        return result ? NoContent() : NotFound();
     }
 
     [HttpGet("projeto/{projetoId:guid}")]

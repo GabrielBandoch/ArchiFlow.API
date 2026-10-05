@@ -10,5 +10,5 @@ public interface IFornecedorRepository : IRepository<Fornecedor>
     Task<IEnumerable<ProjetoFornecedor>> ObterFornecedoresDoProjetoAsync(Guid projetoId);
     Task AdicionarAvaliacaoAsync(AvaliacaoFornecedor avaliacao);
     Task AdicionarVinculoProjetoAsync(ProjetoFornecedor vinculo);
-    Task RemoverVinculoProjetoAsync(Guid vinculoId);
+    Task<bool> RemoverVinculoProjetoAsync(Guid vinculoId);
 }

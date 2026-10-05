@@ -1,3 +1,5 @@
+using ArchiFlow.Domain.Projetos;
+
 namespace ArchiFlow.Domain.Fornecedores;
 
 public class ProjetoFornecedor
@@ -9,4 +11,5 @@ public class ProjetoFornecedor
     public DateTime DataVinculo { get; set; } = DateTime.UtcNow;
 
     public Fornecedor? Fornecedor { get; set; }
+    public Projeto? Projeto { get; set; }
 }

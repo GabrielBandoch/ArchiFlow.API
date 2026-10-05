@@ -49,8 +49,15 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection ConfigureDatabase(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<ArchiFlowDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddDbContext<ArchiFlowDbContext>((serviceProvider, options) =>
+        {
+            var tenantContext = serviceProvider.GetService<ITenantContext>();
+            var effectiveConnectionString = tenantContext != null && tenantContext.IsResolved
+                ? tenantContext.BuildConnectionString(connectionString)
+                : connectionString;
+
+            options.UseNpgsql(effectiveConnectionString);
+        });
 
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("Database");

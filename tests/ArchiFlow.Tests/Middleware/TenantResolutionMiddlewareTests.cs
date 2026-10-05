@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using ArchiFlow.API.Middleware;
 using ArchiFlow.Infrastructure.MultiTenancy;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -39,6 +41,110 @@ public class TenantResolutionMiddlewareTests
         tenantContext.TenantId.Should().Be("duna");
         tenantContext.IsResolved.Should().BeTrue();
         context.Response.Headers[TenantResolutionMiddleware.TenantResolvedHeaderName].ToString().Should().Be("duna");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticado_DeveResolverTenantDaClaim()
+    {
+        var context = new DefaultHttpContext();
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", "escritorio-ouro")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext();
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("escritorio-ouro");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoETentativaSpoofingXTenantId_DeveRetornar403Forbidden()
+    {
+        var context = new DefaultHttpContext();
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", "escritorio-legitimo")
+        }, "TestAuth"));
+        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "outro-escritorio";
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext();
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoEHeaderConsistente_DevePermitirAcesso()
+    {
+        var context = new DefaultHttpContext();
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", "escritorio-legitimo")
+        }, "TestAuth"));
+        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "escritorio-legitimo";
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext();
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("escritorio-legitimo");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_EmProducaoNaoAutenticadoComHeader_NaoDeveUsarHeaderDev()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.archiflow.com.br");
+        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "outro-tenant";
+
+        var envMock = new Mock<IWebHostEnvironment>();
+        envMock.Setup(e => e.EnvironmentName).Returns("Production");
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext();
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object, envMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("duna");
     }
 
     [Fact]
