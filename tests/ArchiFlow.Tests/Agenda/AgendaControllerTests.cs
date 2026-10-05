@@ -152,4 +152,124 @@ public class AgendaControllerTests
         fileResult!.ContentType.Should().Be("text/calendar");
         fileResult.FileDownloadName.Should().Be("archiflow-agenda.ics");
     }
+
+    [Fact]
+    public async Task ObterConfiguracao_DeveRetornarOkComDto()
+    {
+        var dto = new ConfiguracaoAgendaEscritorioDto
+        {
+            Id = Guid.NewGuid(),
+            EmailAgendaEmpresa = "contato@arquiteto.com",
+            PossuiChaveServiceAccount = true,
+            GoogleCalendarId = "primary",
+            PossuiOAuthConectado = true,
+            GoogleOAuthEmail = "oauth@archiflow.com"
+        };
+        _facadeMock.Setup(f => f.ObterConfiguracaoAgendaEscritorioAsync()).ReturnsAsync(dto);
+
+        var result = await _controller.ObterConfiguracao();
+
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(200);
+        okResult.Value.Should().Be(dto);
+    }
+
+    [Fact]
+    public async Task SalvarConfiguracao_DeveRetornarOkComDto()
+    {
+        var cmd = new SalvarConfiguracaoAgendaEscritorioCommand
+        {
+            EmailAgendaEmpresa = "contato@arquiteto.com",
+            GoogleCalendarId = "primary",
+            SincronizacaoAutomaticaAtiva = true
+        };
+        var dto = new ConfiguracaoAgendaEscritorioDto
+        {
+            Id = Guid.NewGuid(),
+            EmailAgendaEmpresa = "contato@arquiteto.com",
+            PossuiChaveServiceAccount = true,
+            GoogleCalendarId = "primary"
+        };
+        _facadeMock.Setup(f => f.SalvarConfiguracaoAgendaEscritorioAsync(cmd)).ReturnsAsync(dto);
+
+        var result = await _controller.SalvarConfiguracao(cmd);
+
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(200);
+        okResult.Value.Should().Be(dto);
+    }
+
+    [Fact]
+    public async Task ObterLinkCompartilhado_DeveRetornarOkComLink()
+    {
+        _facadeMock.Setup(f => f.ObterLinkCompartilhadoGoogleAgendaAsync()).ReturnsAsync("https://calendar.google.com/embed?src=primary");
+
+        var result = await _controller.ObterLinkCompartilhado();
+
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task ObterUrlOAuth_ComRedirectUriVazio_DeveRetornarBadRequest()
+    {
+        var result = await _controller.ObterUrlOAuth("");
+
+        var badRequestResult = result as BadRequestObjectResult;
+        badRequestResult.Should().NotBeNull();
+        badRequestResult!.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task ObterUrlOAuth_ComRedirectUriValido_DeveRetornarOkComUrlEState()
+    {
+        var fakeUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=123&state=secure-state-123";
+        _facadeMock.Setup(f => f.ObterUrlGoogleOAuthAsync("https://app.archiflow.com/callback")).ReturnsAsync(fakeUrl);
+
+        var result = await _controller.ObterUrlOAuth("https://app.archiflow.com/callback");
+
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task ConectarOAuth_DeveRetornarOk()
+    {
+        var cmd = new ConectarGoogleOAuthCommand
+        {
+            Code = "code-123",
+            RedirectUri = "https://app.archiflow.com/callback",
+            State = "state-123"
+        };
+        var dto = new ConfiguracaoAgendaEscritorioDto
+        {
+            Id = Guid.NewGuid(),
+            EmailAgendaEmpresa = "contato@arquiteto.com",
+            PossuiOAuthConectado = true,
+            GoogleOAuthEmail = "oauth@archiflow.com"
+        };
+        _facadeMock.Setup(f => f.ConectarGoogleOAuthAsync(cmd)).ReturnsAsync(dto);
+
+        var result = await _controller.ConectarOAuth(cmd);
+
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task DesconectarOAuth_DeveRetornarNoContent()
+    {
+        _facadeMock.Setup(f => f.DesconectarGoogleOAuthAsync()).Returns(Task.CompletedTask);
+
+        var result = await _controller.DesconectarOAuth();
+
+        var noContentResult = result as NoContentResult;
+        noContentResult.Should().NotBeNull();
+        noContentResult!.StatusCode.Should().Be(204);
+    }
 }

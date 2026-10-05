@@ -1,16 +1,15 @@
 using System;
-using System.Security.Claims;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Agenda.Commands;
+using ArchiFlow.Application.Agenda.DTOs;
 using ArchiFlow.Application.Agenda.Services;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Agenda;
-using ArchiFlow.Domain.Clientes;
-using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
 using ArchiFlow.Domain.Usuarios;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -20,12 +19,11 @@ public class GoogleAgendaEmpresaTests
 {
     private readonly Mock<ICompromissoRepository> _compromissoRepoMock = new();
     private readonly Mock<IConfiguracaoAgendaRepository> _configuracaoRepoMock = new();
-    private readonly Mock<IProjetoRepository> _projetoRepoMock = new();
-    private readonly Mock<IClienteRepository> _clienteRepoMock = new();
-    private readonly Mock<IUsuarioRepository> _usuarioRepoMock = new();
     private readonly Mock<IGoogleCalendarService> _googleCalendarMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
-    private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock = new();
+    private readonly Mock<IUserContextService> _userContextMock = new();
+    private readonly Mock<IAgendaValidationService> _validationMock = new();
+    private readonly Mock<IOAuthStateService> _oauthStateMock = new();
 
     private readonly Guid _usuarioId = Guid.NewGuid();
     private readonly Guid _escritorioId = Guid.NewGuid();
@@ -33,18 +31,7 @@ public class GoogleAgendaEmpresaTests
 
     public GoogleAgendaEmpresaTests()
     {
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _usuarioId.ToString()),
-            new Claim(ClaimTypes.Role, Roles.Administrador)
-        };
-        var identity = new ClaimsIdentity(claims, "TestAuth");
-        var principal = new ClaimsPrincipal(identity);
-
-        var context = new DefaultHttpContext { User = principal };
-        _httpContextAccessorMock.Setup(h => h.HttpContext).Returns(context);
-
-        var usuario = new Usuario
+        var usuarioAdmin = new Usuario
         {
             Id = _usuarioId,
             EscritorioId = _escritorioId,
@@ -52,17 +39,28 @@ public class GoogleAgendaEmpresaTests
             Email = "socio@arquitetura.com",
             Role = Roles.Administrador
         };
-        _usuarioRepoMock.Setup(r => r.GetById(_usuarioId)).ReturnsAsync(usuario);
+        _userContextMock.Setup(u => u.ObterUsuarioContextoAsync())
+            .ReturnsAsync((usuarioAdmin, _escritorioId));
 
         _service = new AgendaService(
             _compromissoRepoMock.Object,
             _configuracaoRepoMock.Object,
-            _projetoRepoMock.Object,
-            _clienteRepoMock.Object,
-            _usuarioRepoMock.Object,
             _googleCalendarMock.Object,
             _unitOfWorkMock.Object,
-            _httpContextAccessorMock.Object);
+            _userContextMock.Object,
+            _validationMock.Object,
+            _oauthStateMock.Object);
+    }
+
+    [Fact]
+    public void ConfiguracaoAgendaEscritorioDto_NaoDeveConterCamposSecretos()
+    {
+        var dtoType = typeof(ConfiguracaoAgendaEscritorioDto);
+        var propNames = dtoType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        propNames.Should().NotContain(p => p.Name.Equals("ChaveGoogleServiceAccountJson", StringComparison.OrdinalIgnoreCase));
+        propNames.Should().NotContain(p => p.Name.Equals("GoogleClientSecret", StringComparison.OrdinalIgnoreCase));
+        propNames.Should().NotContain(p => p.Name.Equals("GoogleOAuthRefreshToken", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -90,7 +88,6 @@ public class GoogleAgendaEmpresaTests
     [Fact]
     public async Task SalvarEObterConfiguracaoAgendaEscritorio_DevePersistirESincronizarParaTodaEquipe()
     {
-        // Arrange
         ConfiguracaoAgendaEscritorio? salvo = null;
         _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId))
             .ReturnsAsync(() => salvo);
@@ -101,21 +98,23 @@ public class GoogleAgendaEmpresaTests
 
         var command = new SalvarConfiguracaoAgendaEscritorioCommand
         {
-            EmailAgendaEmpresa = "agenda@estudio.com.br",
-            GoogleCalendarId = "agenda@estudio.com.br",
-            NomeAgenda = "Agenda Corporativa ArchiFlow",
+            EmailAgendaEmpresa = "contato@studio.com.br",
+            GoogleCalendarId = "contato@studio.com.br",
+            NomeAgenda = "Agenda Oficial Studio",
+            TipoIntegracao = "ServiceAccount",
+            ChaveGoogleServiceAccountJson = "{\"type\": \"service_account\"}",
             SincronizacaoAutomaticaAtiva = true
         };
 
-        // Act
         var resultado = await _service.SalvarConfiguracaoAgendaEscritorioAsync(command);
 
-        // Assert
         resultado.Should().NotBeNull();
-        resultado.EmailAgendaEmpresa.Should().Be("agenda@estudio.com.br");
+        resultado.EmailAgendaEmpresa.Should().Be("contato@studio.com.br");
+        resultado.PossuiChaveServiceAccount.Should().BeTrue();
         resultado.LinkEmbedGoogleCalendar.Should().Contain("calendar.google.com/calendar/embed");
-        resultado.LinkEmbedGoogleCalendar.Should().Contain(Uri.EscapeDataString("agenda@estudio.com.br"));
-        _unitOfWorkMock.Verify(u => u.Commit(default), Times.Once);
+
+        _configuracaoRepoMock.Verify(r => r.Create(It.IsAny<ConfiguracaoAgendaEscritorio>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -132,7 +131,6 @@ public class GoogleAgendaEmpresaTests
     [Fact]
     public async Task SalvarConfiguracaoAgendaEscritorio_QuandoUsuarioForArquitetoAdmin_DevePermitirSalvar()
     {
-        // Arrange
         var usuarioArquiteto = new Usuario
         {
             Id = _usuarioId,
@@ -141,7 +139,8 @@ public class GoogleAgendaEmpresaTests
             Email = "arquiteto@estudio.com",
             Role = Roles.ArquitetoAdmin
         };
-        _usuarioRepoMock.Setup(r => r.GetById(_usuarioId)).ReturnsAsync(usuarioArquiteto);
+        _userContextMock.Setup(u => u.ObterUsuarioContextoAsync())
+            .ReturnsAsync((usuarioArquiteto, _escritorioId));
 
         var command = new SalvarConfiguracaoAgendaEscritorioCommand
         {
@@ -151,10 +150,8 @@ public class GoogleAgendaEmpresaTests
             SincronizacaoAutomaticaAtiva = true
         };
 
-        // Act
         var resultado = await _service.SalvarConfiguracaoAgendaEscritorioAsync(command);
 
-        // Assert
         resultado.Should().NotBeNull();
         resultado.EmailAgendaEmpresa.Should().Be("agenda@estudio.com.br");
     }
@@ -162,7 +159,6 @@ public class GoogleAgendaEmpresaTests
     [Fact]
     public async Task SalvarConfiguracaoAgendaEscritorio_QuandoUsuarioForCliente_DeveLancarUnauthorizedAccessException()
     {
-        // Arrange
         var usuarioCliente = new Usuario
         {
             Id = _usuarioId,
@@ -171,17 +167,16 @@ public class GoogleAgendaEmpresaTests
             Email = "cliente@gmail.com",
             Role = Roles.Cliente
         };
-        _usuarioRepoMock.Setup(r => r.GetById(_usuarioId)).ReturnsAsync(usuarioCliente);
+        _userContextMock.Setup(u => u.ObterUsuarioContextoAsync())
+            .ReturnsAsync((usuarioCliente, _escritorioId));
 
         var command = new SalvarConfiguracaoAgendaEscritorioCommand
         {
             EmailAgendaEmpresa = "agenda@estudio.com.br"
         };
 
-        // Act & Assert
         var act = () => _service.SalvarConfiguracaoAgendaEscritorioAsync(command);
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
             .WithMessage("*Clientes não possuem permissão*");
     }
 }
-
