@@ -6,6 +6,8 @@ using ArchiFlow.Domain.Chat;
 using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Dashboard;
 using ArchiFlow.Domain.Financeiro;
+using ArchiFlow.Domain.Fornecedores;
+using ArchiFlow.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -36,6 +38,10 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<ConfiguracaoProposta> ConfiguracoesProposta => Set<ConfiguracaoProposta>();
     public DbSet<ArchiFlow.Domain.Agenda.Compromisso> Compromissos => Set<ArchiFlow.Domain.Agenda.Compromisso>();
     public DbSet<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio> ConfiguracoesAgendaEscritorio => Set<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio>();
+    public DbSet<Fornecedor>           Fornecedores          => Set<Fornecedor>();
+    public DbSet<AvaliacaoFornecedor>  AvaliacoesFornecedores=> Set<AvaliacaoFornecedor>();
+    public DbSet<ProjetoFornecedor>    ProjetosFornecedores  => Set<ProjetoFornecedor>();
+    public DbSet<OpcaoConfiguracao>    OpcoesConfiguracao    => Set<OpcaoConfiguracao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -384,7 +390,7 @@ public class ArchiFlowDbContext : DbContext
             entity.ToTable("Despesas_Projetos");
             entity.HasKey(d => d.Id);
             entity.Property(d => d.Id).HasColumnName("DSP_Id");
-            entity.Property(d => d.ProjetoId).HasColumnName("DSP_Projeto_Id").IsRequired();
+            entity.Property(d => d.ProjetoId).HasColumnName("DSP_Projeto_Id").IsRequired(false);
             entity.Property(d => d.Descricao).HasColumnName("DSP_Descricao").IsRequired().HasMaxLength(200);
             entity.Property(d => d.Valor).HasColumnName("DSP_Valor").HasPrecision(18, 2).IsRequired();
             entity.Property(d => d.DataDespesa).HasColumnName("DSP_Data_Despesa").IsRequired();
@@ -400,7 +406,8 @@ public class ArchiFlowDbContext : DbContext
             entity.HasOne(d => d.Projeto)
                   .WithMany()
                   .HasForeignKey(d => d.ProjetoId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ConfiguracaoProposta>(entity =>
@@ -483,6 +490,50 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(c => c.AtualizadoEm).HasColumnName("CAE_Atualizado_Em");
 
             entity.HasIndex(c => c.EscritorioId).IsUnique();
+        });
+
+        modelBuilder.Entity<Fornecedor>(entity =>
+        {
+            entity.ToTable("Fornecedores");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Nome).IsRequired().HasMaxLength(200);
+            entity.Property(f => f.Especialidade).IsRequired().HasMaxLength(100);
+            entity.Property(f => f.Email).HasMaxLength(200);
+            entity.Property(f => f.Telefone).HasMaxLength(50);
+            entity.Property(f => f.Cidade).HasMaxLength(100);
+            entity.Property(f => f.Estado).HasMaxLength(50);
+            entity.Property(f => f.AvaliacaoMedia).HasPrecision(3, 1);
+            entity.HasMany(f => f.Avaliacoes).WithOne(a => a.Fornecedor).HasForeignKey(a => a.FornecedorId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(f => f.ProjetosVinculados).WithOne(p => p.Fornecedor).HasForeignKey(p => p.FornecedorId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AvaliacaoFornecedor>(entity =>
+        {
+            entity.ToTable("Avaliacoes_Fornecedores");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Comentario).HasMaxLength(1000);
+            entity.Property(a => a.AutorNome).HasMaxLength(150);
+        });
+
+        modelBuilder.Entity<ProjetoFornecedor>(entity =>
+        {
+            entity.ToTable("Projetos_Fornecedores");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.FuncaoNoProjeto).HasMaxLength(150);
+            entity.HasOne(p => p.Projeto)
+                  .WithMany()
+                  .HasForeignKey(p => p.ProjetoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OpcaoConfiguracao>(entity =>
+        {
+            entity.ToTable("Opcoes_Configuracao");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Categoria).IsRequired().HasMaxLength(100);
+            entity.Property(o => o.Chave).IsRequired().HasMaxLength(100);
+            entity.Property(o => o.Rotulo).IsRequired().HasMaxLength(200);
+            entity.HasIndex(o => new { o.Categoria, o.Chave }).IsUnique();
         });
     }
 }
