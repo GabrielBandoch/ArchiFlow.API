@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.75.0.4206" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0" />
@@ -18,5 +19,10 @@
   <ItemGroup>
     <ProjectReference Include="..\ArchiFlow.Domain\ArchiFlow.Domain.csproj" />
     <ProjectReference Include="..\ArchiFlow.Application\ArchiFlow.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>ArchiFlow.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>
