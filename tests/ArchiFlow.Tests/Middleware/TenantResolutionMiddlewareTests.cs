@@ -207,14 +207,14 @@ public class TenantResolutionMiddlewareTests
     public void TenantContext_BuildConnectionString_DeveSubstituirDatabaseCorretamente()
     {
         var tenantContext = new TenantContext();
-        tenantContext.SetTenant("duna-arquitetura", "duna.archiflow.com.br");
+        tenantContext.SetTenant("duna-arquitetura", "duna.cotu.com.br");
 
-        tenantContext.DatabaseName.Should().Be("archiflow_duna_arquitetura");
+        tenantContext.DatabaseName.Should().Be("cotu_duna_arquitetura");
 
-        var baseConn = "Host=vps.hostinger.internal;Port=5432;Database=archiflow;Username=archiflow_user;Password=secure_pass";
+        var baseConn = "Host=vps.hostinger.internal;Port=5432;Database=cotu;Username=cotu_user;Password=secure_pass";
         var tenantConn = tenantContext.BuildConnectionString(baseConn);
 
-        tenantConn.Should().Contain("Database=archiflow_duna_arquitetura");
+        tenantConn.Should().Contain("Database=cotu_duna_arquitetura");
         tenantConn.Should().Contain("Host=vps.hostinger.internal");
     }
 
@@ -224,11 +224,11 @@ public class TenantResolutionMiddlewareTests
         var tenantContext = new TenantContext();
         tenantContext.SetTenant("default", "localhost");
 
-        tenantContext.DatabaseName.Should().Be("archiflow");
+        tenantContext.DatabaseName.Should().Be("cotu");
 
-        var baseConn = "Host=localhost;Port=5432;Database=archiflow;Username=postgres;Password=123";
+        var baseConn = "Host=localhost;Port=5432;Database=cotu;Username=postgres;Password=123";
         var tenantConn = tenantContext.BuildConnectionString(baseConn);
 
-        tenantConn.Should().Contain("Database=archiflow");
+        tenantConn.Should().Contain("Database=cotu");
     }
 }

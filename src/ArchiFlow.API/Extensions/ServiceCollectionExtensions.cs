@@ -59,6 +59,13 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(effectiveConnectionString);
         });
 
+        services.AddSingleton<ITenantDatabaseProvisioner>(sp =>
+            new TenantDatabaseProvisioner(
+                connectionString,
+                sp,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TenantDatabaseProvisioner>>()
+            ));
+
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("Database");
 
@@ -245,7 +252,7 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new() { Title = "ArchiFlow API", Version = "v1" });
+            c.SwaggerDoc("v1", new() { Title = "Cotu API", Version = "v1" });
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "Autenticação baseada em JWT. Insira: Bearer {seu_token}",

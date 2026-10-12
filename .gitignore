@@ -53,3 +53,5 @@ appsettings.Production.json
 *.pfx
 *.key
 .env
+
+AGENTS.md

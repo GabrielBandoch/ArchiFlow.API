@@ -49,7 +49,7 @@ public class TenantResolutionMiddleware
         }
 
         // 3. Resolução segura via Host / Subdomínio DNS
-        AplicarTenant(context, tenantContext, ResolveTenantFromHost(context.Request.Host.Host));
+        await AplicarTenantAsync(context, tenantContext, ResolveTenantFromHost(context.Request.Host.Host));
         await _next(context);
     }
 
@@ -85,7 +85,7 @@ public class TenantResolutionMiddleware
             }
         }
 
-        AplicarTenant(context, tenantContext, authenticatedTenant);
+        await AplicarTenantAsync(context, tenantContext, authenticatedTenant);
         await _next(context);
         return true;
     }
@@ -98,7 +98,7 @@ public class TenantResolutionMiddleware
             var devTenant = SanitizeTenant(devHeaderValues.FirstOrDefault() ?? string.Empty);
             if (!string.IsNullOrWhiteSpace(devTenant) && !devTenant.Equals(DefaultTenant, StringComparison.OrdinalIgnoreCase))
             {
-                AplicarTenant(context, tenantContext, devTenant);
+                await AplicarTenantAsync(context, tenantContext, devTenant);
                 await _next(context);
                 return true;
             }
@@ -107,10 +107,19 @@ public class TenantResolutionMiddleware
         return false;
     }
 
-    private static void AplicarTenant(HttpContext context, ITenantContext tenantContext, string tenant)
+    private static async Task AplicarTenantAsync(HttpContext context, ITenantContext tenantContext, string tenant)
     {
         tenantContext.SetTenant(tenant, context.Request.Host.Host);
         context.Response.Headers[TenantResolvedHeaderName] = tenantContext.TenantId;
+
+        if (context.RequestServices != null)
+        {
+            var provisioner = context.RequestServices.GetService(typeof(ITenantDatabaseProvisioner)) as ITenantDatabaseProvisioner;
+            if (provisioner != null)
+            {
+                await provisioner.EnsureTenantDatabaseAsync(tenantContext.TenantId);
+            }
+        }
     }
 
     public static string ResolveTenant(HttpContext context)
@@ -157,7 +166,7 @@ public class TenantResolutionMiddleware
             if (parts.Length > 3 && (subdominio.Equals("api", StringComparison.OrdinalIgnoreCase) || subdominio.Equals("app", StringComparison.OrdinalIgnoreCase)))
             {
                 var candidate = parts[1];
-                if (!candidate.Equals("archiflow", StringComparison.OrdinalIgnoreCase))
+                if (!candidate.Equals("archiflow", StringComparison.OrdinalIgnoreCase) && !candidate.Equals("cotu", StringComparison.OrdinalIgnoreCase))
                     return SanitizeTenant(candidate);
             }
         }

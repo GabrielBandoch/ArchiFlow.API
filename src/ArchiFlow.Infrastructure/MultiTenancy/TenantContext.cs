@@ -18,8 +18,14 @@ public class TenantContext : ITenantContext
     public bool IsResolved => _isResolved;
 
     public string DatabaseName => string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
-        ? "archiflow"
-        : $"archiflow_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
+        ? ObterBaseDatabaseName()
+        : $"{ObterBaseDatabaseName()}_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
+
+    private static string ObterBaseDatabaseName()
+    {
+        var envDb = Environment.GetEnvironmentVariable("DB_NAME");
+        return !string.IsNullOrWhiteSpace(envDb) ? envDb.Trim().ToLowerInvariant() : "cotu";
+    }
 
     public void SetTenant(string tenantId, string host)
     {
