@@ -22,16 +22,20 @@ public static class DbSeeder
         try
         {
             var context = services.GetRequiredService<ArchiFlowDbContext>();
-            await context.Database.MigrateAsync();
-
-            await EnsureAdditionalTablesAndColumnsAsync(context, services);
-            await SeedAsync(context, isDevelopment);
+            await MigrateAndSeedContextAsync(context, services, isDevelopment);
         }
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
             logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
         }
+    }
+
+    public static async Task MigrateAndSeedContextAsync(ArchiFlowDbContext context, IServiceProvider services, bool isDevelopment = true)
+    {
+        await context.Database.MigrateAsync();
+        await EnsureAdditionalTablesAndColumnsAsync(context, services);
+        await SeedAsync(context, isDevelopment);
     }
 
     private static async Task EnsureAdditionalTablesAndColumnsAsync(ArchiFlowDbContext context, IServiceProvider services)
@@ -332,7 +336,7 @@ public static class DbSeeder
             return;
         }
 
-        var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@archiflow.com";
+        var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@cotu.com";
         var adminName = Environment.GetEnvironmentVariable("SEED_ADMIN_NAME") ?? "Administrador do Sistema";
         var adminPass = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD") ?? "Admin@123";
 
@@ -351,11 +355,11 @@ public static class DbSeeder
 
         if (isDevelopment)
         {
-            var gerenteEmail = Environment.GetEnvironmentVariable("SEED_GERENTE_EMAIL") ?? "gerente@archiflow.com";
+            var gerenteEmail = Environment.GetEnvironmentVariable("SEED_GERENTE_EMAIL") ?? "gerente@cotu.com";
             var gerenteName = Environment.GetEnvironmentVariable("SEED_GERENTE_NAME") ?? "Gerente Arquiteto";
             var gerentePass = Environment.GetEnvironmentVariable("SEED_GERENTE_PASSWORD") ?? "Gerente@123";
 
-            var colabEmail = Environment.GetEnvironmentVariable("SEED_COLABORADOR_EMAIL") ?? "colaborador@archiflow.com";
+            var colabEmail = Environment.GetEnvironmentVariable("SEED_COLABORADOR_EMAIL") ?? "colaborador@cotu.com";
             var colabName = Environment.GetEnvironmentVariable("SEED_COLABORADOR_NAME") ?? "Colaborador Arquiteto";
             var colabPass = Environment.GetEnvironmentVariable("SEED_COLABORADOR_PASSWORD") ?? "Colaborador@123";
 

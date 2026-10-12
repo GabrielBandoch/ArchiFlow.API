@@ -48,17 +48,25 @@ builder.Services.AddControllers()
 var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?.Split(',') ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CotuPolicy", p =>
+        p.WithOrigins(allowedOrigins)
+         .AllowAnyMethod()
+         .AllowAnyHeader()
+         .AllowCredentials());
+
     options.AddPolicy("ArchiFlowPolicy", p =>
         p.WithOrigins(allowedOrigins)
          .AllowAnyMethod()
          .AllowAnyHeader()
-         .AllowCredentials()));
+         .AllowCredentials());
+});
 
 var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseCors("ArchiFlowPolicy");
+app.UseCors("CotuPolicy");
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseAuthentication();
@@ -68,6 +76,15 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 
 await DbSeeder.MigrateAndSeedAsync(app.Services, app.Environment.IsDevelopment());
+
+var tenantProvisioner = app.Services.GetService<ArchiFlow.Domain.Shared.ITenantDatabaseProvisioner>();
+if (tenantProvisioner != null)
+{
+    // Pré-aquece e garante os bancos de dados dos ambientes e tenants principais
+    await tenantProvisioner.EnsureTenantDatabaseAsync("default");
+    await tenantProvisioner.EnsureTenantDatabaseAsync("staging");
+    await tenantProvisioner.EnsureTenantDatabaseAsync("duna");
+}
 
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
