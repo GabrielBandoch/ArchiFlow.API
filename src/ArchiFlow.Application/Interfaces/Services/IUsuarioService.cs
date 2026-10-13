@@ -15,4 +15,7 @@ public interface IUsuarioService
     Task<MembroEquipeDto> AlterarStatusMembroAsync(Guid id, AlterarStatusMembroCommand command);
     Task RedefinirSenhaMembroAsync(Guid id, RedefinirSenhaMembroCommand command);
     Task ExcluirMembroAsync(Guid id);
+    Task<PerfilUsuarioDto> ObterMeuPerfilAsync();
+    Task<PerfilUsuarioDto> AtualizarMeuPerfilAsync(AtualizarMeuPerfilCommand command);
+    Task AlterarMinhaSenhaAsync(AlterarMinhaSenhaCommand command);
 }

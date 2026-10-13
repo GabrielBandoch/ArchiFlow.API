@@ -11,5 +11,6 @@ public interface IArquivoFacade
     Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId);
     Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente);
     Task<ArquivoDto> Upload(UploadArquivoCommand command);
+    Task<string> UploadGeral(Microsoft.AspNetCore.Http.IFormFile file);
     Task Delete(Guid id);
 }

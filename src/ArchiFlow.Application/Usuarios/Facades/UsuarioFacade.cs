@@ -37,4 +37,13 @@ public class UsuarioFacade : IUsuarioFacade
 
     public Task ExcluirMembroAsync(Guid id) =>
         _usuarioService.ExcluirMembroAsync(id);
+
+    public Task<PerfilUsuarioDto> ObterMeuPerfilAsync() =>
+        _usuarioService.ObterMeuPerfilAsync();
+
+    public Task<PerfilUsuarioDto> AtualizarMeuPerfilAsync(AtualizarMeuPerfilCommand command) =>
+        _usuarioService.AtualizarMeuPerfilAsync(command);
+
+    public Task AlterarMinhaSenhaAsync(AlterarMinhaSenhaCommand command) =>
+        _usuarioService.AlterarMinhaSenhaAsync(command);
 }

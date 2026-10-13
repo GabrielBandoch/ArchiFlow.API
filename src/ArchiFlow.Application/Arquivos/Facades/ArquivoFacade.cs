@@ -17,5 +17,6 @@ public class ArquivoFacade : IArquivoFacade
     public Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId) => _service.GetByProjetoId(projetoId);
     public Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente) => _service.GetByProjetoId(projetoId, apenasVisiveisCliente);
     public Task<ArquivoDto> Upload(UploadArquivoCommand command) => _service.Upload(command);
+    public Task<string> UploadGeral(Microsoft.AspNetCore.Http.IFormFile file) => _service.UploadGeral(file);
     public Task Delete(Guid id) => _service.Delete(id);
 }

@@ -9,6 +9,7 @@ public static class TiposCompromisso
     public const string MedicaoTecnica = "MedicaoTecnica";
     public const string ApresentacaoProjeto = "ApresentacaoProjeto";
     public const string EntregaEtapa = "EntregaEtapa";
+    public const string Tarefa = "Tarefa";
     public const string Geral = "Geral";
 
     public static readonly string[] Todos =
@@ -18,6 +19,7 @@ public static class TiposCompromisso
         MedicaoTecnica,
         ApresentacaoProjeto,
         EntregaEtapa,
+        Tarefa,
         Geral
     };
 }

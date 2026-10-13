@@ -13,6 +13,7 @@ public class ConfiguracaoPropostaRepository : Repository<ConfiguracaoProposta>, 
     public async Task<ConfiguracaoProposta?> ObterPorUsuarioIdAsync(Guid usuarioId)
     {
         return await _context.ConfiguracoesProposta
-            .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId);
+            .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId)
+            ?? await _context.ConfiguracoesProposta.FirstOrDefaultAsync();
     }
 }

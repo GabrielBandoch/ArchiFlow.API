@@ -27,6 +27,14 @@ public class ArquivosController : ControllerBase
     public async Task<IActionResult> Upload([FromForm] UploadArquivoCommand command) =>
         Ok(await _facade.Upload(command));
 
+    [HttpPost("upload-geral")]
+    [Authorize]
+    public async Task<IActionResult> UploadGeral([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+    {
+        var url = await _facade.UploadGeral(file);
+        return Ok(new { url });
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> Delete(Guid id)

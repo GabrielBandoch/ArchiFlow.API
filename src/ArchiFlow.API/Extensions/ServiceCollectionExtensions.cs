@@ -152,24 +152,41 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAgendaFacade, ArchiFlow.Application.Agenda.Facades.AgendaFacade>();
 
         // Storage & Email (Automatic environment and configuration-based registration)
+        var awsAccessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+        var awsSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+        var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION");
+        var s3Bucket = Environment.GetEnvironmentVariable("AWS_S3_BUCKET");
         var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
-        if (!string.IsNullOrWhiteSpace(smtpUser))
+
+        Amazon.Runtime.AWSCredentials? awsCredentials = null;
+        Amazon.RegionEndpoint? regionEndpoint = null;
+        if (!string.IsNullOrWhiteSpace(awsAccessKey) && !string.IsNullOrWhiteSpace(awsSecretKey))
+        {
+            awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsAccessKey, awsSecretKey);
+            regionEndpoint = !string.IsNullOrWhiteSpace(awsRegion)
+                ? Amazon.RegionEndpoint.GetBySystemName(awsRegion)
+                : Amazon.RegionEndpoint.USEast1;
+        }
+
+        // Email Service
+        if (awsCredentials != null && regionEndpoint != null)
+        {
+            services.AddSingleton<Amazon.SimpleEmail.IAmazonSimpleEmailService>(new Amazon.SimpleEmail.AmazonSimpleEmailServiceClient(awsCredentials, regionEndpoint));
+            services.AddScoped<IEmailService, SesEmailService>();
+        }
+        else if (!string.IsNullOrWhiteSpace(smtpUser))
         {
             services.AddScoped<IEmailService, SmtpEmailService>();
-        }
-        else if (environment.IsProduction())
-        {
-            services.AddScoped<Amazon.SimpleEmail.IAmazonSimpleEmailService, Amazon.SimpleEmail.AmazonSimpleEmailServiceClient>();
-            services.AddScoped<IEmailService, SesEmailService>();
         }
         else
         {
             services.AddScoped<IEmailService, ConsoleEmailService>();
         }
 
-        if (environment.IsProduction())
+        // Storage Service
+        if (awsCredentials != null && regionEndpoint != null && !string.IsNullOrWhiteSpace(s3Bucket))
         {
-            services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
+            services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, regionEndpoint));
             services.AddScoped<IStorageService, S3StorageService>();
         }
         else

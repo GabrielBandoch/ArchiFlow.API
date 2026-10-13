@@ -15,12 +15,21 @@ public class SesEmailService : IEmailService
 
     public SesEmailService(IConfiguration configuration, IAmazonSimpleEmailService? sesClient = null)
     {
-        _sourceEmail = configuration["AWS_SOURCE_EMAIL"] ?? throw new ArgumentException("Configuração AWS_SOURCE_EMAIL não encontrada.");
-        _sesClient = sesClient ?? (IAmazonSimpleEmailService)Activator.CreateInstance(typeof(AmazonSimpleEmailServiceClient))!;
+        _sourceEmail = configuration["AWS_SOURCE_EMAIL"] 
+                    ?? configuration["AWS:SourceEmail"]
+                    ?? Environment.GetEnvironmentVariable("AWS_SOURCE_EMAIL") 
+                    ?? Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL") 
+                    ?? throw new InvalidOperationException("Remetente de e-mail não configurado. Defina a variável 'AWS_SOURCE_EMAIL' ou 'SMTP_FROM_EMAIL'.");
+
+        _sesClient = sesClient ?? throw new InvalidOperationException("Cliente AmazonSimpleEmailService não injetado.");
     }
 
     public async Task SendEmailAsync(string to, string subject, string body)
     {
+        var htmlBody = body.Contains("<html") || body.Contains("<div") || body.Contains("<p")
+            ? body
+            : $"<div style=\"font-family: sans-serif; font-size: 14px; line-height: 1.6; color: #222;\">{body.Replace("\r\n", "<br/>").Replace("\n", "<br/>")}</div>";
+
         var sendRequest = new SendEmailRequest
         {
             Source = _sourceEmail,
@@ -34,6 +43,11 @@ public class SesEmailService : IEmailService
                 Body = new Body
                 {
                     Html = new Content
+                    {
+                        Charset = "UTF-8",
+                        Data = htmlBody
+                    },
+                    Text = new Content
                     {
                         Charset = "UTF-8",
                         Data = body

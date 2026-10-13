@@ -19,6 +19,21 @@ public class UsuariosController : ControllerBase
         _facade = facade;
     }
 
+    [HttpGet("perfil")]
+    public async Task<IActionResult> ObterMeuPerfil() =>
+        Ok(await _facade.ObterMeuPerfilAsync());
+
+    [HttpPut("perfil")]
+    public async Task<IActionResult> AtualizarMeuPerfil([FromBody] AtualizarMeuPerfilCommand command) =>
+        Ok(await _facade.AtualizarMeuPerfilAsync(command));
+
+    [HttpPost("alterar-senha")]
+    public async Task<IActionResult> AlterarMinhaSenha([FromBody] AlterarMinhaSenhaCommand command)
+    {
+        await _facade.AlterarMinhaSenhaAsync(command);
+        return NoContent();
+    }
+
     [HttpGet("equipe")]
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> ObterEquipe() =>

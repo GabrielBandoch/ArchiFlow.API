@@ -1,3 +1,4 @@
+using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.API.Controllers;
 using ArchiFlow.Application.Configuracoes.DTOs;
 using ArchiFlow.Application.Configuracoes.Services;
@@ -14,12 +15,14 @@ namespace ArchiFlow.Tests.Controllers;
 public class ConfiguracoesControllerTests
 {
     private readonly Mock<IConfiguracaoSistemaService> _serviceMock;
+    private readonly Mock<IPropostaHonorarioFacade> _propostaFacadeMock;
     private readonly ConfiguracoesController _controller;
 
     public ConfiguracoesControllerTests()
     {
         _serviceMock = new Mock<IConfiguracaoSistemaService>();
-        _controller = new ConfiguracoesController(_serviceMock.Object);
+        _propostaFacadeMock = new Mock<IPropostaHonorarioFacade>();
+        _controller = new ConfiguracoesController(_serviceMock.Object, _propostaFacadeMock.Object);
     }
 
     [Fact]

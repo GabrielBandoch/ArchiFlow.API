@@ -1,10 +1,14 @@
+using ArchiFlow.Application.Common;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Application.Usuarios.DTOs;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
 using ArchiFlow.Domain.Usuarios;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,24 +16,35 @@ namespace ArchiFlow.Application.Usuarios.Services;
 
 public class AuthService : IAuthService
 {
+    private static readonly ConcurrentDictionary<string, (string Code, DateTime Expiry)> _recoveryCodes = new();
+
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IProjetoRepository _projetoRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
+    private readonly IEmailService _emailService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUsuarioRepository usuarioRepository,
         IClienteRepository clienteRepository,
         IProjetoRepository projetoRepository,
         IUnitOfWork unitOfWork,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IEmailService? emailService = null,
+        IHttpContextAccessor? httpContextAccessor = null,
+        ILogger<AuthService>? logger = null)
     {
         _usuarioRepository = usuarioRepository;
         _clienteRepository = clienteRepository;
         _projetoRepository = projetoRepository;
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
+        _emailService = emailService!;
+        _httpContextAccessor = httpContextAccessor!;
+        _logger = logger!;
     }
 
     public async Task<LoginResponseDto> Login(LoginRequestDto request)
@@ -86,5 +101,110 @@ public class AuthService : IAuthService
         await _usuarioRepository.Create(usuario);
         await _unitOfWork.Commit();
         return usuario.Id;
+    }
+
+    public async Task SolicitarRecuperacaoSenhaAsync(SolicitarRecuperacaoSenhaDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email)) return;
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        string nomeDestinatario = string.Empty;
+        bool encontrado = false;
+
+        var usuario = await _usuarioRepository.GetByEmail(email);
+        if (usuario != null && usuario.Ativo)
+        {
+            encontrado = true;
+            nomeDestinatario = usuario.Nome;
+        }
+        else
+        {
+            var cliente = await _clienteRepository.GetByEmail(email);
+            if (cliente != null && cliente.Ativo)
+            {
+                encontrado = true;
+                nomeDestinatario = cliente.Nome;
+            }
+        }
+
+        if (!encontrado)
+        {
+            // Para segurança contra enumeração de e-mails, não lançamos exceção se o e-mail não existir
+            return;
+        }
+
+        var codigo = Random.Shared.Next(100000, 999999).ToString();
+        var expiracao = DateTime.UtcNow.AddMinutes(15);
+        _recoveryCodes[email] = (codigo, expiracao);
+
+        try
+        {
+            var req = _httpContextAccessor.HttpContext?.Request;
+            var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : "https://staging.cotu.com.br";
+            var resetUrl = $"{baseUrl}/login?recuperar=1&email={Uri.EscapeDataString(email)}&token={codigo}";
+
+            var html = EmailTemplates.GerarEmailRecuperacaoSenha(nomeDestinatario, codigo, resetUrl);
+            await _emailService.SendEmailAsync(
+                email,
+                "Recuperação de Senha - COTU",
+                html
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao enviar e-mail de recuperação de senha para {Email}", email);
+        }
+    }
+
+    public async Task RedefinirSenhaAsync(RedefinirSenhaDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("E-mail é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(request.Token))
+            throw new ArgumentException("Código de verificação é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(request.NovaSenha) || request.NovaSenha.Length < 6)
+            throw new ArgumentException("A nova senha deve ter no mínimo 6 caracteres.");
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var tokenInformado = request.Token.Trim();
+
+        if (!_recoveryCodes.TryGetValue(email, out var entry) ||
+            entry.Expiry < DateTime.UtcNow ||
+            !string.Equals(entry.Code, tokenInformado, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Código de recuperação inválido ou expirado. Por favor, solicite um novo código.");
+        }
+
+        var novaSenhaHash = BCrypt.Net.BCrypt.HashPassword(request.NovaSenha, workFactor: 12);
+        bool atualizado = false;
+
+        var usuario = await _usuarioRepository.GetByEmail(email);
+        if (usuario != null)
+        {
+            usuario.SenhaHash = novaSenhaHash;
+            usuario.AtualizadoEm = DateTime.UtcNow;
+            await _usuarioRepository.Update(usuario);
+            atualizado = true;
+        }
+        else
+        {
+            var cliente = await _clienteRepository.GetByEmail(email);
+            if (cliente != null)
+            {
+                cliente.SenhaPortal = novaSenhaHash;
+                await _clienteRepository.Update(cliente);
+                atualizado = true;
+            }
+        }
+
+        if (!atualizado)
+        {
+            throw new InvalidOperationException("Usuário não encontrado.");
+        }
+
+        _recoveryCodes.TryRemove(email, out _);
+        await _unitOfWork.Commit();
     }
 }

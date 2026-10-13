@@ -1,5 +1,6 @@
 using ArchiFlow.Application.Clientes.Commands;
 using ArchiFlow.Application.Clientes.DTOs;
+using ArchiFlow.Application.Common;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
@@ -125,18 +126,14 @@ public class ClienteService : IClienteService
         await _leadRepository.Update(lead);
         await _unitOfWork.Commit();
 
-        var appName = _configuration["APP_NAME"] ?? "Duna";
-        var companyName = _configuration["COMPANY_NAME"] ?? "Duna Arquitetura";
-        var emailSubject = $"Bem-vindo ao Portal do Cliente - {appName}";
-        var emailBody = $@"
-            <h2>Olá, {cliente.Nome}!</h2>
-            <p>Seu cadastro como cliente no {appName} foi concluído com sucesso.</p>
-            <p>A partir de agora, você pode acompanhar todas as etapas, cronograma e arquivos do seu projeto em tempo real.</p>
-            <h3>Suas credenciais de acesso:</h3>
-            <p><strong>E-mail:</strong> {cliente.Email}</p>
-            <p><strong>Senha Temporária:</strong> {tempPassword}</p>
-            <p>Recomendamos alterar sua senha no primeiro acesso.</p>
-            <p>Atenciosamente,<br/>Equipe {companyName}</p>";
+        var companyName = _configuration["COMPANY_NAME"] ?? "Cotu";
+        var emailSubject = $"Bem-vindo ao Portal do Cliente - {companyName}";
+        var emailBody = EmailTemplates.GerarAcessoPortalCliente(
+            cliente.Nome,
+            cliente.Email,
+            tempPassword,
+            companyName
+        );
 
         try
         {

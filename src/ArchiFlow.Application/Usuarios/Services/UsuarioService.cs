@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using ArchiFlow.Application.Common;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Application.Usuarios.Commands;
 using ArchiFlow.Application.Usuarios.DTOs;
@@ -43,7 +44,9 @@ public class UsuarioService : IUsuarioService
     {
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
         var membros = await _usuarioRepository.ObterPorEscritorioIdAsync(escritorioId);
-        return membros.Select(MapearParaDto);
+        return membros
+            .Where(m => !string.Equals(m.Email, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase))
+            .Select(MapearParaDto);
     }
 
     public async Task<MembroEquipeDto?> ObterMembroPorIdAsync(Guid id)
@@ -99,10 +102,20 @@ public class UsuarioService : IUsuarioService
 
         try
         {
+            var req = _httpContextAccessor.HttpContext?.Request;
+            var loginUrl = req != null ? $"{req.Scheme}://{req.Host}/login" : null;
+            var corpoHtml = EmailTemplates.GerarConviteEquipe(
+                novoUsuario.Nome,
+                usuarioAtual.Nome,
+                novoUsuario.Email,
+                senha,
+                loginUrl
+            );
+
             await _emailService.SendEmailAsync(
                 novoUsuario.Email,
-                "Convite para a equipe ArchiFlow",
-                $"Olá {novoUsuario.Nome},\n\nVocê foi convidado para a equipe no ArchiFlow por {usuarioAtual.Nome}.\n\nSeu acesso:\nE-mail: {novoUsuario.Email}\nSenha temporária: {senha}\n\nRecomendamos alterar sua senha após o primeiro acesso."
+                "Convite para a equipe Cotu",
+                corpoHtml
             );
         }
         catch (Exception ex)
@@ -207,10 +220,18 @@ public class UsuarioService : IUsuarioService
 
         try
         {
+            var req = _httpContextAccessor.HttpContext?.Request;
+            var loginUrl = req != null ? $"{req.Scheme}://{req.Host}/login" : null;
+            var corpoHtml = EmailTemplates.GerarRedefinicaoSenha(
+                membro.Nome,
+                novaSenha,
+                loginUrl
+            );
+
             await _emailService.SendEmailAsync(
                 membro.Email,
-                "Sua senha no ArchiFlow foi redefinida",
-                $"Olá {membro.Nome},\n\nSua senha no ArchiFlow foi redefinida pelo administrador.\n\nSua nova senha de acesso é: {novaSenha}\n\nRecomendamos alterá-la logo após o login."
+                "Sua senha no Cotu foi redefinida",
+                corpoHtml
             );
         }
         catch (Exception ex)
@@ -280,6 +301,70 @@ public class UsuarioService : IUsuarioService
             result[i] = chars[bytes[i] % chars.Length];
         }
         return "Af@" + new string(result);
+    }
+
+    public async Task<PerfilUsuarioDto> ObterMeuPerfilAsync()
+    {
+        var (usuario, _) = await ObterUsuarioContextoAsync();
+        return new PerfilUsuarioDto(
+            usuario.Id,
+            usuario.EscritorioId,
+            usuario.Nome,
+            usuario.Email,
+            usuario.Role,
+            usuario.Cargo,
+            usuario.Telefone,
+            usuario.CriadoEm,
+            usuario.AtualizadoEm
+        );
+    }
+
+    public async Task<PerfilUsuarioDto> AtualizarMeuPerfilAsync(AtualizarMeuPerfilCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Nome))
+            throw new ArgumentException("Nome é obrigatório.");
+
+        var (usuario, _) = await ObterUsuarioContextoAsync();
+
+        usuario.Nome = command.Nome.Trim();
+        usuario.Telefone = command.Telefone?.Trim();
+        usuario.Cargo = command.Cargo?.Trim();
+        usuario.AtualizadoEm = DateTime.UtcNow;
+
+        await _usuarioRepository.Update(usuario);
+        await _unitOfWork.Commit();
+
+        return new PerfilUsuarioDto(
+            usuario.Id,
+            usuario.EscritorioId,
+            usuario.Nome,
+            usuario.Email,
+            usuario.Role,
+            usuario.Cargo,
+            usuario.Telefone,
+            usuario.CriadoEm,
+            usuario.AtualizadoEm
+        );
+    }
+
+    public async Task AlterarMinhaSenhaAsync(AlterarMinhaSenhaCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.SenhaAtual))
+            throw new ArgumentException("Senha atual é obrigatória.");
+
+        if (string.IsNullOrWhiteSpace(command.NovaSenha) || command.NovaSenha.Length < 6)
+            throw new ArgumentException("A nova senha deve possuir no mínimo 6 caracteres.");
+
+        var (usuario, _) = await ObterUsuarioContextoAsync();
+
+        if (!BCrypt.Net.BCrypt.Verify(command.SenhaAtual, usuario.SenhaHash))
+            throw new UnauthorizedAccessException("A senha atual informada está incorreta.");
+
+        usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(command.NovaSenha, workFactor: 12);
+        usuario.AtualizadoEm = DateTime.UtcNow;
+
+        await _usuarioRepository.Update(usuario);
+        await _unitOfWork.Commit();
     }
 
     private static MembroEquipeDto MapearParaDto(Usuario u) =>

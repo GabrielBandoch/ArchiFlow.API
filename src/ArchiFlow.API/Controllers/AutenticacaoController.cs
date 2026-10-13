@@ -44,4 +44,36 @@ public class AutenticacaoController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPost("esqueci-senha")]
+    public async Task<IActionResult> EsqueciSenha([FromBody] SolicitarRecuperacaoSenhaDto request)
+    {
+        try
+        {
+            await _authService.SolicitarRecuperacaoSenhaAsync(request);
+            return Ok(new { message = "Se o e-mail informado estiver cadastrado, as instruções para redefinição de senha foram enviadas." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("redefinir-senha")]
+    public async Task<IActionResult> RedefinirSenha([FromBody] RedefinirSenhaDto request)
+    {
+        try
+        {
+            await _authService.RedefinirSenhaAsync(request);
+            return Ok(new { message = "Senha redefinida com sucesso! Você já pode fazer login com sua nova senha." });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

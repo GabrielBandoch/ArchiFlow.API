@@ -94,6 +94,24 @@ public class ArquivoService : IArquivoService
         );
     }
 
+    public async Task<string> UploadGeral(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            throw new ArgumentException("Nenhum arquivo enviado.");
+        }
+
+        if (file.Length > 20 * 1024 * 1024)
+        {
+            throw new ArgumentException("O arquivo excede o limite de tamanho permitido de 20MB.");
+        }
+
+        using (var stream = file.OpenReadStream())
+        {
+            return await _storageService.UploadAsync(stream, file.FileName, file.ContentType);
+        }
+    }
+
     public async Task Delete(Guid id)
     {
         var arquivo = await _arquivoRepository.GetById(id)

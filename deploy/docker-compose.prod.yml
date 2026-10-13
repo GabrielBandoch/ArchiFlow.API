@@ -50,6 +50,11 @@ services:
       - SMTP_ENABLE_SSL=${SMTP_ENABLE_SSL:-true}
       - GOOGLE_CALENDAR_CLIENT_ID=${GOOGLE_CALENDAR_CLIENT_ID:-}
       - GOOGLE_CALENDAR_CLIENT_SECRET=${GOOGLE_CALENDAR_CLIENT_SECRET:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - AWS_SOURCE_EMAIL=${AWS_SOURCE_EMAIL:-}
       - AllowedOrigins=https://${DOMAIN_NAME},https://www.${DOMAIN_NAME},https://app.${DOMAIN_NAME},https://staging.${DOMAIN_NAME},https://duna.${DOMAIN_NAME}
     depends_on:
       db:
