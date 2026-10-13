@@ -2,6 +2,7 @@ using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Financeiro;
+using ArchiFlow.Domain.Assinaturas;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -312,6 +313,30 @@ public static class DbSeeder
                 );
 
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
+
+                CREATE TABLE IF NOT EXISTS ""Tenants_Assinaturas"" (
+                    ""TAS_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TAS_Subdominio"" character varying(100) NOT NULL,
+                    ""TAS_Nome_Escritorio"" character varying(200) NOT NULL,
+                    ""TAS_Razao_Social"" character varying(200),
+                    ""TAS_Cnpj_Cpf"" character varying(30),
+                    ""TAS_Nome_Responsavel"" character varying(200) NOT NULL,
+                    ""TAS_Email_Responsavel"" character varying(200) NOT NULL,
+                    ""TAS_Telefone_Responsavel"" character varying(50),
+                    ""TAS_Plano"" character varying(50) NOT NULL,
+                    ""TAS_Ciclo_Faturamento"" character varying(50) NOT NULL,
+                    ""TAS_Valor_Mensalidade"" numeric(18,2) NOT NULL,
+                    ""TAS_Status_Financeiro"" character varying(50) NOT NULL,
+                    ""TAS_Data_Vencimento"" timestamp with time zone NOT NULL,
+                    ""TAS_Ultimo_Pagamento"" timestamp with time zone,
+                    ""TAS_Bloqueado_Inadimplencia"" boolean NOT NULL DEFAULT false,
+                    ""TAS_Motivo_Bloqueio"" text,
+                    ""TAS_Notas_Internas"" text,
+                    ""TAS_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""TAS_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Tenants_Assinaturas_Subdominio"" ON ""Tenants_Assinaturas"" (""TAS_Subdominio"");
             ");
         }
         catch (Exception ex)
@@ -327,6 +352,7 @@ public static class DbSeeder
         await SeedTemplatesProjetoAsync(context);
         await SeedUsuariosAsync(context, isDevelopment);
         await SeedFinanceiroAsync(context);
+        await SeedTenantsAssinaturasAsync(context);
     }
 
     private static async Task SeedUsuariosAsync(ArchiFlowDbContext context, bool isDevelopment)
@@ -826,6 +852,123 @@ public static class DbSeeder
         }
 
         await context.DespesasProjetos.AddRangeAsync(despesas);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedTenantsAssinaturasAsync(ArchiFlowDbContext context)
+    {
+        if (await context.TenantsAssinaturas.AnyAsync())
+        {
+            return;
+        }
+
+        var agora = DateTime.UtcNow;
+
+        var assinaturas = new List<TenantAssinatura>
+        {
+            new TenantAssinatura
+            {
+                Id = Guid.NewGuid(),
+                Subdominio = "duna",
+                NomeEscritorio = "Duna Studio de Arquitetura",
+                RazaoSocial = "Duna Arquitetura e Interiores LTDA",
+                CnpjCpf = "41.982.123/0001-44",
+                NomeResponsavel = "Gabriel Bandoch",
+                EmailResponsavel = "contato@dunastudio.com.br",
+                TelefoneResponsavel = "+55 47 99123-4567",
+                Plano = "Professional",
+                CicloFaturamento = "Mensal",
+                ValorMensalidade = 349.00m,
+                StatusFinanceiro = "Adimplente",
+                DataVencimento = agora.AddDays(18),
+                UltimoPagamento = agora.AddDays(-12),
+                BloqueadoPorInadimplencia = false,
+                NotasInternas = "Cliente pioneiro na plataforma COTU. Alto engajamento no simulador e agenda.",
+                CriadoEm = agora.AddMonths(-3)
+            },
+            new TenantAssinatura
+            {
+                Id = Guid.NewGuid(),
+                Subdominio = "alfa-arquitetura",
+                NomeEscritorio = "Alfa Arquitetura & Urbanismo",
+                RazaoSocial = "Alfa Projetos Urbanísticos EIRELI",
+                CnpjCpf = "32.451.879/0001-10",
+                NomeResponsavel = "Beatriz Lima",
+                EmailResponsavel = "financeiro@alfaarquitetura.com.br",
+                TelefoneResponsavel = "+55 11 98452-1100",
+                Plano = "Starter",
+                CicloFaturamento = "Mensal",
+                ValorMensalidade = 189.90m,
+                StatusFinanceiro = "EmDebito",
+                DataVencimento = agora.AddDays(-6),
+                UltimoPagamento = agora.AddDays(-36),
+                BloqueadoPorInadimplencia = false,
+                NotasInternas = "Boleto vencido há 6 dias. Equipe de cobrança enviou primeiro lembrete amigável via WhatsApp.",
+                CriadoEm = agora.AddMonths(-2)
+            },
+            new TenantAssinatura
+            {
+                Id = Guid.NewGuid(),
+                Subdominio = "nobre-design",
+                NomeEscritorio = "Nobre Design de Interiores",
+                RazaoSocial = "Nobre Conceito e Design LTDA",
+                CnpjCpf = "28.712.339/0001-85",
+                NomeResponsavel = "Carlos Eduardo Nobre",
+                EmailResponsavel = "carlos@nobredesign.com.br",
+                TelefoneResponsavel = "+55 21 97200-8811",
+                Plano = "Studio Scale",
+                CicloFaturamento = "Mensal",
+                ValorMensalidade = 599.00m,
+                StatusFinanceiro = "Suspenso",
+                DataVencimento = agora.AddDays(-22),
+                UltimoPagamento = agora.AddDays(-52),
+                BloqueadoPorInadimplencia = true,
+                MotivoBloqueio = "Inadimplência superior a 15 dias sem retorno após notificações.",
+                NotasInternas = "Acesso bloqueado temporariamente. Aguardando renegociação com o financeiro.",
+                CriadoEm = agora.AddMonths(-4)
+            },
+            new TenantAssinatura
+            {
+                Id = Guid.NewGuid(),
+                Subdominio = "vanguard",
+                NomeEscritorio = "Vanguard Arquitetura",
+                RazaoSocial = "Vanguard Projetos LTDA",
+                CnpjCpf = "19.332.991/0001-02",
+                NomeResponsavel = "Mariana Vasconcelos",
+                EmailResponsavel = "mariana@vanguard.arq.br",
+                TelefoneResponsavel = "+55 31 99311-4455",
+                Plano = "Professional",
+                CicloFaturamento = "Anual",
+                ValorMensalidade = 349.00m,
+                StatusFinanceiro = "Trial",
+                DataVencimento = agora.AddDays(14),
+                UltimoPagamento = null,
+                BloqueadoPorInadimplencia = false,
+                NotasInternas = "Em período de degustação (Trial 14 dias). Demonstrou interesse no módulo de honorários.",
+                CriadoEm = agora.AddDays(-2)
+            },
+            new TenantAssinatura
+            {
+                Id = Guid.NewGuid(),
+                Subdominio = "staging",
+                NomeEscritorio = "COTU Staging Lab",
+                RazaoSocial = "COTU Technologies Inc",
+                NomeResponsavel = "Equipe de Engenharia COTU",
+                EmailResponsavel = "staging@cotu.com.br",
+                TelefoneResponsavel = "+55 47 99999-0000",
+                Plano = "Enterprise",
+                CicloFaturamento = "Anual",
+                ValorMensalidade = 0.00m,
+                StatusFinanceiro = "Adimplente",
+                DataVencimento = agora.AddYears(1),
+                UltimoPagamento = agora,
+                BloqueadoPorInadimplencia = false,
+                NotasInternas = "Ambiente de testes e homologação oficial da COTU.",
+                CriadoEm = agora.AddMonths(-1)
+            }
+        };
+
+        await context.TenantsAssinaturas.AddRangeAsync(assinaturas);
         await context.SaveChangesAsync();
     }
 }

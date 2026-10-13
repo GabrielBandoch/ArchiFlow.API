@@ -5,6 +5,7 @@ using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Projetos;
 using ArchiFlow.Domain.Shared;
 using ArchiFlow.Domain.Usuarios;
+using ArchiFlow.Domain.Assinaturas;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
@@ -26,6 +27,8 @@ public class AuthService : IAuthService
     private readonly IEmailService _emailService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AuthService> _logger;
+    private readonly ITenantContext? _tenantContext;
+    private readonly ITenantAssinaturaRepository? _tenantAssinaturaRepository;
 
     public AuthService(
         IUsuarioRepository usuarioRepository,
@@ -35,7 +38,9 @@ public class AuthService : IAuthService
         ITokenService tokenService,
         IEmailService? emailService = null,
         IHttpContextAccessor? httpContextAccessor = null,
-        ILogger<AuthService>? logger = null)
+        ILogger<AuthService>? logger = null,
+        ITenantContext? tenantContext = null,
+        ITenantAssinaturaRepository? tenantAssinaturaRepository = null)
     {
         _usuarioRepository = usuarioRepository;
         _clienteRepository = clienteRepository;
@@ -45,10 +50,25 @@ public class AuthService : IAuthService
         _emailService = emailService!;
         _httpContextAccessor = httpContextAccessor!;
         _logger = logger!;
+        _tenantContext = tenantContext;
+        _tenantAssinaturaRepository = tenantAssinaturaRepository;
     }
 
     public async Task<LoginResponseDto> Login(LoginRequestDto request)
     {
+        // Se o tenant estiver suspenso por inadimplência, bloqueia o acesso
+        if (_tenantContext != null && _tenantAssinaturaRepository != null &&
+            !string.IsNullOrWhiteSpace(_tenantContext.TenantId) &&
+            !_tenantContext.TenantId.Equals("default", StringComparison.OrdinalIgnoreCase) &&
+            !_tenantContext.TenantId.Equals("staging", StringComparison.OrdinalIgnoreCase))
+        {
+            var assinatura = await _tenantAssinaturaRepository.ObterPorSubdominioAsync(_tenantContext.TenantId);
+            if (assinatura != null && assinatura.BloqueadoPorInadimplencia)
+            {
+                throw new UnauthorizedAccessException(
+                    assinatura.MotivoBloqueio ?? "O acesso a este escritório está temporariamente suspenso por pendência financeira na assinatura COTU. Entre em contato com a equipe COTU para regularização.");
+            }
+        }
         var usuario = await _usuarioRepository.GetByEmail(request.Email);
         if (usuario != null)
         {

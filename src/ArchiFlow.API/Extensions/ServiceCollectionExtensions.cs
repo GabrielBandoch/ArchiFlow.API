@@ -20,6 +20,8 @@ using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Shared;
+using ArchiFlow.Domain.Assinaturas;
+using ArchiFlow.Application.SuperAdmin.Services;
 using ArchiFlow.Infrastructure.Data;
 using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
@@ -97,9 +99,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ArchiFlow.Domain.Agenda.IConfiguracaoAgendaRepository, ArchiFlow.Infrastructure.Repositories.Agenda.ConfiguracaoAgendaRepository>();
         services.AddScoped<IFornecedorRepository, FornecedorRepository>();
         services.AddScoped<IOpcaoConfiguracaoRepository, OpcaoConfiguracaoRepository>();
+        services.AddScoped<ITenantAssinaturaRepository, TenantAssinaturaRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
+        services.AddScoped<ISuperAdminTenantService, SuperAdminTenantService>();
         services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IProjetoService, ProjetoService>();
