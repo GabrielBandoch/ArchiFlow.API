@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Clientes;
+using ArchiFlow.Domain.Shared;
 using ArchiFlow.Domain.Usuarios;
 using Microsoft.IdentityModel.Tokens;
 
@@ -12,6 +13,13 @@ namespace ArchiFlow.Infrastructure.Services;
 
 public class TokenService : ITokenService
 {
+    private readonly ITenantContext? _tenantContext;
+
+    public TokenService(ITenantContext? tenantContext = null)
+    {
+        _tenantContext = tenantContext;
+    }
+
     public string GenerateToken(Usuario usuario)
     {
         var claims = new List<Claim>
@@ -23,6 +31,11 @@ public class TokenService : ITokenService
             new Claim("user_type", "staff"),
             new Claim("escritorio_id", (usuario.EscritorioId ?? usuario.Id).ToString())
         };
+
+        if (_tenantContext != null && !string.IsNullOrWhiteSpace(_tenantContext.TenantId) && !_tenantContext.TenantId.Equals("default", StringComparison.OrdinalIgnoreCase))
+        {
+            claims.Add(new Claim("tenant", _tenantContext.TenantId));
+        }
 
         if (!string.IsNullOrWhiteSpace(usuario.Cargo))
         {

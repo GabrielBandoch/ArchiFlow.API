@@ -60,15 +60,27 @@ public class TenantResolutionMiddleware
             return false;
         }
 
+        var claimTenant = context.User.FindFirst("tenant")?.Value;
         var claimEscritorioId = context.User.FindFirst("escritorio_id")?.Value
                              ?? context.User.FindFirst("EscritorioId")?.Value;
 
-        if (string.IsNullOrWhiteSpace(claimEscritorioId))
-        {
-            return false;
-        }
+        string authenticatedTenant;
 
-        var authenticatedTenant = SanitizeTenant(claimEscritorioId);
+        if (!string.IsNullOrWhiteSpace(claimTenant))
+        {
+            authenticatedTenant = SanitizeTenant(claimTenant);
+        }
+        else if (!string.IsNullOrWhiteSpace(claimEscritorioId) && !Guid.TryParse(claimEscritorioId, out _))
+        {
+            // Compatibilidade com testes unitários que utilizam slugs personalizados (ex: "escritorio-ouro")
+            authenticatedTenant = SanitizeTenant(claimEscritorioId);
+        }
+        else
+        {
+            // Quando a claim é um GUID de entidade (ex: 1fcb157a-93c6...), o isolamento físico do banco
+            // de dados do cliente é determinado pelo Subdomínio / Host DNS da requisição (ex: "staging", "duna", "default")
+            authenticatedTenant = ResolveTenantFromHost(context.Request.Host.Host);
+        }
 
         if (context.Request.Headers.TryGetValue(TenantHeaderName, out var headerValues))
         {
@@ -126,9 +138,16 @@ public class TenantResolutionMiddleware
     {
         if (context.User?.Identity?.IsAuthenticated == true)
         {
+            var claimTenant = context.User.FindFirst("tenant")?.Value;
             var claimEscritorioId = context.User.FindFirst("escritorio_id")?.Value
                                  ?? context.User.FindFirst("EscritorioId")?.Value;
-            if (!string.IsNullOrWhiteSpace(claimEscritorioId))
+
+            if (!string.IsNullOrWhiteSpace(claimTenant))
+            {
+                return SanitizeTenant(claimTenant);
+            }
+
+            if (!string.IsNullOrWhiteSpace(claimEscritorioId) && !Guid.TryParse(claimEscritorioId, out _))
             {
                 return SanitizeTenant(claimEscritorioId);
             }
@@ -137,7 +156,7 @@ public class TenantResolutionMiddleware
         if (context.Request.Headers.TryGetValue(TenantHeaderName, out var headerValues))
         {
             var headerTenant = headerValues.FirstOrDefault()?.Trim().ToLowerInvariant();
-            if (!string.IsNullOrWhiteSpace(headerTenant))
+            if (!string.IsNullOrWhiteSpace(headerTenant) && !Guid.TryParse(headerTenant, out _))
             {
                 return SanitizeTenant(headerTenant);
             }

@@ -70,6 +70,33 @@ public class TenantResolutionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComClaimGuid_DeveManterTenantDoHost()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", Guid.NewGuid().ToString())
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext();
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("duna");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task InvokeAsync_ComUsuarioAutenticadoETentativaSpoofingXTenantId_DeveRetornar403Forbidden()
     {
         var context = new DefaultHttpContext();

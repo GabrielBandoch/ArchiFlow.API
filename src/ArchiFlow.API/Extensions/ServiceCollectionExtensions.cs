@@ -252,7 +252,7 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new() { Title = "Cotu API", Version = "v1" });
+            c.SwaggerDoc("v1", new() { Title = "COTU API", Version = "v1" });
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "Autenticação baseada em JWT. Insira: Bearer {seu_token}",
