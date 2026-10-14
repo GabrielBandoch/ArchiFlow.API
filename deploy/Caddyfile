@@ -91,15 +91,14 @@ app.{$DOMAIN_NAME} {
     }
 
     handle {
-        reverse_proxy cotu-web:80
+        reverse_proxy cotu-admin:80
     }
 }
 
 # --- 5. LANDING PAGE INSTITUCIONAL (cotu.com.br e www.cotu.com.br) ---
 {$DOMAIN_NAME}, www.{$DOMAIN_NAME} {
-    # Por enquanto encaminha com SSL automático para o app até subirmos a landing page oficial
     handle {
-        reverse_proxy cotu-web:80
+        reverse_proxy cotu-landing:80
     }
 }
 
