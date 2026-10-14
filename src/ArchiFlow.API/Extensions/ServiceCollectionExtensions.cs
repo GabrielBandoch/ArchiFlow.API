@@ -97,9 +97,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ArchiFlow.Domain.Agenda.IConfiguracaoAgendaRepository, ArchiFlow.Infrastructure.Repositories.Agenda.ConfiguracaoAgendaRepository>();
         services.AddScoped<IFornecedorRepository, FornecedorRepository>();
         services.AddScoped<IOpcaoConfiguracaoRepository, OpcaoConfiguracaoRepository>();
+        services.AddScoped<ArchiFlow.Domain.MultiTenancy.ITenantAssinaturaRepository, ArchiFlow.Infrastructure.Repositories.MultiTenancy.TenantAssinaturaRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services & Facades
+        services.AddScoped<ISuperAdminService, ArchiFlow.Application.SuperAdmin.Services.SuperAdminService>();
         services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IProjetoService, ProjetoService>();
