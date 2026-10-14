@@ -173,7 +173,12 @@ public static class ServiceCollectionExtensions
         }
 
         // Email Service
-        if (awsCredentials != null && regionEndpoint != null)
+        var emailProvider = Environment.GetEnvironmentVariable("EMAIL_PROVIDER")?.ToLowerInvariant();
+        if (emailProvider == "smtp" || (emailProvider != "ses" && !string.IsNullOrWhiteSpace(smtpUser)))
+        {
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else if (awsCredentials != null && regionEndpoint != null)
         {
             services.AddSingleton<Amazon.SimpleEmail.IAmazonSimpleEmailService>(new Amazon.SimpleEmail.AmazonSimpleEmailServiceClient(awsCredentials, regionEndpoint));
             services.AddScoped<IEmailService, SesEmailService>();

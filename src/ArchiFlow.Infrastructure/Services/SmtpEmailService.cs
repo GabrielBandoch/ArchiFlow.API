@@ -41,7 +41,15 @@ public class SmtpEmailService : IEmailService
 
         var fromName = _configuration["SMTP_FROM_NAME"] 
             ?? Environment.GetEnvironmentVariable("SMTP_FROM_NAME") 
-            ?? "ArchiFlow";
+            ?? "COTU";
+
+        var enableSslStr = _configuration["SMTP_ENABLE_SSL"]
+            ?? Environment.GetEnvironmentVariable("SMTP_ENABLE_SSL");
+        bool enableSsl = true;
+        if (!string.IsNullOrWhiteSpace(enableSslStr) && bool.TryParse(enableSslStr, out var parsedSsl))
+        {
+            enableSsl = parsedSsl;
+        }
 
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
         {
@@ -54,7 +62,7 @@ public class SmtpEmailService : IEmailService
         using var client = new SmtpClient(host, port)
         {
             Credentials = new NetworkCredential(user, password),
-            EnableSsl = true,
+            EnableSsl = enableSsl,
             DeliveryMethod = SmtpDeliveryMethod.Network
         };
 
@@ -81,7 +89,7 @@ public class SmtpEmailService : IEmailService
   <table align=""center"" border=""0"" cellpadding=""0"" cellspacing=""0"" width=""100%"" style=""max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"">
     <tr>
       <td style=""background-color: #0f172a; padding: 24px 32px; text-align: left;"">
-        <h1 style=""margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;"">ArchiFlow</h1>
+        <h1 style=""margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;"">COTU</h1>
       </td>
     </tr>
     <tr>
@@ -91,7 +99,7 @@ public class SmtpEmailService : IEmailService
     </tr>
     <tr>
       <td style=""background-color: #f1f5f9; padding: 16px 32px; text-align: center; color: #64748b; font-size: 12px;"">
-        © {DateTime.UtcNow.Year} ArchiFlow — Gestão Integrada de Escritórios de Arquitetura
+        © {DateTime.UtcNow.Year} COTU — Sistema Operacional para Arquitetura
       </td>
     </tr>
   </table>
