@@ -23,7 +23,7 @@ public class DbSeederTests
 
         var expectedAdminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@cotu.com";
         context.Usuarios.Should().HaveCount(3);
-        context.Usuarios.Should().Contain(u => (u.Email == expectedAdminEmail || u.Email == "admin@cotu.com" || u.Email == "admin@archiflow.com") && u.Role == Roles.Administrador);
+        context.Usuarios.Should().Contain(u => (u.Email == expectedAdminEmail || u.Email == "admin@cotu.com" || u.Email == "admin@archiflow.com") && (u.Role == Roles.AdministradorGeral || u.Role == Roles.Administrador));
         context.Usuarios.Should().Contain(u => u.Role == Roles.Gerente);
         context.Usuarios.Should().Contain(u => u.Role == Roles.Colaborador);
     }

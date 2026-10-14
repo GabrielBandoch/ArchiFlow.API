@@ -607,4 +607,118 @@ public class UsuarioServiceTests
         // Assert
         await act.Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task ObterEquipeAsync_QuandoExisteContaSuporte_DeveExcluirDaListagem()
+    {
+        var colabId = Guid.NewGuid();
+        var suporteId = Guid.NewGuid();
+
+        var membros = new List<Usuario>
+        {
+            new Usuario
+            {
+                Id = colabId,
+                EscritorioId = _escritorioId,
+                Nome = "Colaborador Real",
+                Email = "colaborador@studio.com",
+                Role = Roles.Colaborador
+            },
+            new Usuario
+            {
+                Id = suporteId,
+                EscritorioId = _escritorioId,
+                Nome = "Administrador Geral",
+                Email = "suporte.cotu@cotu.com.br",
+                Role = Roles.AdministradorGeral
+            }
+        };
+
+        _usuarioRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId))
+            .ReturnsAsync(membros);
+
+        var result = (await _service.ObterEquipeAsync()).ToList();
+
+        result.Should().HaveCount(1);
+        result.Should().Contain(m => m.Id == colabId);
+        result.Should().NotContain(m => m.Email == "suporte.cotu@cotu.com.br");
+    }
+
+    [Fact]
+    public async Task ObterMembroPorIdAsync_QuandoContaSuporte_DeveRetornarNull()
+    {
+        var suporteId = Guid.NewGuid();
+        var suporte = new Usuario
+        {
+            Id = suporteId,
+            EscritorioId = _escritorioId,
+            Nome = "Administrador Geral",
+            Email = "suporte.cotu@cotu.com.br",
+            Role = Roles.AdministradorGeral
+        };
+
+        _usuarioRepoMock.Setup(r => r.GetById(suporteId)).ReturnsAsync(suporte);
+
+        var result = await _service.ObterMembroPorIdAsync(suporteId);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AtualizarMembroAsync_QuandoContaSuporte_DeveLancarKeyNotFoundException()
+    {
+        var suporteId = Guid.NewGuid();
+        var suporte = new Usuario
+        {
+            Id = suporteId,
+            EscritorioId = _escritorioId,
+            Nome = "Administrador Geral",
+            Email = "suporte.cotu@cotu.com.br",
+            Role = Roles.AdministradorGeral
+        };
+
+        _usuarioRepoMock.Setup(r => r.GetById(suporteId)).ReturnsAsync(suporte);
+
+        var command = new AtualizarMembroEquipeCommand("Novo Nome", Roles.Colaborador, null, null);
+        var act = async () => await _service.AtualizarMembroAsync(suporteId, command);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task ExcluirMembroAsync_QuandoContaSuporte_DeveLancarKeyNotFoundException()
+    {
+        var suporteId = Guid.NewGuid();
+        var suporte = new Usuario
+        {
+            Id = suporteId,
+            EscritorioId = _escritorioId,
+            Nome = "Administrador Geral",
+            Email = "suporte.cotu@cotu.com.br",
+            Role = Roles.AdministradorGeral
+        };
+
+        _usuarioRepoMock.Setup(r => r.GetById(suporteId)).ReturnsAsync(suporte);
+
+        var act = async () => await _service.ExcluirMembroAsync(suporteId);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task ConvidarMembroAsync_QuandoEmailDeSuporte_DeveLancarInvalidOperationException()
+    {
+        var command = new ConvidarMembroEquipeCommand(
+            "Suporte",
+            "suporte.cotu@cotu.com.br",
+            Roles.Colaborador,
+            null,
+            null,
+            null
+        );
+
+        var act = async () => await _service.ConvidarMembroAsync(command);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 }

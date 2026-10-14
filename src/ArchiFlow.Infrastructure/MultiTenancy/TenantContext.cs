@@ -3,15 +3,17 @@ using Npgsql;
 
 namespace ArchiFlow.Infrastructure.MultiTenancy;
 
-/// <summary>
-/// Implementação escopada por requisição do contexto de tenant.
-/// Garante isolamento seguro de dados conectando a API ao banco de dados específico do escritório.
-/// </summary>
 public class TenantContext : ITenantContext
 {
     private string _tenantId = "default";
     private string _host = "localhost";
     private bool _isResolved = false;
+    private readonly string? _configuredBaseDb;
+
+    public TenantContext(string? configuredBaseDb = null)
+    {
+        _configuredBaseDb = configuredBaseDb;
+    }
 
     public string TenantId => _tenantId;
     public string Host => _host;
@@ -21,8 +23,13 @@ public class TenantContext : ITenantContext
         ? ObterBaseDatabaseName()
         : $"{ObterBaseDatabaseName()}_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
 
-    private static string ObterBaseDatabaseName()
+    private string ObterBaseDatabaseName()
     {
+        if (!string.IsNullOrWhiteSpace(_configuredBaseDb))
+        {
+            return _configuredBaseDb.Trim().ToLowerInvariant();
+        }
+
         var envDb = Environment.GetEnvironmentVariable("DB_NAME");
         return !string.IsNullOrWhiteSpace(envDb) ? envDb.Trim().ToLowerInvariant() : "cotu";
     }
@@ -37,12 +44,18 @@ public class TenantContext : ITenantContext
     public string BuildConnectionString(string baseConnectionString)
     {
         if (string.IsNullOrWhiteSpace(baseConnectionString))
-            return string.Empty;
-
-        var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
         {
-            Database = DatabaseName
-        };
+            return string.Empty;
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder(baseConnectionString);
+        var baseDb = !string.IsNullOrWhiteSpace(builder.Database)
+            ? builder.Database.Trim().ToLowerInvariant()
+            : ObterBaseDatabaseName();
+
+        builder.Database = string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
+            ? baseDb
+            : $"{baseDb}_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
 
         return builder.ConnectionString;
     }

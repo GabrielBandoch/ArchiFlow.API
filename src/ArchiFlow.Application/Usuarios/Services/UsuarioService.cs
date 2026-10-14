@@ -43,14 +43,14 @@ public class UsuarioService : IUsuarioService
     {
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
         var membros = await _usuarioRepository.ObterPorEscritorioIdAsync(escritorioId);
-        return membros.Select(MapearParaDto);
+        return membros.Where(m => !m.IsContaSuporte()).Select(MapearParaDto);
     }
 
     public async Task<MembroEquipeDto?> ObterMembroPorIdAsync(Guid id)
     {
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
         var membro = await _usuarioRepository.GetById(id);
-        if (membro is null) return null;
+        if (membro is null || membro.IsContaSuporte()) return null;
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId) return null;
@@ -69,9 +69,13 @@ public class UsuarioService : IUsuarioService
         if (string.IsNullOrWhiteSpace(command.Role) || !Roles.RolesValidasEquipe.Contains(command.Role))
             throw new ArgumentException($"Função '{command.Role}' inválida.");
 
+        var emailNormalizado = command.Email.Trim().ToLower();
+        if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Não é permitido convidar a conta interna de suporte.");
+
         var (usuarioAtual, escritorioId) = await ObterUsuarioContextoAsync();
 
-        var emailNormalizado = command.Email.Trim().ToLower();
         var existente = await _usuarioRepository.GetByEmail(emailNormalizado);
         if (existente is not null)
             throw new InvalidOperationException("Já existe um usuário cadastrado com este e-mail.");
@@ -94,6 +98,9 @@ public class UsuarioService : IUsuarioService
             CriadoEm = DateTime.UtcNow
         };
 
+        if (novoUsuario.IsContaSuporte())
+            throw new InvalidOperationException("Não é permitido convidar a conta interna de suporte.");
+
         await _usuarioRepository.Create(novoUsuario);
         await _unitOfWork.Commit();
 
@@ -101,8 +108,8 @@ public class UsuarioService : IUsuarioService
         {
             await _emailService.SendEmailAsync(
                 novoUsuario.Email,
-                "Convite para a equipe ArchiFlow",
-                $"Olá {novoUsuario.Nome},\n\nVocê foi convidado para a equipe no ArchiFlow por {usuarioAtual.Nome}.\n\nSeu acesso:\nE-mail: {novoUsuario.Email}\nSenha temporária: {senha}\n\nRecomendamos alterar sua senha após o primeiro acesso."
+                "Convite para a equipe COTU",
+                $"Olá {novoUsuario.Nome},\n\nVocê foi convidado para a equipe no COTU por {usuarioAtual.Nome}.\n\nSeu acesso:\nE-mail: {novoUsuario.Email}\nSenha temporária: {senha}\n\nRecomendamos alterar sua senha após o primeiro acesso."
             );
         }
         catch (Exception ex)
@@ -124,7 +131,7 @@ public class UsuarioService : IUsuarioService
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
 
         var membro = await _usuarioRepository.GetById(id);
-        if (membro is null)
+        if (membro is null || membro.IsContaSuporte())
             throw new KeyNotFoundException($"Membro com Id {id} não encontrado.");
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
@@ -136,6 +143,10 @@ public class UsuarioService : IUsuarioService
             var emailNormalizado = command.Email.Trim().ToLower();
             if (!new EmailAddressAttribute().IsValid(emailNormalizado))
                 throw new ArgumentException("E-mail em formato inválido.");
+
+            if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Não é permitido atribuir o e-mail da conta interna de suporte.");
 
             if (!string.Equals(emailNormalizado, membro.Email, StringComparison.OrdinalIgnoreCase))
             {
@@ -167,7 +178,7 @@ public class UsuarioService : IUsuarioService
             throw new InvalidOperationException("Não é permitido desativar a própria conta.");
 
         var membro = await _usuarioRepository.GetById(id);
-        if (membro is null)
+        if (membro is null || membro.IsContaSuporte())
             throw new KeyNotFoundException($"Membro com Id {id} não encontrado.");
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
@@ -188,7 +199,7 @@ public class UsuarioService : IUsuarioService
         var (_, escritorioId) = await ObterUsuarioContextoAsync();
 
         var membro = await _usuarioRepository.GetById(id);
-        if (membro is null)
+        if (membro is null || membro.IsContaSuporte())
             throw new KeyNotFoundException($"Membro com Id {id} não encontrado.");
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
@@ -209,8 +220,8 @@ public class UsuarioService : IUsuarioService
         {
             await _emailService.SendEmailAsync(
                 membro.Email,
-                "Sua senha no ArchiFlow foi redefinida",
-                $"Olá {membro.Nome},\n\nSua senha no ArchiFlow foi redefinida pelo administrador.\n\nSua nova senha de acesso é: {novaSenha}\n\nRecomendamos alterá-la logo após o login."
+                "Sua senha no COTU foi redefinida",
+                $"Olá {membro.Nome},\n\nSua senha no COTU foi redefinida pelo administrador.\n\nSua nova senha de acesso é: {novaSenha}\n\nRecomendamos alterá-la logo após o login."
             );
         }
         catch (Exception ex)
@@ -227,7 +238,7 @@ public class UsuarioService : IUsuarioService
             throw new InvalidOperationException("Não é permitido excluir a própria conta.");
 
         var membro = await _usuarioRepository.GetById(id);
-        if (membro is null)
+        if (membro is null || membro.IsContaSuporte())
             throw new KeyNotFoundException($"Membro com Id {id} não encontrado.");
 
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
@@ -245,14 +256,15 @@ public class UsuarioService : IUsuarioService
         if (usuario is null)
             throw new UnauthorizedAccessException("Usuário autenticado não encontrado.");
 
-        if (!usuario.EscritorioId.HasValue)
+        if (!usuario.EscritorioId.HasValue && !usuario.IsContaSuporte())
         {
             usuario.EscritorioId = usuario.Id;
             await _usuarioRepository.Update(usuario);
             await _unitOfWork.Commit();
         }
 
-        return (usuario, usuario.EscritorioId.Value);
+        var escritorioId = usuario.EscritorioId ?? usuario.Id;
+        return (usuario, escritorioId);
     }
 
     private Guid ObterUsuarioIdContexto()
@@ -279,7 +291,7 @@ public class UsuarioService : IUsuarioService
         {
             result[i] = chars[bytes[i] % chars.Length];
         }
-        return "Af@" + new string(result);
+        return "Cot@" + new string(result);
     }
 
     private static MembroEquipeDto MapearParaDto(Usuario u) =>

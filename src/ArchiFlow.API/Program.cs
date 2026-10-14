@@ -64,6 +64,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+});
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("CotuPolicy");

@@ -346,7 +346,7 @@ public static class DbSeeder
             Nome = adminName,
             Email = adminEmail,
             SenhaHash = BCrypt.Net.BCrypt.HashPassword(adminPass, workFactor: 12),
-            Role = Roles.Administrador,
+            Role = Roles.AdministradorGeral,
             Ativo = true,
             CriadoEm = DateTime.UtcNow
         };
