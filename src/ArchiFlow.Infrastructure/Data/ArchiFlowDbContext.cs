@@ -42,7 +42,6 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<AvaliacaoFornecedor>  AvaliacoesFornecedores=> Set<AvaliacaoFornecedor>();
     public DbSet<ProjetoFornecedor>    ProjetosFornecedores  => Set<ProjetoFornecedor>();
     public DbSet<OpcaoConfiguracao>    OpcoesConfiguracao    => Set<OpcaoConfiguracao>();
-    public DbSet<ArchiFlow.Domain.MultiTenancy.TenantAssinatura> TenantsAssinaturas => Set<ArchiFlow.Domain.MultiTenancy.TenantAssinatura>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -535,32 +534,6 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(o => o.Chave).IsRequired().HasMaxLength(100);
             entity.Property(o => o.Rotulo).IsRequired().HasMaxLength(200);
             entity.HasIndex(o => new { o.Categoria, o.Chave }).IsUnique();
-        });
-
-        modelBuilder.Entity<ArchiFlow.Domain.MultiTenancy.TenantAssinatura>(entity =>
-        {
-            entity.ToTable("Tenants_Assinaturas");
-            entity.HasKey(t => t.Id);
-            entity.Property(t => t.Id).HasColumnName("TAS_Id");
-            entity.Property(t => t.Subdominio).HasColumnName("TAS_Subdominio").IsRequired().HasMaxLength(100);
-            entity.Property(t => t.NomeEscritorio).HasColumnName("TAS_Nome_Escritorio").IsRequired().HasMaxLength(200);
-            entity.Property(t => t.RazaoSocial).HasColumnName("TAS_Razao_Social").HasMaxLength(200);
-            entity.Property(t => t.CnpjCpf).HasColumnName("TAS_Cnpj_Cpf").HasMaxLength(30);
-            entity.Property(t => t.NomeResponsavel).HasColumnName("TAS_Nome_Responsavel").IsRequired().HasMaxLength(200);
-            entity.Property(t => t.EmailResponsavel).HasColumnName("TAS_Email_Responsavel").IsRequired().HasMaxLength(200);
-            entity.Property(t => t.TelefoneResponsavel).HasColumnName("TAS_Telefone_Responsavel").HasMaxLength(50);
-            entity.Property(t => t.Plano).HasColumnName("TAS_Plano").IsRequired().HasMaxLength(50);
-            entity.Property(t => t.CicloFaturamento).HasColumnName("TAS_Ciclo_Faturamento").IsRequired().HasMaxLength(50);
-            entity.Property(t => t.ValorMensalidade).HasColumnName("TAS_Valor_Mensalidade").HasPrecision(18, 2);
-            entity.Property(t => t.StatusFinanceiro).HasColumnName("TAS_Status_Financeiro").IsRequired().HasMaxLength(50);
-            entity.Property(t => t.DataVencimento).HasColumnName("TAS_Data_Vencimento");
-            entity.Property(t => t.UltimoPagamento).HasColumnName("TAS_Ultimo_Pagamento");
-            entity.Property(t => t.BloqueadoInadimplencia).HasColumnName("TAS_Bloqueado_Inadimplencia");
-            entity.Property(t => t.MotivoBloqueio).HasColumnName("TAS_Motivo_Bloqueio");
-            entity.Property(t => t.NotasInternas).HasColumnName("TAS_Notas_Internas");
-            entity.Property(t => t.CriadoEm).HasColumnName("TAS_Criado_Em");
-            entity.Property(t => t.AtualizadoEm).HasColumnName("TAS_Atualizado_Em");
-            entity.HasIndex(t => t.Subdominio).IsUnique();
         });
     }
 }
