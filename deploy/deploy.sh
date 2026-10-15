@@ -46,6 +46,21 @@ if [ -d "$DEPLOY_DIR/../../ArchiFlow/.git" ]; then
     git -C "$DEPLOY_DIR/../../ArchiFlow" pull origin main || true
 fi
 
+if [ -d "$DEPLOY_DIR/../../ArchiFlow.Admin.API/.git" ]; then
+    echo "[-] Atualizando backend admin (ArchiFlow.Admin.API)..."
+    git -C "$DEPLOY_DIR/../../ArchiFlow.Admin.API" pull origin main || true
+fi
+
+if [ -d "$DEPLOY_DIR/../../ArchiFlow.Admin/.git" ]; then
+    echo "[-] Atualizando frontend admin (ArchiFlow.Admin)..."
+    git -C "$DEPLOY_DIR/../../ArchiFlow.Admin" pull origin main || true
+fi
+
+if [ -d "$DEPLOY_DIR/../../ArchiFlow.Landing/.git" ]; then
+    echo "[-] Atualizando landing page (ArchiFlow.Landing)..."
+    git -C "$DEPLOY_DIR/../../ArchiFlow.Landing" pull origin main || true
+fi
+
 # 4. Construir e inicializar a stack de containers
 echo "[+] Construindo e inicializando a stack de produção..."
 docker compose -f docker-compose.prod.yml down --remove-orphans || true

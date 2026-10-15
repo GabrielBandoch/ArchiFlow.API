@@ -112,6 +112,26 @@ services:
     networks:
       - cotu-net
 
+  admin:
+    image: cotu-admin:prod
+    container_name: cotu-admin
+    restart: unless-stopped
+    build:
+      context: ../../ArchiFlow.Admin
+      dockerfile: Dockerfile
+    networks:
+      - cotu-net
+
+  landing:
+    image: cotu-landing:prod
+    container_name: cotu-landing
+    restart: unless-stopped
+    build:
+      context: ../../ArchiFlow.Landing
+      dockerfile: Dockerfile
+    networks:
+      - cotu-net
+
   proxy:
     image: caddy:2-alpine
     container_name: cotu-proxy
@@ -131,6 +151,8 @@ services:
       - api
       - api-app
       - web
+      - admin
+      - landing
     networks:
       - cotu-net
 

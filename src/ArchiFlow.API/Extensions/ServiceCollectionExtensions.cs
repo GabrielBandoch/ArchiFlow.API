@@ -230,8 +230,8 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddAuthorizationBuilder()
-            .AddPolicy("ApenasAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.ArquitetoAdmin, Roles.AdministradorGeral))
-            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.Gerente, Roles.ArquitetoAdmin, Roles.AdministradorGeral))
+            .AddPolicy("ApenasAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.ArquitetoAdmin))
+            .AddPolicy("ApenasGerenteOuAdmin", policy => policy.RequireRole(Roles.Administrador, Roles.Gerente, Roles.ArquitetoAdmin))
             .AddPolicy("AcessoArquiteto", policy => policy.RequireRole(
                 Roles.Administrador,
                 Roles.Gerente,
@@ -239,8 +239,7 @@ public static class ServiceCollectionExtensions
                 Roles.ArquitetoAdmin,
                 Roles.ArquitetoColaborador,
                 Roles.Estagiario,
-                Roles.Financeiro,
-                Roles.AdministradorGeral))
+                Roles.Financeiro))
             .AddPolicy("ProjetoOwner", policy =>
             {
                 policy.RequireAuthenticatedUser();
