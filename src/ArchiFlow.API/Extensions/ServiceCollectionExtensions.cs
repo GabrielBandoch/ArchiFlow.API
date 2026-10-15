@@ -151,13 +151,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAgendaService, ArchiFlow.Application.Agenda.Services.AgendaService>();
         services.AddScoped<IAgendaFacade, ArchiFlow.Application.Agenda.Facades.AgendaFacade>();
 
-        // Storage & Email (Automatic environment and configuration-based registration)
+        var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION")
+            ?? Environment.GetEnvironmentVariable("AWS_DEFAULT_REGION");
+
         var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
         if (!string.IsNullOrWhiteSpace(smtpUser))
         {
             services.AddScoped<IEmailService, SmtpEmailService>();
         }
-        else if (environment.IsProduction())
+        else if (environment.IsProduction() && !string.IsNullOrWhiteSpace(awsRegion))
         {
             services.AddScoped<Amazon.SimpleEmail.IAmazonSimpleEmailService, Amazon.SimpleEmail.AmazonSimpleEmailServiceClient>();
             services.AddScoped<IEmailService, SesEmailService>();
@@ -167,7 +169,7 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IEmailService, ConsoleEmailService>();
         }
 
-        if (environment.IsProduction())
+        if (environment.IsProduction() && !string.IsNullOrWhiteSpace(awsRegion))
         {
             services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
             services.AddScoped<IStorageService, S3StorageService>();
@@ -252,7 +254,7 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new() { Title = "Cotu API", Version = "v1" });
+            c.SwaggerDoc("v1", new() { Title = "COTU API", Version = "v1" });
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "Autenticação baseada em JWT. Insira: Bearer {seu_token}",
