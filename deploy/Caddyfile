@@ -7,7 +7,7 @@
 # --- 1. AMBIENTE DE HOMOLOGAÇÃO / STAGING (staging.dominio) ---
 staging.{$DOMAIN_NAME} {
     handle /api/* {
-        reverse_proxy cotu-api:8080 {
+        reverse_proxy cotu-api-staging:8080 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -16,7 +16,7 @@ staging.{$DOMAIN_NAME} {
     }
 
     handle /hubs/* {
-        reverse_proxy cotu-api:8080 {
+        reverse_proxy cotu-api-staging:8080 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -25,7 +25,7 @@ staging.{$DOMAIN_NAME} {
     }
 
     handle {
-        reverse_proxy cotu-web:80
+        reverse_proxy cotu-web-staging:80
     }
 }
 
