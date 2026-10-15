@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -122,14 +122,35 @@ public class UsuarioService : IUsuarioService
 
     public async Task<MembroEquipeDto> AtualizarMembroAsync(Guid id, AtualizarMembroEquipeCommand command)
     {
+        ValidarComandoAtualizacao(command);
+
+        var (_, escritorioId) = await ObterUsuarioContextoAsync();
+        var membro = await ObterMembroParaGerenciamentoAsync(id, escritorioId);
+
+        if (!string.IsNullOrWhiteSpace(command.Email))
+        {
+            await ValidarEAtualizarEmailMembroAsync(membro, command.Email);
+        }
+
+        AplicarDadosAtualizadosMembro(membro, command);
+
+        await _usuarioRepository.Update(membro);
+        await _unitOfWork.Commit();
+
+        return MapearParaDto(membro);
+    }
+
+    private static void ValidarComandoAtualizacao(AtualizarMembroEquipeCommand command)
+    {
         if (string.IsNullOrWhiteSpace(command.Nome))
             throw new ArgumentException("Nome é obrigatório.");
 
         if (string.IsNullOrWhiteSpace(command.Role) || !Roles.RolesValidasEquipe.Contains(command.Role))
             throw new ArgumentException($"Função '{command.Role}' inválida.");
+    }
 
-        var (_, escritorioId) = await ObterUsuarioContextoAsync();
-
+    private async Task<Usuario> ObterMembroParaGerenciamentoAsync(Guid id, Guid escritorioId)
+    {
         var membro = await _usuarioRepository.GetById(id);
         if (membro is null || membro.IsContaSuporte())
             throw new KeyNotFoundException($"Membro com Id {id} não encontrado.");
@@ -138,36 +159,40 @@ public class UsuarioService : IUsuarioService
         if (membroEscritorioId != escritorioId)
             throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
-        if (!string.IsNullOrWhiteSpace(command.Email))
+        return membro;
+    }
+
+    private async Task ValidarEAtualizarEmailMembroAsync(Usuario membro, string novoEmail)
+    {
+        var emailNormalizado = novoEmail.Trim().ToLower();
+        if (!new EmailAddressAttribute().IsValid(emailNormalizado))
+            throw new ArgumentException("E-mail em formato inválido.");
+
+        if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
         {
-            var emailNormalizado = command.Email.Trim().ToLower();
-            if (!new EmailAddressAttribute().IsValid(emailNormalizado))
-                throw new ArgumentException("E-mail em formato inválido.");
-
-            if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Não é permitido atribuir o e-mail da conta interna de suporte.");
-
-            if (!string.Equals(emailNormalizado, membro.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                var existente = await _usuarioRepository.GetByEmail(emailNormalizado);
-                if (existente is not null && existente.Id != membro.Id)
-                    throw new InvalidOperationException("Já existe outro usuário cadastrado com este e-mail.");
-
-                membro.Email = emailNormalizado;
-            }
+            throw new InvalidOperationException("Não é permitido atribuir o e-mail da conta interna de suporte.");
         }
 
+        if (!string.Equals(emailNormalizado, membro.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            var existente = await _usuarioRepository.GetByEmail(emailNormalizado);
+            if (existente is not null && existente.Id != membro.Id)
+            {
+                throw new InvalidOperationException("Já existe outro usuário cadastrado com este e-mail.");
+            }
+
+            membro.Email = emailNormalizado;
+        }
+    }
+
+    private static void AplicarDadosAtualizadosMembro(Usuario membro, AtualizarMembroEquipeCommand command)
+    {
         membro.Nome = command.Nome.Trim();
         membro.Role = command.Role;
         membro.Cargo = command.Cargo?.Trim();
         membro.Telefone = command.Telefone?.Trim();
         membro.AtualizadoEm = DateTime.UtcNow;
-
-        await _usuarioRepository.Update(membro);
-        await _unitOfWork.Commit();
-
-        return MapearParaDto(membro);
     }
 
     public async Task<MembroEquipeDto> AlterarStatusMembroAsync(Guid id, AlterarStatusMembroCommand command)

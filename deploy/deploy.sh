@@ -22,7 +22,7 @@ DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DEPLOY_DIR"
 
 # 2. Verificar arquivo de variáveis de ambiente .env
-if [ ! -f .env ]; then
+if [[ ! -f .env ]]; then
     echo "[!] Arquivo deploy/.env não encontrado."
     echo "[+] Criando deploy/.env a partir do modelo .env.prod.example..."
     cp .env.prod.example .env
@@ -36,27 +36,27 @@ fi
 
 # 3. Atualizar código do repositório se for clone Git
 echo "[+] Verificando atualizações nos repositórios Git..."
-if [ -d "$DEPLOY_DIR/../.git" ]; then
+if [[ -d "$DEPLOY_DIR/../.git" ]]; then
     echo "[-] Atualizando backend (ArchiFlow.API)..."
     git -C "$DEPLOY_DIR/.." pull origin main || true
 fi
 
-if [ -d "$DEPLOY_DIR/../../ArchiFlow/.git" ]; then
+if [[ -d "$DEPLOY_DIR/../../ArchiFlow/.git" ]]; then
     echo "[-] Atualizando frontend (ArchiFlow)..."
     git -C "$DEPLOY_DIR/../../ArchiFlow" pull origin main || true
 fi
 
-if [ -d "$DEPLOY_DIR/../../ArchiFlow.Admin.API/.git" ]; then
+if [[ -d "$DEPLOY_DIR/../../ArchiFlow.Admin.API/.git" ]]; then
     echo "[-] Atualizando backend admin (ArchiFlow.Admin.API)..."
     git -C "$DEPLOY_DIR/../../ArchiFlow.Admin.API" pull origin main || true
 fi
 
-if [ -d "$DEPLOY_DIR/../../ArchiFlow.Admin/.git" ]; then
+if [[ -d "$DEPLOY_DIR/../../ArchiFlow.Admin/.git" ]]; then
     echo "[-] Atualizando frontend admin (ArchiFlow.Admin)..."
     git -C "$DEPLOY_DIR/../../ArchiFlow.Admin" pull origin main || true
 fi
 
-if [ -d "$DEPLOY_DIR/../../ArchiFlow.Landing/.git" ]; then
+if [[ -d "$DEPLOY_DIR/../../ArchiFlow.Landing/.git" ]]; then
     echo "[-] Atualizando landing page (ArchiFlow.Landing)..."
     git -C "$DEPLOY_DIR/../../ArchiFlow.Landing" pull origin main || true
 fi

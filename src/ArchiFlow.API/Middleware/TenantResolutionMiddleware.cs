@@ -19,6 +19,7 @@ public class TenantResolutionMiddleware
     public const string TenantHeaderName = "X-Tenant-Id";
     public const string TenantResolvedHeaderName = "X-Tenant-Resolved";
     public const string DefaultTenant = "default";
+    private const string JsonContentType = "application/json";
 
     public TenantResolutionMiddleware(
         RequestDelegate next,
@@ -34,86 +35,117 @@ public class TenantResolutionMiddleware
     {
         if (context.User?.Identity?.IsAuthenticated == true)
         {
-            var userTenantResult = ResolverTenantUsuario(context);
-            if (!userTenantResult.Sucesso)
-            {
-                context.Response.StatusCode = userTenantResult.StatusCode;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync($"{{\"error\":\"{userTenantResult.MensagemErro}\"}}", context.RequestAborted);
-                return;
-            }
-
-            var authTenant = userTenantResult.Tenant!;
-
-            if (context.Request.Headers.TryGetValue(TenantHeaderName, out var headerValues))
-            {
-                var headerTenant = headerValues.FirstOrDefault()?.Trim().ToLowerInvariant();
-                if (!string.IsNullOrWhiteSpace(headerTenant) && !string.Equals(headerTenant, authTenant, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogWarning("Tentativa de spoofing de tenant por cabecalho rejeitada. Autenticado: {AuthTenant}, Solicitado: {ReqTenant}", authTenant, headerTenant);
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"error\":\"Acesso negado: o tenant informado no cabeçalho não corresponde ao usuário autenticado.\"}", context.RequestAborted);
-                    return;
-                }
-            }
-
-            var hostTenant = ResolveTenantFromHost(context.Request.Host.Host);
-            if (hostTenant == null)
-            {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync("{\"error\":\"Tenant inválido solicitado pelo host.\"}", context.RequestAborted);
-                return;
-            }
-
-            if (!hostTenant.Equals(DefaultTenant, StringComparison.OrdinalIgnoreCase) &&
-                !hostTenant.Equals(authTenant, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning("Divergencia entre tenant do token e host da requisicao. Token: {TokenTenant}, HostTenant: {HostTenant}", authTenant, hostTenant);
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync($"{{\"error\":\"Acesso negado: o token fornecido pertence ao tenant '{authTenant}' e não tem permissão para acessar '{hostTenant}'.\"}}", context.RequestAborted);
-                return;
-            }
-
-            await AplicarTenantAsync(context, tenantContext, authTenant);
-            await _next(context);
+            await ProcessarRequisicaoAutenticadaAsync(context, tenantContext);
             return;
         }
 
-        var isDevOrTest = _environment == null || _environment.IsDevelopment() || _environment.EnvironmentName == "Testing";
-        if (isDevOrTest && context.Request.Headers.TryGetValue(TenantHeaderName, out var devHeaderValues))
+        if (await TentarProcessarDevHeaderAsync(context, tenantContext))
         {
-            var rawHeader = devHeaderValues.FirstOrDefault()?.Trim();
-            if (!string.IsNullOrWhiteSpace(rawHeader))
-            {
-                if (!IsValidTenantIdentifier(rawHeader))
-                {
-                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"error\":\"Tenant informado no cabeçalho possui formato inválido.\"}", context.RequestAborted);
-                    return;
-                }
-
-                var devTenant = SanitizeTenant(rawHeader);
-                await AplicarTenantAsync(context, tenantContext, devTenant);
-                await _next(context);
-                return;
-            }
+            return;
         }
 
+        await ProcessarRequisicaoHostAsync(context, tenantContext);
+    }
+
+    private async Task ProcessarRequisicaoAutenticadaAsync(HttpContext context, ITenantContext tenantContext)
+    {
+        var userTenantResult = ResolverTenantUsuario(context);
+        if (!userTenantResult.Sucesso)
+        {
+            await EscreverErroJsonAsync(context, userTenantResult.StatusCode, userTenantResult.MensagemErro!);
+            return;
+        }
+
+        var authTenant = userTenantResult.Tenant!;
+
+        if (!ValidarHeaderTenantAutenticado(context, authTenant))
+        {
+            await EscreverErroJsonAsync(context, StatusCodes.Status403Forbidden, "Acesso negado: o tenant informado no cabeçalho não corresponde ao usuário autenticado.");
+            return;
+        }
+
+        var hostTenant = ResolveTenantFromHost(context.Request.Host.Host);
+        if (hostTenant == null)
+        {
+            await EscreverErroJsonAsync(context, StatusCodes.Status400BadRequest, "Tenant inválido solicitado pelo host.");
+            return;
+        }
+
+        if (!ValidarCompatibilidadeHostToken(authTenant, hostTenant))
+        {
+            _logger.LogWarning("Divergencia entre tenant do token e host da requisicao. Token: {TokenTenant}, HostTenant: {HostTenant}", authTenant, hostTenant);
+            await EscreverErroJsonAsync(context, StatusCodes.Status403Forbidden, $"Acesso negado: o token fornecido pertence ao tenant '{authTenant}' e não tem permissão para acessar '{hostTenant}'.");
+            return;
+        }
+
+        await AplicarTenantAsync(context, tenantContext, authTenant);
+        await _next(context);
+    }
+
+    private bool ValidarHeaderTenantAutenticado(HttpContext context, string authTenant)
+    {
+        if (context.Request.Headers.TryGetValue(TenantHeaderName, out var headerValues))
+        {
+            var headerTenant = headerValues.FirstOrDefault()?.Trim().ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(headerTenant) && !string.Equals(headerTenant, authTenant, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Tentativa de spoofing de tenant por cabecalho rejeitada. Autenticado: {AuthTenant}, Solicitado: {ReqTenant}", authTenant, headerTenant);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool ValidarCompatibilidadeHostToken(string authTenant, string hostTenant)
+    {
+        return hostTenant.Equals(DefaultTenant, StringComparison.OrdinalIgnoreCase) ||
+               hostTenant.Equals(authTenant, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<bool> TentarProcessarDevHeaderAsync(HttpContext context, ITenantContext tenantContext)
+    {
+        var isDevOrTest = _environment == null || _environment.IsDevelopment() || _environment.EnvironmentName == "Testing";
+        if (!isDevOrTest || !context.Request.Headers.TryGetValue(TenantHeaderName, out var devHeaderValues))
+        {
+            return false;
+        }
+
+        var rawHeader = devHeaderValues.FirstOrDefault()?.Trim();
+        if (string.IsNullOrWhiteSpace(rawHeader))
+        {
+            return false;
+        }
+
+        if (!IsValidTenantIdentifier(rawHeader))
+        {
+            await EscreverErroJsonAsync(context, StatusCodes.Status400BadRequest, "Tenant informado no cabeçalho possui formato inválido.");
+            return true;
+        }
+
+        var devTenant = SanitizeTenant(rawHeader);
+        await AplicarTenantAsync(context, tenantContext, devTenant);
+        await _next(context);
+        return true;
+    }
+
+    private async Task ProcessarRequisicaoHostAsync(HttpContext context, ITenantContext tenantContext)
+    {
         var requestedTenant = ResolveTenantFromHost(context.Request.Host.Host);
         if (requestedTenant == null)
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync("{\"error\":\"Tenant inválido solicitado pelo host.\"}", context.RequestAborted);
+            await EscreverErroJsonAsync(context, StatusCodes.Status400BadRequest, "Tenant inválido solicitado pelo host.");
             return;
         }
 
         await AplicarTenantAsync(context, tenantContext, requestedTenant);
         await _next(context);
+    }
+
+    private static async Task EscreverErroJsonAsync(HttpContext context, int statusCode, string mensagem)
+    {
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = JsonContentType;
+        await context.Response.WriteAsync($"{{\"error\":\"{mensagem}\"}}", context.RequestAborted);
     }
 
     private static (bool Sucesso, int StatusCode, string? MensagemErro, string? Tenant) ResolverTenantUsuario(HttpContext context)
@@ -185,7 +217,6 @@ public class TenantResolutionMiddleware
         }
 
         var hostSemPorta = host.Split(':')[0].Trim().ToLowerInvariant();
-
         if (IsLocalHost(hostSemPorta))
         {
             return ObterDefaultTenant();
@@ -194,27 +225,48 @@ public class TenantResolutionMiddleware
         var parts = hostSemPorta.Split('.', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length > 2)
         {
-            var subdominio = parts[0];
-            if (!IsPrefixoInfra(subdominio))
-            {
-                return IsValidTenantIdentifier(subdominio) ? SanitizeTenant(subdominio) : null;
-            }
-
-            if (parts.Length > 3 && (subdominio.Equals("api", StringComparison.OrdinalIgnoreCase) || subdominio.Equals("app", StringComparison.OrdinalIgnoreCase)))
-            {
-                var candidate = parts[1];
-                if (!candidate.Equals("archiflow", StringComparison.OrdinalIgnoreCase) && !candidate.Equals("cotu", StringComparison.OrdinalIgnoreCase))
-                {
-                    return IsValidTenantIdentifier(candidate) ? SanitizeTenant(candidate) : null;
-                }
-            }
-
-            return DefaultTenant;
+            return ExtrairTenantDominioLongo(parts);
         }
 
         if (parts.Length == 2)
         {
-            return IsValidTenantIdentifier(parts[0]) ? SanitizeTenant(parts[0]) : null;
+            return ExtrairTenantDominioCurto(parts[0]);
+        }
+
+        return DefaultTenant;
+    }
+
+    private static string? ExtrairTenantDominioCurto(string subdominio)
+    {
+        return IsValidTenantIdentifier(subdominio) ? SanitizeTenant(subdominio) : null;
+    }
+
+    private static string? ExtrairTenantDominioLongo(string[] parts)
+    {
+        var subdominio = parts[0];
+        if (!IsPrefixoInfra(subdominio))
+        {
+            return IsValidTenantIdentifier(subdominio) ? SanitizeTenant(subdominio) : null;
+        }
+
+        return ExtrairTenantComposto(parts, subdominio);
+    }
+
+    private static string? ExtrairTenantComposto(string[] parts, string subdominio)
+    {
+        var isApiOuApp = subdominio.Equals("api", StringComparison.OrdinalIgnoreCase) ||
+                         subdominio.Equals("app", StringComparison.OrdinalIgnoreCase);
+
+        if (parts.Length > 3 && isApiOuApp)
+        {
+            var candidate = parts[1];
+            var isDominioBase = candidate.Equals("archiflow", StringComparison.OrdinalIgnoreCase) ||
+                                candidate.Equals("cotu", StringComparison.OrdinalIgnoreCase);
+
+            if (!isDominioBase)
+            {
+                return IsValidTenantIdentifier(candidate) ? SanitizeTenant(candidate) : null;
+            }
         }
 
         return DefaultTenant;

@@ -5,7 +5,9 @@ namespace ArchiFlow.Infrastructure.MultiTenancy;
 
 public class TenantContext : ITenantContext
 {
-    private string _tenantId = "default";
+    private const string DefaultTenant = "default";
+
+    private string _tenantId = DefaultTenant;
     private string _host = "localhost";
     private bool _isResolved = false;
     private readonly string? _configuredBaseDb;
@@ -19,7 +21,7 @@ public class TenantContext : ITenantContext
     public string Host => _host;
     public bool IsResolved => _isResolved;
 
-    public string DatabaseName => string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
+    public string DatabaseName => string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals(DefaultTenant, StringComparison.OrdinalIgnoreCase)
         ? ObterBaseDatabaseName()
         : $"{ObterBaseDatabaseName()}_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
 
@@ -36,7 +38,7 @@ public class TenantContext : ITenantContext
 
     public void SetTenant(string tenantId, string host)
     {
-        _tenantId = string.IsNullOrWhiteSpace(tenantId) ? "default" : tenantId.Trim().ToLowerInvariant();
+        _tenantId = string.IsNullOrWhiteSpace(tenantId) ? DefaultTenant : tenantId.Trim().ToLowerInvariant();
         _host = host ?? string.Empty;
         _isResolved = true;
     }
@@ -53,7 +55,7 @@ public class TenantContext : ITenantContext
             ? builder.Database.Trim().ToLowerInvariant()
             : ObterBaseDatabaseName();
 
-        builder.Database = string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
+        builder.Database = string.IsNullOrWhiteSpace(_tenantId) || _tenantId.Equals(DefaultTenant, StringComparison.OrdinalIgnoreCase)
             ? baseDb
             : $"{baseDb}_{_tenantId.ToLowerInvariant().Replace("-", "_")}";
 
