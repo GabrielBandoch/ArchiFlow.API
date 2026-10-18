@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
@@ -37,4 +38,19 @@ public class UsuarioFacade : IUsuarioFacade
 
     public Task ExcluirMembroAsync(Guid id) =>
         _usuarioService.ExcluirMembroAsync(id);
+
+    public Task<PerfilUsuarioDto> ObterPerfilAsync(Guid usuarioId) =>
+        _usuarioService.ObterPerfilAsync(usuarioId);
+
+    public Task<PerfilUsuarioDto> AtualizarPerfilAsync(Guid usuarioId, AtualizarPerfilCommand command) =>
+        _usuarioService.AtualizarPerfilAsync(usuarioId, command);
+
+    public Task AlterarSenhaAsync(Guid usuarioId, AlterarSenhaCommand command) =>
+        _usuarioService.AlterarSenhaAsync(usuarioId, command);
+
+    public Task<string> AtualizarFotoPerfilAsync(Guid usuarioId, Stream stream, string fileName, string contentType) =>
+        _usuarioService.AtualizarFotoPerfilAsync(usuarioId, stream, fileName, contentType);
+
+    public Task RemoverFotoPerfilAsync(Guid usuarioId) =>
+        _usuarioService.RemoverFotoPerfilAsync(usuarioId);
 }

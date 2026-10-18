@@ -38,6 +38,15 @@ public class TokenService : ITokenService
             claims.Add(new Claim("cargo", usuario.Cargo));
         }
 
+        if (!string.IsNullOrWhiteSpace(usuario.ModulosPermitidos))
+        {
+            claims.Add(new Claim("modulos", usuario.ModulosPermitidos));
+        }
+        else if (usuario.IsAdmin())
+        {
+            claims.Add(new Claim("modulos", string.Join(",", ModulosApp.Todos)));
+        }
+
         return CreateToken(claims);
     }
 
@@ -50,6 +59,29 @@ public class TokenService : ITokenService
             new Claim(ClaimTypes.Email, cliente.Email),
             new Claim(ClaimTypes.Role, "Cliente"),
             new Claim("user_type", "client"),
+            new Claim("cliente_id", cliente.Id.ToString()),
+            new Claim("tenant", _tenantContext.TenantId)
+        };
+
+        if (projectId.HasValue)
+        {
+            claims.Add(new Claim("projeto_id", projectId.Value.ToString()));
+        }
+
+        return CreateToken(claims);
+    }
+
+    public string GenerateToken(RepresentanteCliente representante, Guid? projectId)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, representante.Id.ToString()),
+            new Claim(ClaimTypes.Name, representante.Nome),
+            new Claim(ClaimTypes.Email, representante.Email),
+            new Claim(ClaimTypes.Role, "Cliente"),
+            new Claim("user_type", "client"),
+            new Claim("representative_id", representante.Id.ToString()),
+            new Claim("cliente_id", representante.ClienteId.ToString()),
             new Claim("tenant", _tenantContext.TenantId)
         };
 

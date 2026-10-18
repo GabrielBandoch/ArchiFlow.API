@@ -19,6 +19,7 @@ public class ProjetoService : IProjetoService
     private readonly IProjetoRepository _repository;
     private readonly ITemplateProjetoRepository? _templateRepository;
     private readonly IClienteRepository? _clienteRepository;
+    private readonly IRepresentanteClienteService? _representanteService;
     private readonly IUnitOfWork        _unitOfWork;
     private readonly IMapper            _mapper;
 
@@ -27,13 +28,15 @@ public class ProjetoService : IProjetoService
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IClienteRepository? clienteRepository = null,
-        ITemplateProjetoRepository? templateRepository = null)
+        ITemplateProjetoRepository? templateRepository = null,
+        IRepresentanteClienteService? representanteService = null)
     {
         _repository         = repository;
         _unitOfWork         = unitOfWork;
         _mapper             = mapper;
         _clienteRepository  = clienteRepository;
         _templateRepository = templateRepository;
+        _representanteService = representanteService;
     }
 
     public async Task<IEnumerable<ProjetoDto>> GetAll()
@@ -47,6 +50,19 @@ public class ProjetoService : IProjetoService
         }
 
         return projetos.Select(p => ToDto(p, p.ClienteId.HasValue && clientesMap.TryGetValue(p.ClienteId.Value, out var nome) ? nome : null));
+    }
+
+    public async Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId)
+    {
+        var projetos = await _repository.GetByClienteId(clienteId);
+        string? clienteNome = null;
+        if (_clienteRepository != null)
+        {
+            var cliente = await _clienteRepository.GetById(clienteId);
+            clienteNome = cliente?.Nome;
+        }
+
+        return projetos.Select(p => ToDto(p, clienteNome));
     }
 
     public async Task<ProjetoDto?> GetById(Guid id)
@@ -76,6 +92,7 @@ public class ProjetoService : IProjetoService
             var cliente = await _clienteRepository.GetById(projeto.ClienteId.Value);
             clienteNome = cliente?.Nome;
         }
+
 
         return ToDto(projeto, clienteNome);
     }

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -22,6 +23,7 @@ public class UsuarioService : IUsuarioService
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
+    private readonly IStorageService _storageService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<UsuarioService> _logger;
 
@@ -31,12 +33,24 @@ public class UsuarioService : IUsuarioService
         IEmailService emailService,
         IHttpContextAccessor httpContextAccessor,
         ILogger<UsuarioService> logger)
+        : this(usuarioRepository, unitOfWork, emailService, null, httpContextAccessor, logger)
+    {
+    }
+
+    public UsuarioService(
+        IUsuarioRepository usuarioRepository,
+        IUnitOfWork unitOfWork,
+        IEmailService emailService,
+        IStorageService? storageService = null,
+        IHttpContextAccessor? httpContextAccessor = null,
+        ILogger<UsuarioService>? logger = null)
     {
         _usuarioRepository = usuarioRepository;
         _unitOfWork = unitOfWork;
         _emailService = emailService;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
+        _storageService = storageService!;
+        _httpContextAccessor = httpContextAccessor!;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<UsuarioService>.Instance;
     }
 
     public async Task<IEnumerable<MembroEquipeDto>> ObterEquipeAsync()
@@ -84,6 +98,12 @@ public class UsuarioService : IUsuarioService
             ? command.SenhaTemporaria
             : GerarSenhaTemporaria();
 
+        var modulos = command.ModulosPermitidos != null && command.ModulosPermitidos.Count > 0
+            ? string.Join(",", command.ModulosPermitidos.Distinct(StringComparer.OrdinalIgnoreCase))
+            : (string.Equals(command.Role, Roles.Administrador, StringComparison.OrdinalIgnoreCase) || string.Equals(command.Role, Roles.ArquitetoAdmin, StringComparison.OrdinalIgnoreCase)
+                ? string.Join(",", ModulosApp.Todos)
+                : null);
+
         var novoUsuario = new Usuario
         {
             Id = Guid.NewGuid(),
@@ -94,6 +114,7 @@ public class UsuarioService : IUsuarioService
             Role = command.Role,
             Cargo = command.Cargo?.Trim(),
             Telefone = command.Telefone?.Trim(),
+            ModulosPermitidos = modulos,
             Ativo = true,
             CriadoEm = DateTime.UtcNow
         };
@@ -124,8 +145,10 @@ public class UsuarioService : IUsuarioService
     {
         ValidarComandoAtualizacao(command);
 
-        var (_, escritorioId) = await ObterUsuarioContextoAsync();
+        var (usuarioAtual, escritorioId) = await ObterUsuarioContextoAsync();
         var membro = await ObterMembroParaGerenciamentoAsync(id, escritorioId);
+
+        ValidarNaoRemocaoProprioAdmin(membro, usuarioAtual, command.Role);
 
         if (!string.IsNullOrWhiteSpace(command.Email))
         {
@@ -162,9 +185,21 @@ public class UsuarioService : IUsuarioService
         return membro;
     }
 
+    private static void ValidarNaoRemocaoProprioAdmin(Usuario membro, Usuario usuarioAtual, string novaRole)
+    {
+        var isProprioUsuario = membro.Id == usuarioAtual.Id;
+        var isRoleAdmin = string.Equals(novaRole, Roles.Administrador, StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(novaRole, Roles.ArquitetoAdmin, StringComparison.OrdinalIgnoreCase);
+
+        if (isProprioUsuario && membro.IsAdmin() && !isRoleAdmin)
+        {
+            throw new InvalidOperationException("Não é permitido remover a sua própria função de administrador.");
+        }
+    }
+
     private async Task ValidarEAtualizarEmailMembroAsync(Usuario membro, string novoEmail)
     {
-        var emailNormalizado = novoEmail.Trim().ToLower();
+        var emailNormalizado = novoEmail.Trim().ToLowerInvariant();
         if (!new EmailAddressAttribute().IsValid(emailNormalizado))
             throw new ArgumentException("E-mail em formato inválido.");
 
@@ -178,9 +213,7 @@ public class UsuarioService : IUsuarioService
         {
             var existente = await _usuarioRepository.GetByEmail(emailNormalizado);
             if (existente is not null && existente.Id != membro.Id)
-            {
                 throw new InvalidOperationException("Já existe outro usuário cadastrado com este e-mail.");
-            }
 
             membro.Email = emailNormalizado;
         }
@@ -192,6 +225,12 @@ public class UsuarioService : IUsuarioService
         membro.Role = command.Role;
         membro.Cargo = command.Cargo?.Trim();
         membro.Telefone = command.Telefone?.Trim();
+
+        if (command.ModulosPermitidos != null)
+        {
+            membro.ModulosPermitidos = string.Join(",", command.ModulosPermitidos.Distinct(StringComparer.OrdinalIgnoreCase));
+        }
+
         membro.AtualizadoEm = DateTime.UtcNow;
     }
 
@@ -209,6 +248,16 @@ public class UsuarioService : IUsuarioService
         var membroEscritorioId = membro.EscritorioId ?? membro.Id;
         if (membroEscritorioId != escritorioId)
             throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
+
+        if (!command.Ativo && membro.IsAdmin())
+        {
+            var membros = await _usuarioRepository.ObterPorEscritorioIdAsync(escritorioId);
+            var outrosAdminsAtivos = membros.Count(m => m.Id != id && m.Ativo && m.IsAdmin());
+            if (outrosAdminsAtivos == 0)
+            {
+                throw new InvalidOperationException("Não é permitido desativar o único administrador ativo do escritório.");
+            }
+        }
 
         membro.Ativo = command.Ativo;
         membro.AtualizadoEm = DateTime.UtcNow;
@@ -270,8 +319,126 @@ public class UsuarioService : IUsuarioService
         if (membroEscritorioId != escritorioId)
             throw new UnauthorizedAccessException(MensagemSemPermissaoGerenciarMembro);
 
+        if (membro.IsAdmin())
+        {
+            var membros = await _usuarioRepository.ObterPorEscritorioIdAsync(escritorioId);
+            var outrosAdmins = membros.Count(m => m.Id != id && m.Ativo && m.IsAdmin());
+            if (outrosAdmins == 0)
+            {
+                throw new InvalidOperationException("Não é permitido excluir o único administrador do escritório.");
+            }
+        }
+
         await _usuarioRepository.Delete(id);
         await _unitOfWork.Commit();
+    }
+
+    public async Task<PerfilUsuarioDto> ObterPerfilAsync(Guid usuarioId)
+    {
+        var usuario = await _usuarioRepository.GetById(usuarioId)
+            ?? throw new KeyNotFoundException("Perfil de usuário não encontrado.");
+
+        return MapearParaPerfilDto(usuario);
+    }
+
+    public async Task<PerfilUsuarioDto> AtualizarPerfilAsync(Guid usuarioId, AtualizarPerfilCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Nome))
+            throw new ArgumentException("Nome é obrigatório.");
+
+        var usuario = await _usuarioRepository.GetById(usuarioId)
+            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+        usuario.Nome = command.Nome.Trim();
+        usuario.Cargo = command.Cargo?.Trim();
+        usuario.Telefone = command.Telefone?.Trim();
+        usuario.AtualizadoEm = DateTime.UtcNow;
+
+        await _usuarioRepository.Update(usuario);
+        await _unitOfWork.Commit();
+
+        return MapearParaPerfilDto(usuario);
+    }
+
+    public async Task AlterarSenhaAsync(Guid usuarioId, AlterarSenhaCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.SenhaAtual))
+            throw new ArgumentException("A senha atual é obrigatória.");
+
+        if (string.IsNullOrWhiteSpace(command.NovaSenha) || command.NovaSenha.Length < 6)
+            throw new ArgumentException("A nova senha deve possuir no mínimo 6 caracteres.");
+
+        var usuario = await _usuarioRepository.GetById(usuarioId)
+            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+        if (!BCrypt.Net.BCrypt.Verify(command.SenhaAtual, usuario.SenhaHash))
+        {
+            throw new InvalidOperationException("A senha atual informada está incorreta.");
+        }
+
+        usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(command.NovaSenha, workFactor: 12);
+        usuario.AtualizadoEm = DateTime.UtcNow;
+
+        await _usuarioRepository.Update(usuario);
+        await _unitOfWork.Commit();
+    }
+
+    public async Task<string> AtualizarFotoPerfilAsync(Guid usuarioId, Stream stream, string fileName, string contentType)
+    {
+        var usuario = await _usuarioRepository.GetById(usuarioId)
+            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+        var extensoesValidas = new[] { ".jpg", ".jpeg", ".png", ".webp", ".svg" };
+        var ext = Path.GetExtension(fileName).ToLower();
+        if (!extensoesValidas.Contains(ext))
+        {
+            throw new ArgumentException("Formato de arquivo inválido. Formatos permitidos: JPG, PNG, WEBP e SVG.");
+        }
+
+        if (!string.IsNullOrEmpty(usuario.FotoUrl))
+        {
+            try
+            {
+                await _storageService.DeleteAsync(usuario.FotoUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao remover foto de perfil anterior para {UsuarioId}", usuarioId);
+            }
+        }
+
+        var url = await _storageService.UploadAsync(stream, fileName, contentType, "perfil", usuarioId.ToString());
+        usuario.FotoUrl = url;
+        usuario.AtualizadoEm = DateTime.UtcNow;
+
+        await _usuarioRepository.Update(usuario);
+        await _unitOfWork.Commit();
+
+        return url;
+    }
+
+    public async Task RemoverFotoPerfilAsync(Guid usuarioId)
+    {
+        var usuario = await _usuarioRepository.GetById(usuarioId)
+            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+        if (!string.IsNullOrEmpty(usuario.FotoUrl))
+        {
+            try
+            {
+                await _storageService.DeleteAsync(usuario.FotoUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao remover foto de perfil do storage para {UsuarioId}", usuarioId);
+            }
+
+            usuario.FotoUrl = null;
+            usuario.AtualizadoEm = DateTime.UtcNow;
+
+            await _usuarioRepository.Update(usuario);
+            await _unitOfWork.Commit();
+        }
     }
 
     private async Task<(Usuario Usuario, Guid EscritorioId)> ObterUsuarioContextoAsync()
@@ -319,8 +486,26 @@ public class UsuarioService : IUsuarioService
         return "Cot@" + new string(result);
     }
 
-    private static MembroEquipeDto MapearParaDto(Usuario u) =>
-        new(
+    private static MembroEquipeDto MapearParaDto(Usuario u)
+    {
+        List<string> modulos;
+        if (u.IsAdmin() || u.IsContaSuporte())
+        {
+            modulos = ModulosApp.Todos.ToList();
+        }
+        else if (string.IsNullOrWhiteSpace(u.ModulosPermitidos))
+        {
+            modulos = new List<string>();
+        }
+        else
+        {
+            modulos = u.ModulosPermitidos
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return new MembroEquipeDto(
             u.Id,
             u.EscritorioId,
             u.Nome,
@@ -328,8 +513,44 @@ public class UsuarioService : IUsuarioService
             u.Role,
             u.Cargo,
             u.Telefone,
+            u.FotoUrl,
+            modulos,
             u.Ativo,
             u.CriadoEm,
             u.AtualizadoEm
         );
+    }
+
+    private static PerfilUsuarioDto MapearParaPerfilDto(Usuario u)
+    {
+        List<string> modulos;
+        if (u.IsAdmin() || u.IsContaSuporte())
+        {
+            modulos = ModulosApp.Todos.ToList();
+        }
+        else if (string.IsNullOrWhiteSpace(u.ModulosPermitidos))
+        {
+            modulos = new List<string>();
+        }
+        else
+        {
+            modulos = u.ModulosPermitidos
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return new PerfilUsuarioDto(
+            u.Id,
+            u.EscritorioId,
+            u.Nome,
+            u.Email,
+            u.Role,
+            u.Cargo,
+            u.Telefone,
+            u.FotoUrl,
+            modulos,
+            u.CriadoEm
+        );
+    }
 }

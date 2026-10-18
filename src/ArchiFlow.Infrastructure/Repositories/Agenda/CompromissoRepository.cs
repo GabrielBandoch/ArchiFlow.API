@@ -19,9 +19,12 @@ public class CompromissoRepository : Repository<Compromisso>, ICompromissoReposi
         Guid? usuarioId = null, 
         Guid? projetoId = null)
     {
+        var inicioUtc = AsUtc(inicio);
+        var fimUtc = AsUtcEndOfDay(fim);
+
         var query = _dbSet
             .Where(c => c.EscritorioId == escritorioId)
-            .Where(c => c.DataHoraInicio <= fim && c.DataHoraFim >= inicio);
+            .Where(c => c.DataHoraInicio <= fimUtc && c.DataHoraFim >= inicioUtc);
 
         if (usuarioId.HasValue)
         {

@@ -206,8 +206,8 @@ public class FinanceiroService : IFinanceiroService
             TotalParcelas = command.TotalParcelas,
             Descricao = command.Descricao.Trim(),
             Valor = command.Valor,
-            DataVencimento = command.DataVencimento,
-            Status = command.DataVencimento.Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
+            DataVencimento = EnsureUtc(command.DataVencimento),
+            Status = EnsureUtc(command.DataVencimento).Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
             Observacoes = command.Observacoes,
             CriadoEm = DateTime.UtcNow
         };
@@ -246,9 +246,9 @@ public class FinanceiroService : IFinanceiroService
 
         parcela.Descricao = command.Descricao.Trim();
         parcela.Valor = command.Valor;
-        parcela.DataVencimento = command.DataVencimento;
+        parcela.DataVencimento = EnsureUtc(command.DataVencimento);
         parcela.Status = command.Status;
-        parcela.DataPagamento = command.DataPagamento;
+        parcela.DataPagamento = command.DataPagamento.HasValue ? EnsureUtc(command.DataPagamento.Value) : null;
         parcela.FormaPagamento = command.FormaPagamento;
         parcela.Observacoes = command.Observacoes;
         parcela.ComprovanteUrl = command.ComprovanteUrl;
@@ -339,7 +339,7 @@ public class FinanceiroService : IFinanceiroService
             ProjetoId = (command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty) ? command.ProjetoId.Value : null,
             Descricao = command.Descricao.Trim(),
             Valor = command.Valor,
-            DataDespesa = command.DataDespesa,
+            DataDespesa = EnsureUtc(command.DataDespesa),
             Categoria = command.Categoria,
             Observacoes = command.Observacoes,
             ComprovanteUrl = command.ComprovanteUrl,
@@ -370,7 +370,7 @@ public class FinanceiroService : IFinanceiroService
 
         despesa.Descricao = command.Descricao.Trim();
         despesa.Valor = command.Valor;
-        despesa.DataDespesa = command.DataDespesa;
+        despesa.DataDespesa = EnsureUtc(command.DataDespesa);
         despesa.Categoria = command.Categoria;
         despesa.Observacoes = command.Observacoes;
         despesa.ComprovanteUrl = command.ComprovanteUrl;
@@ -585,8 +585,8 @@ public class FinanceiroService : IFinanceiroService
                 TotalParcelas = numeroParcelas,
                 Descricao = $"Parcela {i}/{numeroParcelas}",
                 Valor = valorFinal,
-                DataVencimento = dataAtual,
-                Status = dataAtual.Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
+                DataVencimento = EnsureUtc(dataAtual),
+                Status = EnsureUtc(dataAtual).Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
                 CriadoEm = DateTime.UtcNow
             });
 
@@ -652,6 +652,14 @@ public class FinanceiroService : IFinanceiroService
             d.CriadoEm
         );
     }
+
+    private static DateTime EnsureUtc(DateTime date) =>
+        date.Kind switch
+        {
+            DateTimeKind.Utc => date,
+            DateTimeKind.Local => date.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(date, DateTimeKind.Utc)
+        };
 
     #endregion
 }

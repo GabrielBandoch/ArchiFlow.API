@@ -1,5 +1,7 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Dashboard.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
@@ -9,6 +11,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/dashboard")]
 [Authorize]
+[RequireModule(ModulosApp.Dashboard)]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardFacade _dashboardFacade;

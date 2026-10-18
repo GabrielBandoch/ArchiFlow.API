@@ -15,6 +15,7 @@ public class ProjetoFacade : IProjetoFacade
     public ProjetoFacade(IProjetoService service) => _service = service;
 
     public Task<IEnumerable<ProjetoDto>> GetAll()                               => _service.GetAll();
+    public Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId)          => _service.GetByClienteId(clienteId);
     public Task<ProjetoDto?> GetById(Guid id)                                    => _service.GetById(id);
     public Task<ProjetoDto> Create(CriarProjetoCommand command)                      => _service.Create(command);
     public Task<ProjetoDto> Update(AtualizarProjetoCommand command)               => _service.Update(command);

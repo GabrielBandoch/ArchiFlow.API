@@ -1,5 +1,7 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Fornecedores.Commands;
 using ArchiFlow.Application.Fornecedores.Services;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -10,6 +12,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/fornecedores")]
 [Authorize]
+[RequireModule(ModulosApp.Fornecedores)]
 public class FornecedoresController : ControllerBase
 {
     private const string IdInconsistenteMsg = "O ID informado na rota diverge do corpo da requisição.";

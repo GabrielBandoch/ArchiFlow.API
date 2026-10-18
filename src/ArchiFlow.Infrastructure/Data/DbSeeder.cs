@@ -312,6 +312,61 @@ public static class DbSeeder
                 );
 
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
+
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Foto_Url"" text;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Modulos_Permitidos"" text;
+
+                CREATE TABLE IF NOT EXISTS ""Tokens_Recuperacao_Senha"" (
+                    ""TRS_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TRS_Email"" character varying(256) NOT NULL,
+                    ""TRS_Token_Hash"" character varying(128) NOT NULL,
+                    ""TRS_Tipo_Usuario"" character varying(20) NOT NULL,
+                    ""TRS_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""TRS_Expira_Em"" timestamp with time zone NOT NULL,
+                    ""TRS_Usado_Em"" timestamp with time zone,
+                    ""TRS_Tentativas"" integer NOT NULL DEFAULT 0
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Token_Hash"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Token_Hash"");
+                CREATE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Email"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Email"");
+
+                CREATE TABLE IF NOT EXISTS ""Representantes_Clientes"" (
+                    ""REP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""REP_Cliente_Id"" uuid NOT NULL,
+                    ""REP_Nome"" character varying(200) NOT NULL,
+                    ""REP_Email"" character varying(256) NOT NULL,
+                    ""REP_Telefone"" character varying(30),
+                    ""REP_Cargo"" character varying(100),
+                    ""REP_Senha_Hash"" text,
+                    ""REP_Ativo"" boolean NOT NULL DEFAULT true,
+                    ""REP_Convite_Token_Hash"" character varying(128),
+                    ""REP_Convite_Expira_Em"" timestamp with time zone,
+                    ""REP_Convite_Usado_Em"" timestamp with time zone,
+                    ""REP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""REP_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Representantes_Clientes_Clientes"" FOREIGN KEY (""REP_Cliente_Id"") REFERENCES ""Clientes"" (""CLI_Id"") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Email"" ON ""Representantes_Clientes"" (""REP_Email"");
+                CREATE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Cliente_Id"" ON ""Representantes_Clientes"" (""REP_Cliente_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Dados_Empresa"" (
+                    ""EMP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""EMP_Escritorio_Id"" uuid,
+                    ""EMP_Nome_Empresa"" character varying(200) NOT NULL,
+                    ""EMP_Razao_Social"" character varying(200),
+                    ""EMP_Cnpj"" character varying(30),
+                    ""EMP_Registro_Profissional"" character varying(150),
+                    ""EMP_Slogan"" character varying(300),
+                    ""EMP_Email"" character varying(150),
+                    ""EMP_Telefone"" character varying(50),
+                    ""EMP_Endereco"" character varying(300),
+                    ""EMP_Cidade"" character varying(100),
+                    ""EMP_Estado"" character varying(50),
+                    ""EMP_Cep"" character varying(20),
+                    ""EMP_Website"" character varying(200),
+                    ""EMP_Logo_Url"" text,
+                    ""EMP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
+                    ""EMP_Atualizado_Em"" timestamp with time zone NOT NULL
+                );
             ");
         }
         catch (Exception ex)
@@ -326,6 +381,7 @@ public static class DbSeeder
         await SeedOrigensLeadAsync(context);
         await SeedTemplatesProjetoAsync(context);
         await SeedUsuariosAsync(context, isDevelopment);
+        await SeedDadosEmpresaAsync(context);
     }
 
     private static async Task SeedUsuariosAsync(ArchiFlowDbContext context, bool isDevelopment)
@@ -666,5 +722,25 @@ public static class DbSeeder
         await context.TemplatesProjeto.AddRangeAsync(residencial, interiores, comercial, consultoria);
         await context.SaveChangesAsync();
     }
+
+    private static async Task SeedDadosEmpresaAsync(ArchiFlowDbContext context)
+    {
+        if (await context.DadosEmpresa.AnyAsync())
+        {
+            return;
+        }
+
+        var padrao = new ArchiFlow.Domain.Empresa.DadosEmpresa
+        {
+            Id = Guid.NewGuid(),
+            NomeEmpresa = "COTU Studio",
+            CorPrimaria = "#765538",
+            AtualizadoEm = DateTime.UtcNow
+        };
+
+        await context.DadosEmpresa.AddAsync(padrao);
+        await context.SaveChangesAsync();
+    }
 }
+
 

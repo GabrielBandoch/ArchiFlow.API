@@ -14,6 +14,7 @@ public class AuthService : IAuthService
 {
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IClienteRepository _clienteRepository;
+    private readonly IRepresentanteClienteRepository _representanteClienteRepository;
     private readonly IProjetoRepository _projetoRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
@@ -24,9 +25,21 @@ public class AuthService : IAuthService
         IProjetoRepository projetoRepository,
         IUnitOfWork unitOfWork,
         ITokenService tokenService)
+        : this(usuarioRepository, clienteRepository, null!, projetoRepository, unitOfWork, tokenService)
+    {
+    }
+
+    public AuthService(
+        IUsuarioRepository usuarioRepository,
+        IClienteRepository clienteRepository,
+        IRepresentanteClienteRepository? representanteClienteRepository,
+        IProjetoRepository projetoRepository,
+        IUnitOfWork unitOfWork,
+        ITokenService tokenService)
     {
         _usuarioRepository = usuarioRepository;
         _clienteRepository = clienteRepository;
+        _representanteClienteRepository = representanteClienteRepository!;
         _projetoRepository = projetoRepository;
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
@@ -43,7 +56,35 @@ public class AuthService : IAuthService
             }
 
             var token = _tokenService.GenerateToken(usuario);
-            return new LoginResponseDto(token, usuario.Role, usuario.Nome, usuario.Email, usuario.Id);
+            var modulos = string.IsNullOrWhiteSpace(usuario.ModulosPermitidos)
+                ? (usuario.IsAdmin() ? ModulosApp.Todos.ToList() : new System.Collections.Generic.List<string>())
+                : usuario.ModulosPermitidos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            return new LoginResponseDto(
+                token, 
+                usuario.Role, 
+                usuario.Nome, 
+                usuario.Email, 
+                usuario.Id, 
+                null, 
+                modulos, 
+                usuario.FotoUrl);
+        }
+
+        var representante = _representanteClienteRepository != null 
+            ? await _representanteClienteRepository.ObterPorEmailAsync(request.Email) 
+            : null;
+        if (representante != null)
+        {
+            if (!BCrypt.Net.BCrypt.Verify(request.Senha, representante.SenhaHash) || !representante.Ativo)
+            {
+                throw new UnauthorizedAccessException("Credenciais inválidas ou conta inativa.");
+            }
+
+            var projetos = await _projetoRepository.GetByClienteId(representante.ClienteId);
+            var projetoId = projetos.FirstOrDefault()?.Id;
+
+            var token = _tokenService.GenerateToken(representante, projetoId);
+            return new LoginResponseDto(token, "Cliente", representante.Nome, representante.Email, representante.Id, projetoId);
         }
 
         var cliente = await _clienteRepository.GetByEmail(request.Email);

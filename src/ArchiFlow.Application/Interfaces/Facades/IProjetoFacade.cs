@@ -9,6 +9,7 @@ namespace ArchiFlow.Application.Interfaces.Facades;
 public interface IProjetoFacade
 {
     Task<IEnumerable<ProjetoDto>> GetAll();
+    Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId);
     Task<ProjetoDto?> GetById(Guid id);
     Task<ProjetoDto> Create(CriarProjetoCommand command);
     Task<ProjetoDto> Update(AtualizarProjetoCommand command);

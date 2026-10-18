@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace ArchiFlow.Application.Usuarios.DTOs;
 
 public record LoginResponseDto(
@@ -6,5 +9,7 @@ public record LoginResponseDto(
     string Nome, 
     string Email, 
     Guid Id,
-    Guid? ProjetoId = null
+    Guid? ProjetoId = null,
+    List<string>? ModulosPermitidos = null,
+    string? FotoUrl = null
 );

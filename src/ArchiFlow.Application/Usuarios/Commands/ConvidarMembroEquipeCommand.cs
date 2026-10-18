@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ArchiFlow.Application.Usuarios.Commands;
@@ -16,10 +17,12 @@ public record ConvidarMembroEquipeCommand(
     string Role,
 
     [StringLength(100, ErrorMessage = "Cargo não pode ultrapassar 100 caracteres.")]
-    string? Cargo,
+    string? Cargo = null,
 
     [StringLength(30, ErrorMessage = "Telefone não pode ultrapassar 30 caracteres.")]
-    string? Telefone,
+    string? Telefone = null,
 
-    string? SenhaTemporaria
+    string? SenhaTemporaria = null,
+
+    List<string>? ModulosPermitidos = null
 );

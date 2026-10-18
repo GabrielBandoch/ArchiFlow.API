@@ -33,10 +33,16 @@ public class ParcelaFinanceiraRepository : Repository<ParcelaFinanceira>, IParce
             query = query.Where(p => p.Status == status.Value);
 
         if (dataInicio.HasValue)
-            query = query.Where(p => p.DataVencimento >= dataInicio.Value);
+        {
+            var inicioUtc = AsUtc(dataInicio.Value);
+            query = query.Where(p => p.DataVencimento >= inicioUtc);
+        }
 
         if (dataFim.HasValue)
-            query = query.Where(p => p.DataVencimento <= dataFim.Value);
+        {
+            var fimUtc = AsUtcEndOfDay(dataFim.Value);
+            query = query.Where(p => p.DataVencimento <= fimUtc);
+        }
 
         return await query
             .OrderBy(p => p.DataVencimento)
