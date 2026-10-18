@@ -57,7 +57,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
     public async Task<RepresentanteClienteDto> ConvidarRepresentanteAsync(Guid clienteId, ConvidarRepresentanteCommand command, string? baseUrl = null)
     {
-        var cliente = await _clienteRepository.GetById(clienteId)
+        _ = await _clienteRepository.GetById(clienteId)
             ?? throw new KeyNotFoundException("Cliente não encontrado.");
 
         if (string.IsNullOrWhiteSpace(command.Nome))
@@ -119,7 +119,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
         var rep = await _representanteRepository.ObterPorIdAsync(representanteId)
             ?? throw new KeyNotFoundException("Representante não encontrado.");
 
-        var cliente = await _clienteRepository.GetById(rep.ClienteId)
+        _ = await _clienteRepository.GetById(rep.ClienteId)
             ?? throw new KeyNotFoundException("Cliente associado não encontrado.");
 
         var rawToken = GerarTokenCriptografico();

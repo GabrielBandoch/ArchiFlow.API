@@ -20,6 +20,7 @@ public class AuthServiceTests
     private readonly Mock<IClienteRepository> _clientRepoMock;
     private readonly Mock<IProjetoRepository> _projRepoMock;
     private readonly Mock<IUnitOfWork> _uowMock;
+    private static readonly string[] ExpectedModulos = ["Projetos", "Financeiro"];
     private readonly Mock<ITokenService> _tokenServiceMock;
     private readonly AuthService _sut;
 
@@ -276,7 +277,7 @@ public class AuthServiceTests
 
         var response = await _sut.Login(request);
 
-        response.ModulosPermitidos.Should().BeEquivalentTo(new[] { "Projetos", "Financeiro" });
+        response.ModulosPermitidos.Should().BeEquivalentTo(ExpectedModulos);
     }
 
     [Fact]

@@ -28,6 +28,7 @@ public class LocalStorageServiceTests : IDisposable
         {
             Directory.Delete(_tempDir, true);
         }
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

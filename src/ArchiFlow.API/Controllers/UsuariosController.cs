@@ -18,6 +18,7 @@ namespace ArchiFlow.API.Controllers;
 [Authorize]
 public class UsuariosController : ControllerBase
 {
+    private static readonly string[] AllowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     private readonly IUsuarioFacade _facade;
 
     public UsuariosController(IUsuarioFacade facade)
@@ -50,7 +51,7 @@ public class UsuariosController : ControllerBase
     [HttpPost("me/foto")]
     public async Task<IActionResult> UploadFotoPerfil([FromForm] IFormFile? file, [FromForm] IFormFile? arquivo)
     {
-        var targetFile = file ?? arquivo ?? (Request.HasFormContentType ? Request.Form.Files.FirstOrDefault() : null);
+        var targetFile = file ?? arquivo;
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized();
@@ -61,8 +62,7 @@ public class UsuariosController : ControllerBase
         if (targetFile.Length > 5 * 1024 * 1024)
             return BadRequest("O tamanho da imagem não deve exceder 5MB.");
 
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
-        if (!allowedTypes.Contains(targetFile.ContentType.ToLower()))
+        if (!AllowedImageTypes.Any(t => string.Equals(t, targetFile.ContentType, StringComparison.OrdinalIgnoreCase)))
             return BadRequest("Formato de imagem inválido. Use JPEG, PNG ou WEBP.");
 
         using var stream = targetFile.OpenReadStream();

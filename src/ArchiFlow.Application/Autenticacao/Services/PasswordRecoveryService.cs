@@ -24,19 +24,16 @@ public class PasswordRecoveryService : IPasswordRecoveryService
     private readonly ILogger<PasswordRecoveryService> _logger;
 
     public PasswordRecoveryService(
-        IUsuarioRepository usuarioRepository,
-        IRepresentanteClienteRepository representanteRepository,
-        IClienteRepository clienteRepository,
-        ITokenRecuperacaoSenhaRepository tokenRepository,
+        PasswordRecoveryRepositories repositories,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
         ILogger<PasswordRecoveryService> logger,
         IAppUrlService? appUrlService = null)
     {
-        _usuarioRepository = usuarioRepository;
-        _representanteRepository = representanteRepository;
-        _clienteRepository = clienteRepository;
-        _tokenRepository = tokenRepository;
+        _usuarioRepository = repositories.UsuarioRepository;
+        _representanteRepository = repositories.RepresentanteRepository;
+        _clienteRepository = repositories.ClienteRepository;
+        _tokenRepository = repositories.TokenRepository;
         _emailService = emailService;
         _unitOfWork = unitOfWork;
         _logger = logger;

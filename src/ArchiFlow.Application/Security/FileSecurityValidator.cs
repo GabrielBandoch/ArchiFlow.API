@@ -26,13 +26,13 @@ public static class FileSecurityValidator
             throw new ArgumentException($"O tamanho do arquivo excede o limite máximo permitido de {maxSizeBytes / (1024 * 1024)}MB.");
         }
 
-        var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        if (!ImagensPermitidas.Contains(ext))
+        var ext = Path.GetExtension(fileName);
+        if (!ImagensPermitidas.Any(p => string.Equals(p, ext, StringComparison.OrdinalIgnoreCase)))
         {
             throw new ArgumentException("Formato de imagem não suportado. Formatos permitidos: JPG, PNG, WEBP e SVG.");
         }
 
-        if (ext == ".svg")
+        if (string.Equals(ext, ".svg", StringComparison.OrdinalIgnoreCase))
         {
             ValidarSvg(stream);
         }

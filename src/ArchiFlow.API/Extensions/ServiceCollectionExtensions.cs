@@ -117,6 +117,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepresentanteClienteFacade, RepresentanteClienteFacade>();
         services.AddScoped<ArchiFlow.Application.Interfaces.Services.IEmpresaService, ArchiFlow.Application.Empresa.Services.EmpresaService>();
         services.AddScoped<ArchiFlow.Application.Interfaces.Facades.IEmpresaFacade, ArchiFlow.Application.Empresa.Facades.EmpresaFacade>();
+        services.AddScoped<ArchiFlow.Application.Autenticacao.Services.PasswordRecoveryRepositories>();
         services.AddScoped<IPasswordRecoveryService, ArchiFlow.Application.Autenticacao.Services.PasswordRecoveryService>();
         services.AddSingleton<IAppUrlService, AppUrlService>();
         services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();

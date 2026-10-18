@@ -28,11 +28,13 @@ public class PasswordRecoveryServiceTests
 
     public PasswordRecoveryServiceTests()
     {
-        _service = new PasswordRecoveryService(
+        var repositories = new PasswordRecoveryRepositories(
             _usuarioRepoMock.Object,
             _representanteRepoMock.Object,
             _clienteRepoMock.Object,
-            _tokenRepoMock.Object,
+            _tokenRepoMock.Object);
+        _service = new PasswordRecoveryService(
+            repositories,
             _emailMock.Object,
             _uowMock.Object,
             _loggerMock.Object);
