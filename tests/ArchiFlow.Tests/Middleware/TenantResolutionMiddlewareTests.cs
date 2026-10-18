@@ -1,4 +1,7 @@
+using System;
+using System.IO;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using ArchiFlow.API.Middleware;
 using ArchiFlow.Infrastructure.MultiTenancy;
 using FluentAssertions;
@@ -20,10 +23,10 @@ public class TenantResolutionMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_QuandoChamado_DeveChamarProximoDelegateEAdicionarHeaderXTenantResolved()
+    public async Task InvokeAsync_RequisicaoNaoAutenticadaComHostValido_DeveResolverTenantEAdicionarHeader()
     {
         var context = new DefaultHttpContext();
-        context.Request.Host = new HostString("duna.archiflow.com.br");
+        context.Request.Host = new HostString("duna.cotu.com.br");
 
         var proximoChamado = false;
         RequestDelegate next = (ctx) =>
@@ -32,7 +35,7 @@ public class TenantResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
 
         await middleware.InvokeAsync(context, tenantContext);
@@ -44,9 +47,111 @@ public class TenantResolutionMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_ComUsuarioAutenticado_DeveResolverTenantDaClaim()
+    public async Task InvokeAsync_RequisicaoNaoAutenticadaComHostStaging_DeveResolverStaging()
     {
         var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("staging.cotu.com.br");
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("staging");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RequisicaoNaoAutenticadaComHostLocalhost_DeveResolverDefault()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("localhost:5000");
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("default");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComEscritorioIdGuidETenantValido_DeveResolverTenantCorretamente()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", Guid.NewGuid().ToString()),
+            new Claim("tenant", "duna")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("duna");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComClaimTenantValida_DeveResolverTenantCorretamente()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("staging.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("tenant", "staging")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeTrue();
+        tenantContext.TenantId.Should().Be("staging");
+        tenantContext.IsResolved.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComClaimLegadaSlug_DeveResolverTenantCorretamente()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("localhost:5000");
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim("escritorio_id", "escritorio-ouro")
@@ -59,7 +164,7 @@ public class TenantResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
 
         await middleware.InvokeAsync(context, tenantContext);
@@ -70,12 +175,91 @@ public class TenantResolutionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComApenasGuidSemTenantClaim_DeveRetornar401Unauthorized()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("escritorio_id", Guid.NewGuid().ToString())
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComClaimTenantVazia_DeveRetornar401Unauthorized()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("tenant", "   ")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComUsuarioAutenticadoComClaimTenantFormatoInvalido_DeveRetornar401Unauthorized()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("tenant", "tenant!@#$%invalid")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+    }
+
+    [Fact]
     public async Task InvokeAsync_ComUsuarioAutenticadoETentativaSpoofingXTenantId_DeveRetornar403Forbidden()
     {
         var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            new Claim("escritorio_id", "escritorio-legitimo")
+            new Claim("tenant", "duna")
         }, "TestAuth"));
         context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "outro-escritorio";
 
@@ -86,7 +270,33 @@ public class TenantResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ComDivergenciaEntreTokenEHost_DeveRetornar403Forbidden()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("staging.cotu.com.br");
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("tenant", "duna")
+        }, "TestAuth"));
+
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
         var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
 
         await middleware.InvokeAsync(context, tenantContext);
@@ -99,11 +309,12 @@ public class TenantResolutionMiddlewareTests
     public async Task InvokeAsync_ComUsuarioAutenticadoEHeaderConsistente_DevePermitirAcesso()
     {
         var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("duna.cotu.com.br");
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            new Claim("escritorio_id", "escritorio-legitimo")
+            new Claim("tenant", "duna")
         }, "TestAuth"));
-        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "escritorio-legitimo";
+        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "duna";
 
         var proximoChamado = false;
         RequestDelegate next = (ctx) =>
@@ -112,20 +323,20 @@ public class TenantResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object);
 
         await middleware.InvokeAsync(context, tenantContext);
 
         proximoChamado.Should().BeTrue();
-        tenantContext.TenantId.Should().Be("escritorio-legitimo");
+        tenantContext.TenantId.Should().Be("duna");
     }
 
     [Fact]
     public async Task InvokeAsync_EmProducaoNaoAutenticadoComHeader_NaoDeveUsarHeaderDev()
     {
         var context = new DefaultHttpContext();
-        context.Request.Host = new HostString("duna.archiflow.com.br");
+        context.Request.Host = new HostString("duna.cotu.com.br");
         context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "outro-tenant";
 
         var envMock = new Mock<IWebHostEnvironment>();
@@ -138,7 +349,7 @@ public class TenantResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object, envMock.Object);
 
         await middleware.InvokeAsync(context, tenantContext);
@@ -148,22 +359,36 @@ public class TenantResolutionMiddlewareTests
     }
 
     [Fact]
-    public void ResolveTenant_ComHeaderXTenantId_DevePriorizarHeader()
+    public async Task InvokeAsync_EmDevNaoAutenticadoComHeaderInvalido_DeveRetornar400BadRequest()
     {
         var context = new DefaultHttpContext();
-        context.Request.Host = new HostString("outro-escritorio.archiflow.com.br");
-        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "duna-arquitetura";
+        context.Request.Host = new HostString("localhost:5000");
+        context.Request.Headers[TenantResolutionMiddleware.TenantHeaderName] = "invalid!@#header";
 
-        var tenant = TenantResolutionMiddleware.ResolveTenant(context);
+        var envMock = new Mock<IWebHostEnvironment>();
+        envMock.Setup(e => e.EnvironmentName).Returns("Development");
 
-        tenant.Should().Be("duna-arquitetura");
+        var proximoChamado = false;
+        RequestDelegate next = (ctx) =>
+        {
+            proximoChamado = true;
+            return Task.CompletedTask;
+        };
+
+        var tenantContext = new TenantContext("cotu");
+        var middleware = new TenantResolutionMiddleware(next, _loggerMock.Object, envMock.Object);
+
+        await middleware.InvokeAsync(context, tenantContext);
+
+        proximoChamado.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
 
     [Fact]
     public void ResolveTenant_ComSubdominioSimples_DeveExtrairTenant()
     {
         var context = new DefaultHttpContext();
-        context.Request.Host = new HostString("duna.archiflow.com.br");
+        context.Request.Host = new HostString("duna.cotu.com.br");
 
         var tenant = TenantResolutionMiddleware.ResolveTenant(context);
 
@@ -174,7 +399,7 @@ public class TenantResolutionMiddlewareTests
     public void ResolveTenant_ComSubdominioApi_DeveExtrairSegundoSegmento()
     {
         var context = new DefaultHttpContext();
-        context.Request.Host = new HostString("api.duna.archiflow.com.br");
+        context.Request.Host = new HostString("api.duna.cotu.com.br");
 
         var tenant = TenantResolutionMiddleware.ResolveTenant(context);
 
@@ -206,7 +431,7 @@ public class TenantResolutionMiddlewareTests
     [Fact]
     public void TenantContext_BuildConnectionString_DeveSubstituirDatabaseCorretamente()
     {
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         tenantContext.SetTenant("duna-arquitetura", "duna.cotu.com.br");
 
         tenantContext.DatabaseName.Should().Be("cotu_duna_arquitetura");
@@ -221,7 +446,7 @@ public class TenantResolutionMiddlewareTests
     [Fact]
     public void TenantContext_QuandoDefault_DeveUtilizarDatabasePadrao()
     {
-        var tenantContext = new TenantContext();
+        var tenantContext = new TenantContext("cotu");
         tenantContext.SetTenant("default", "localhost");
 
         tenantContext.DatabaseName.Should().Be("cotu");

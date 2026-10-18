@@ -2,6 +2,7 @@ namespace ArchiFlow.Domain.Usuarios;
 
 public static class Roles
 {
+    public const string AdministradorGeral = "AdministradorGeral";
     public const string Administrador = "Administrador";
     public const string Gerente = "Gerente";
     public const string Colaborador = "Colaborador";

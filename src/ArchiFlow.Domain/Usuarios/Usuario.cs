@@ -1,3 +1,5 @@
+using System;
+
 namespace ArchiFlow.Domain.Usuarios;
 
 public class Usuario
@@ -13,4 +15,22 @@ public class Usuario
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
+
+    public bool IsContaSuporte()
+    {
+        if (string.Equals(Role, Roles.AdministradorGeral, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Role, "Suporte", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var envEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL");
+        if (!string.IsNullOrWhiteSpace(envEmail) && string.Equals(Email, envEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(Email, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(Email, "admin@cotu.com", StringComparison.OrdinalIgnoreCase);
+    }
 }
