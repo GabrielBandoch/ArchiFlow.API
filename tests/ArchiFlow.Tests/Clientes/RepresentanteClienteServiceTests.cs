@@ -258,4 +258,69 @@ public class RepresentanteClienteServiceTests
             rep.Email == "novo@cliente.com"
         )), Times.Once);
     }
+
+    [Fact]
+    public async Task ReenviarConviteAsync_QuandoBaseUrlNull_UsaDominioFallback()
+    {
+        var id = Guid.NewGuid();
+        var cliente = new Cliente { Id = Guid.NewGuid(), Nome = "Empresa" };
+        var rep = new RepresentanteCliente
+        {
+            Id = id,
+            ClienteId = cliente.Id,
+            Nome = "Rep Fallback",
+            Email = "rep.fallback@teste.com",
+            Cliente = cliente
+        };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+        _clienteRepoMock.Setup(c => c.GetById(cliente.Id)).ReturnsAsync(cliente);
+
+        await _service.ReenviarConviteAsync(id, null);
+
+        _emailMock.Verify(e => e.SendEmailAsync(rep.Email, It.IsAny<string>(), It.Is<string>(b => b.Contains("cotu.com.br") || b.Contains("http"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_QuandoRepresentanteComConviteExpirado_RetornaStatusExpirado()
+    {
+        var id = Guid.NewGuid();
+        var rep = new RepresentanteCliente
+        {
+            Id = id,
+            ClienteId = Guid.NewGuid(),
+            Nome = "Rep Expirado",
+            Email = "expirado@teste.com",
+            SenhaHash = null,
+            ConviteExpiraEm = DateTime.UtcNow.AddDays(-1),
+            ConviteTokenHash = "hash"
+        };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+
+        var result = await _service.ObterPorIdAsync(id);
+
+        result.Should().NotBeNull();
+        result!.StatusConvite.Should().Be("Expirado");
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_QuandoRepresentantePendenteSemToken_RetornaStatusPendente()
+    {
+        var id = Guid.NewGuid();
+        var rep = new RepresentanteCliente
+        {
+            Id = id,
+            ClienteId = Guid.NewGuid(),
+            Nome = "Rep Pendente",
+            Email = "pendente@teste.com",
+            SenhaHash = null,
+            ConviteExpiraEm = null,
+            ConviteTokenHash = null
+        };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+
+        var result = await _service.ObterPorIdAsync(id);
+
+        result.Should().NotBeNull();
+        result!.StatusConvite.Should().Be("Pendente");
+    }
 }

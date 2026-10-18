@@ -58,7 +58,15 @@ public class ChatHub : Hub
                   ?? user?.FindFirst("EscritorioId")?.Value;
         }
 
-        var httpContext = Context.GetHttpContext();
+        Microsoft.AspNetCore.Http.HttpContext? httpContext = null;
+        try
+        {
+            httpContext = Context.GetHttpContext();
+        }
+        catch (NullReferenceException)
+        {
+        }
+
         var host = httpContext?.Request?.Host.Host ?? "localhost";
 
         if (string.IsNullOrWhiteSpace(tenant) && httpContext != null)

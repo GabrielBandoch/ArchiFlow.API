@@ -109,4 +109,35 @@ public class FileSecurityValidatorTests
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*inseguro detectado*");
     }
+
+    [Fact]
+    public void ValidarImagem_QuandoSvgSemTagSvg_LancaArgumentException()
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("<html><body>not svg</body></html>"));
+
+        var act = () => FileSecurityValidator.ValidarImagem(stream, "teste.svg", "image/svg+xml");
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Arquivo SVG inválido*");
+    }
+
+    [Fact]
+    public void ValidarImagem_QuandoArquivoComMenosDe4Bytes_LancaArgumentException()
+    {
+        using var stream = new MemoryStream(new byte[] { 0x89, 0x50 });
+
+        var act = () => FileSecurityValidator.ValidarImagem(stream, "corrompido.png", "image/png");
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Arquivo corrompido ou formato não reconhecido*");
+    }
+
+    [Fact]
+    public void ValidarImagem_QuandoGifValido_NaoLancaExcecao()
+    {
+        var gifHeader = new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00 };
+        using var stream = new MemoryStream(gifHeader);
+
+        var act = () => FileSecurityValidator.ValidarImagem(stream, "animacao.gif", "image/gif");
+
+        act.Should().NotThrow();
+    }
 }

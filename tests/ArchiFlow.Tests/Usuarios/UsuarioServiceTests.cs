@@ -824,4 +824,39 @@ public class UsuarioServiceTests
         _usuarioRepoMock.Verify(r => r.Update(_usuarioLogado), Times.Once);
         _unitOfWorkMock.Verify(u => u.Commit(default), Times.Once);
     }
+
+    [Fact]
+    public async Task AtualizarMembroAsync_QuandoProprioAdminTentaRemoverAdmin_LancaInvalidOperationException()
+    {
+        var command = new AtualizarMembroEquipeCommand("Arquiteto Titular", Roles.Colaborador, null, null, "titular@studio.com");
+
+        var act = async () => await _service.AtualizarMembroAsync(_usuarioLogadoId, command);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Não é permitido remover a sua própria função de administrador*");
+    }
+
+    [Fact]
+    public async Task AtualizarMembroAsync_QuandoModulosEspecificados_SalvaModulosNormalizados()
+    {
+        var membroId = Guid.NewGuid();
+        var membro = new Usuario
+        {
+            Id = membroId,
+            EscritorioId = _escritorioId,
+            Nome = "Colaborador",
+            Email = "colaborador@studio.com",
+            Role = Roles.Colaborador,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
+        };
+        _usuarioRepoMock.Setup(r => r.GetById(membroId)).ReturnsAsync(membro);
+
+        var command = new AtualizarMembroEquipeCommand("Colaborador", Roles.Colaborador, null, null, "colaborador@studio.com", ["Projetos", "Financeiro"]);
+
+        var result = await _service.AtualizarMembroAsync(membroId, command);
+
+        result.ModulosPermitidos.Should().Contain("Projetos");
+        result.ModulosPermitidos.Should().Contain("Financeiro");
+    }
 }

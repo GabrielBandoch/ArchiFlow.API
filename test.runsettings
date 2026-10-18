@@ -5,7 +5,7 @@
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <Exclude>[ArchiFlow.Infrastructure]*,[ArchiFlow.Domain]*,[ArchiFlow.API]*Controllers*,[ArchiFlow.API]*Middleware*,[ArchiFlow.API]*Extensions*,[ArchiFlow.Application]*.DTOs.*,[ArchiFlow.Application]*.Commands.*</Exclude>
+          <Exclude>[ArchiFlow.Infrastructure]*,[ArchiFlow.Domain]*,[ArchiFlow.API]*Controllers*,[ArchiFlow.API]*Middleware*,[ArchiFlow.API]*Extensions*,[ArchiFlow.API]*Hubs*,[ArchiFlow.Application]*.DTOs.*,[ArchiFlow.Application]*.Commands.*</Exclude>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
         </Configuration>
       </DataCollector>

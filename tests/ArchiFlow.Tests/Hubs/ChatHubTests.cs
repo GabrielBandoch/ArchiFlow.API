@@ -325,4 +325,32 @@ public class ChatHubTests
         _mockFacade.Verify(f => f.EnviarMensagem(qualquerProjetoId, arquitetoId, "Marina Arquiteta", "Arquiteto", "Mensagem da Equipe"), Times.Once);
         _mockClients.Verify(c => c.Group($"projeto_{qualquerProjetoId}"), Times.Once);
     }
+
+    [Fact]
+    public async Task ChatHub_WithServiceProviderAndTenantContext_ResolvesAndExecutes()
+    {
+        var spMock = new Mock<IServiceProvider>();
+        var tenantMock = new Mock<ArchiFlow.Domain.Shared.ITenantContext>();
+        spMock.Setup(s => s.GetService(typeof(IMensagemChatFacade))).Returns(_mockFacade.Object);
+
+        var hub = new ChatHub(spMock.Object, tenantMock.Object)
+        {
+            Clients = _mockClients.Object,
+            Groups = _mockGroups.Object,
+            Context = _mockContext.Object
+        };
+
+        var projetoId = Guid.NewGuid();
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Role, "Arquiteto"),
+            new("user_type", "staff"),
+            new("tenant", "studio_alfa")
+        };
+        _mockContext.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")));
+
+        await hub.EntrarNoProjeto(projetoId.ToString());
+
+        tenantMock.Verify(t => t.SetTenant("studio_alfa", It.IsAny<string>()), Times.Once);
+    }
 }

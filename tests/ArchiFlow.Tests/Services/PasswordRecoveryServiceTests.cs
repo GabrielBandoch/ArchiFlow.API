@@ -82,6 +82,28 @@ public class PasswordRecoveryServiceTests
     }
 
     [Fact]
+    public async Task SolicitarRecuperacaoAsync_WhenBaseUrlNull_UsesFallbackDomain()
+    {
+        var usuario = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Email = "usuario.fallback@teste.com",
+            Nome = "Fallback Teste",
+            Ativo = true,
+            SenhaHash = "hash"
+        };
+        _usuarioRepoMock.Setup(r => r.GetByEmail(usuario.Email)).ReturnsAsync(usuario);
+
+        await _service.SolicitarRecuperacaoAsync(usuario.Email, null);
+
+        _emailMock.Verify(e => e.SendEmailAsync(
+            usuario.Email,
+            It.Is<string>(s => s.Contains("Recuperação de Senha")),
+            It.Is<string>(body => body.Contains("cotu.com.br") || body.Contains("http"))
+        ), Times.Once);
+    }
+
+    [Fact]
     public async Task ValidarTokenAsync_WhenTokenInvalidOrExpired_ReturnsInvalido()
     {
         _tokenRepoMock.Setup(t => t.ObterPorTokenHashAsync(It.IsAny<string>())).ReturnsAsync((TokenRecuperacaoSenha?)null);
