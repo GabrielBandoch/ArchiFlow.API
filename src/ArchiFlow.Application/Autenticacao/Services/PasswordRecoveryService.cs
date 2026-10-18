@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ public class PasswordRecoveryService : IPasswordRecoveryService
     private readonly ITokenRecuperacaoSenhaRepository _tokenRepository;
     private readonly IEmailService _emailService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAppUrlService? _appUrlService;
     private readonly ILogger<PasswordRecoveryService> _logger;
 
     public PasswordRecoveryService(
@@ -28,7 +30,8 @@ public class PasswordRecoveryService : IPasswordRecoveryService
         ITokenRecuperacaoSenhaRepository tokenRepository,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
-        ILogger<PasswordRecoveryService> logger)
+        ILogger<PasswordRecoveryService> logger,
+        IAppUrlService? appUrlService = null)
     {
         _usuarioRepository = usuarioRepository;
         _representanteRepository = representanteRepository;
@@ -37,6 +40,7 @@ public class PasswordRecoveryService : IPasswordRecoveryService
         _emailService = emailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _appUrlService = appUrlService;
     }
 
     public async Task SolicitarRecuperacaoAsync(string email, string? baseUrl = null)
@@ -46,25 +50,22 @@ public class PasswordRecoveryService : IPasswordRecoveryService
 
         var emailNormalizado = email.Trim().ToLowerInvariant();
 
-        // 1. Identify user type without exposing existence
         var usuario = await _usuarioRepository.GetByEmail(emailNormalizado);
         var representante = usuario == null ? await _representanteRepository.ObterPorEmailAsync(emailNormalizado) : null;
         var cliente = (usuario == null && representante == null) ? await _clienteRepository.GetByEmail(emailNormalizado) : null;
 
         if (usuario == null && representante == null && cliente == null)
         {
-            // Account enumeration prevention: silently return
             _logger.LogInformation("Solicitação de recuperação de senha para e-mail não cadastrado: {Email}", emailNormalizado);
             return;
         }
 
         var tipoUsuario = usuario != null ? "staff" : "client";
         var nomeDestinatario = usuario?.Nome ?? representante?.Nome ?? cliente?.Nome ?? "Usuário";
+        var nomeDestinatarioHtml = WebUtility.HtmlEncode(nomeDestinatario);
 
-        // 2. Invalidate previous tokens
         await _tokenRepository.InvalidarParaEmailAsync(emailNormalizado);
 
-        // 3. Generate secure token & hash
         var rawTokenBytes = RandomNumberGenerator.GetBytes(32);
         var rawToken = Convert.ToHexString(rawTokenBytes).ToLowerInvariant();
         var tokenHash = ComputeSha256(rawToken);
@@ -82,17 +83,12 @@ public class PasswordRecoveryService : IPasswordRecoveryService
 
         await _tokenRepository.AdicionarAsync(tokenEntity);
 
-        // 4. Construct recovery URL
-        var domain = baseUrl?.TrimEnd('/');
-        if (string.IsNullOrEmpty(domain))
-        {
-            var envDomain = Environment.GetEnvironmentVariable("DOMAIN_NAME") ?? "cotu.com.br";
-            var scheme = envDomain.Contains("localhost") ? "http" : "https";
-            domain = $"{scheme}://{envDomain}";
-        }
+        var domain = _appUrlService != null
+            ? _appUrlService.ObterUrlBaseConfiavel(baseUrl)
+            : ResolverDominioFallback(baseUrl);
+
         var recoveryUrl = $"{domain}/redefinir-senha?token={rawToken}";
 
-        // 5. Send COTU-branded email
         var htmlBody = $@"
 <!DOCTYPE html>
 <html>
@@ -107,7 +103,7 @@ public class PasswordRecoveryService : IPasswordRecoveryService
     <tr>
       <td style=""padding: 32px; color: #334155; font-size: 15px; line-height: 1.6;"">
         <h2 style=""margin-top: 0; color: #0f172a; font-size: 18px;"">Recuperação de Senha</h2>
-        <p>Olá, <strong>{nomeDestinatario}</strong>,</p>
+        <p>Olá, <strong>{nomeDestinatarioHtml}</strong>,</p>
         <p>Recebemos uma solicitação para redefinir a senha da sua conta no COTU.</p>
         <p>Clique no botão abaixo para definir sua nova senha. Este link é válido por <strong>2 horas</strong> e pode ser usado apenas uma vez.</p>
         <div style=""text-align: center; margin: 32px 0;"">
@@ -217,6 +213,18 @@ public class PasswordRecoveryService : IPasswordRecoveryService
         await _unitOfWork.Commit();
 
         _logger.LogInformation("Senha redefinida com sucesso para o e-mail: {Email}", tokenEntity.Email);
+    }
+
+    private static string ResolverDominioFallback(string? baseUrl)
+    {
+        var domain = baseUrl?.TrimEnd('/');
+        if (string.IsNullOrEmpty(domain))
+        {
+            var envDomain = Environment.GetEnvironmentVariable("DOMAIN_NAME") ?? "cotu.com.br";
+            var scheme = envDomain.Contains("localhost") ? "http" : "https";
+            domain = $"{scheme}://{envDomain}";
+        }
+        return domain;
     }
 
     private static string ComputeSha256(string input)

@@ -1,10 +1,12 @@
 using ArchiFlow.API.Security;
 using ArchiFlow.Application.Clientes.Commands;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ArchiFlow.API.Controllers;
@@ -17,18 +19,16 @@ public class ClientesController : ControllerBase
 {
     private readonly IClienteFacade _facade;
     private readonly IRepresentanteClienteFacade _representanteFacade;
-
-    public ClientesController(IClienteFacade facade)
-        : this(facade, null!)
-    {
-    }
+    private readonly IAppUrlService _appUrlService;
 
     public ClientesController(
         IClienteFacade facade,
-        IRepresentanteClienteFacade representanteFacade)
+        IRepresentanteClienteFacade representanteFacade,
+        IAppUrlService appUrlService)
     {
         _facade = facade;
         _representanteFacade = representanteFacade;
+        _appUrlService = appUrlService;
     }
 
     [HttpGet]
@@ -66,29 +66,21 @@ public class ClientesController : ControllerBase
 
     [HttpPost("{id:guid}/representantes")]
     [Authorize(Policy = "AcessoArquiteto")]
-    public async Task<IActionResult> ConvidarRepresentante(Guid id, [FromBody] ConvidarRepresentanteCommand command)
-    {
-        var baseUrl = ObterBaseUrl();
-        var rep = await _representanteFacade.ConvidarRepresentanteAsync(id, command, baseUrl);
-        return Ok(rep);
-    }
+    public async Task<IActionResult> ConvidarRepresentante(Guid id, [FromBody] ConvidarRepresentanteCommand command) =>
+        Ok(await _representanteFacade.ConvidarRepresentanteAsync(id, command, ObterBaseUrl()));
 
     [HttpPost("representantes/{repId:guid}/reenviar-convite")]
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> ReenviarConvite(Guid repId)
     {
-        var baseUrl = ObterBaseUrl();
-        await _representanteFacade.ReenviarConviteAsync(repId, baseUrl);
+        await _representanteFacade.ReenviarConviteAsync(repId, ObterBaseUrl());
         return NoContent();
     }
 
     [HttpPatch("representantes/{repId:guid}/status")]
     [Authorize(Policy = "AcessoArquiteto")]
-    public async Task<IActionResult> AlterarStatusRepresentante(Guid repId, [FromBody] AlterarStatusRepresentanteRequest request)
-    {
-        var rep = await _representanteFacade.AlterarStatusAsync(repId, request.Ativo);
-        return Ok(rep);
-    }
+    public async Task<IActionResult> AlterarStatusRepresentante(Guid repId, [FromBody] AlterarStatusRepresentanteCommand command) =>
+        Ok(await _representanteFacade.AlterarStatusAsync(repId, command.Ativo));
 
     [HttpDelete("representantes/{repId:guid}")]
     [Authorize(Policy = "AcessoArquiteto")]
@@ -98,12 +90,6 @@ public class ClientesController : ControllerBase
         return NoContent();
     }
 
-    private string ObterBaseUrl()
-    {
-        var origin = Request.Headers["Origin"].ToString();
-        return !string.IsNullOrWhiteSpace(origin) ? origin : $"{Request.Scheme}://{Request.Host}";
-    }
+    private string ObterBaseUrl() =>
+        _appUrlService.ObterUrlBaseConfiavel(Request.Headers.Origin.FirstOrDefault());
 }
-
-public record AlterarStatusRepresentanteRequest(bool Ativo);
-

@@ -19,7 +19,6 @@ public class ProjetoService : IProjetoService
     private readonly IProjetoRepository _repository;
     private readonly ITemplateProjetoRepository? _templateRepository;
     private readonly IClienteRepository? _clienteRepository;
-    private readonly IRepresentanteClienteService? _representanteService;
     private readonly IUnitOfWork        _unitOfWork;
     private readonly IMapper            _mapper;
 
@@ -28,15 +27,13 @@ public class ProjetoService : IProjetoService
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IClienteRepository? clienteRepository = null,
-        ITemplateProjetoRepository? templateRepository = null,
-        IRepresentanteClienteService? representanteService = null)
+        ITemplateProjetoRepository? templateRepository = null)
     {
         _repository         = repository;
         _unitOfWork         = unitOfWork;
         _mapper             = mapper;
         _clienteRepository  = clienteRepository;
         _templateRepository = templateRepository;
-        _representanteService = representanteService;
     }
 
     public async Task<IEnumerable<ProjetoDto>> GetAll()

@@ -14,7 +14,7 @@ public class AuthService : IAuthService
 {
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IClienteRepository _clienteRepository;
-    private readonly IRepresentanteClienteRepository _representanteClienteRepository;
+    private readonly IRepresentanteClienteRepository? _representanteClienteRepository;
     private readonly IProjetoRepository _projetoRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
@@ -25,7 +25,7 @@ public class AuthService : IAuthService
         IProjetoRepository projetoRepository,
         IUnitOfWork unitOfWork,
         ITokenService tokenService)
-        : this(usuarioRepository, clienteRepository, null!, projetoRepository, unitOfWork, tokenService)
+        : this(usuarioRepository, clienteRepository, null, projetoRepository, unitOfWork, tokenService)
     {
     }
 
@@ -39,7 +39,7 @@ public class AuthService : IAuthService
     {
         _usuarioRepository = usuarioRepository;
         _clienteRepository = clienteRepository;
-        _representanteClienteRepository = representanteClienteRepository!;
+        _representanteClienteRepository = representanteClienteRepository;
         _projetoRepository = projetoRepository;
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
@@ -47,62 +47,109 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> Login(LoginRequestDto request)
     {
-        var usuario = await _usuarioRepository.GetByEmail(request.Email);
-        if (usuario != null)
+        var staffResponse = await AutenticarStaffAsync(request);
+        if (staffResponse != null)
         {
-            if (!BCrypt.Net.BCrypt.Verify(request.Senha, usuario.SenhaHash) || !usuario.Ativo)
-            {
-                throw new UnauthorizedAccessException("Credenciais inválidas ou usuário inativo.");
-            }
-
-            var token = _tokenService.GenerateToken(usuario);
-            var modulos = string.IsNullOrWhiteSpace(usuario.ModulosPermitidos)
-                ? (usuario.IsAdmin() ? ModulosApp.Todos.ToList() : new System.Collections.Generic.List<string>())
-                : usuario.ModulosPermitidos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            return new LoginResponseDto(
-                token, 
-                usuario.Role, 
-                usuario.Nome, 
-                usuario.Email, 
-                usuario.Id, 
-                null, 
-                modulos, 
-                usuario.FotoUrl);
+            return staffResponse;
         }
 
-        var representante = _representanteClienteRepository != null 
-            ? await _representanteClienteRepository.ObterPorEmailAsync(request.Email) 
-            : null;
-        if (representante != null)
+        var representanteResponse = await AutenticarRepresentanteAsync(request);
+        if (representanteResponse != null)
         {
-            if (!BCrypt.Net.BCrypt.Verify(request.Senha, representante.SenhaHash) || !representante.Ativo)
-            {
-                throw new UnauthorizedAccessException("Credenciais inválidas ou conta inativa.");
-            }
-
-            var projetos = await _projetoRepository.GetByClienteId(representante.ClienteId);
-            var projetoId = projetos.FirstOrDefault()?.Id;
-
-            var token = _tokenService.GenerateToken(representante, projetoId);
-            return new LoginResponseDto(token, "Cliente", representante.Nome, representante.Email, representante.Id, projetoId);
+            return representanteResponse;
         }
 
-        var cliente = await _clienteRepository.GetByEmail(request.Email);
-        if (cliente != null)
+        var clienteResponse = await AutenticarClienteLegadoAsync(request);
+        if (clienteResponse != null)
         {
-            if (string.IsNullOrEmpty(cliente.SenhaPortal) || !BCrypt.Net.BCrypt.Verify(request.Senha, cliente.SenhaPortal) || !cliente.Ativo)
-            {
-                throw new UnauthorizedAccessException("Credenciais inválidas ou cliente inativo.");
-            }
-
-            var projetos = await _projetoRepository.GetByClienteId(cliente.Id);
-            var projetoId = projetos.FirstOrDefault()?.Id;
-
-            var token = _tokenService.GenerateToken(cliente, projetoId);
-            return new LoginResponseDto(token, "Cliente", cliente.Nome, cliente.Email, cliente.Id, projetoId);
+            return clienteResponse;
         }
 
         throw new UnauthorizedAccessException("Credenciais inválidas.");
+    }
+
+    private async Task<LoginResponseDto?> AutenticarStaffAsync(LoginRequestDto request)
+    {
+        var usuario = await _usuarioRepository.GetByEmail(request.Email);
+        if (usuario == null)
+        {
+            return null;
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Senha, usuario.SenhaHash) || !usuario.Ativo)
+        {
+            throw new UnauthorizedAccessException("Credenciais inválidas ou usuário inativo.");
+        }
+
+        var token = _tokenService.GenerateToken(usuario);
+        var modulos = ObterModulosStaff(usuario);
+
+        return new LoginResponseDto(
+            token,
+            usuario.Role,
+            usuario.Nome,
+            usuario.Email,
+            usuario.Id,
+            null,
+            modulos,
+            usuario.FotoUrl);
+    }
+
+    private static System.Collections.Generic.List<string> ObterModulosStaff(Usuario usuario)
+    {
+        if (string.IsNullOrWhiteSpace(usuario.ModulosPermitidos))
+        {
+            return usuario.IsAdmin() ? ModulosApp.Todos.ToList() : new System.Collections.Generic.List<string>();
+        }
+
+        return usuario.ModulosPermitidos
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+    }
+
+    private async Task<LoginResponseDto?> AutenticarRepresentanteAsync(LoginRequestDto request)
+    {
+        if (_representanteClienteRepository == null)
+        {
+            return null;
+        }
+
+        var representante = await _representanteClienteRepository.ObterPorEmailAsync(request.Email);
+        if (representante == null)
+        {
+            return null;
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Senha, representante.SenhaHash) || !representante.Ativo)
+        {
+            throw new UnauthorizedAccessException("Credenciais inválidas ou conta inativa.");
+        }
+
+        var projetos = await _projetoRepository.GetByClienteId(representante.ClienteId);
+        var projetoId = projetos.FirstOrDefault()?.Id;
+
+        var token = _tokenService.GenerateToken(representante, projetoId);
+        return new LoginResponseDto(token, "Cliente", representante.Nome, representante.Email, representante.Id, projetoId);
+    }
+
+    private async Task<LoginResponseDto?> AutenticarClienteLegadoAsync(LoginRequestDto request)
+    {
+        var cliente = await _clienteRepository.GetByEmail(request.Email);
+        if (cliente == null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(cliente.SenhaPortal) || !BCrypt.Net.BCrypt.Verify(request.Senha, cliente.SenhaPortal) || !cliente.Ativo)
+        {
+            throw new UnauthorizedAccessException("Credenciais inválidas ou cliente inativo.");
+        }
+
+        var projetos = await _projetoRepository.GetByClienteId(cliente.Id);
+        var projetoId = projetos.FirstOrDefault()?.Id;
+
+        var token = _tokenService.GenerateToken(cliente, projetoId);
+        return new LoginResponseDto(token, "Cliente", cliente.Nome, cliente.Email, cliente.Id, projetoId);
     }
 
     public async Task<Guid> Registrar(RegisterRequestDto request)

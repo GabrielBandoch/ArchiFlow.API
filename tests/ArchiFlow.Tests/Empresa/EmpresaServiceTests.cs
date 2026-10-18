@@ -18,7 +18,6 @@ public class EmpresaServiceTests
 {
     private readonly Mock<IDadosEmpresaRepository> _repoMock = new();
     private readonly Mock<IStorageService> _storageMock = new();
-    private readonly Mock<IUnitOfWork> _uowMock = new();
     private readonly Mock<ILogger<EmpresaService>> _loggerMock = new();
     private readonly EmpresaService _service;
 
@@ -27,7 +26,6 @@ public class EmpresaServiceTests
         _service = new EmpresaService(
             _repoMock.Object,
             _storageMock.Object,
-            _uowMock.Object,
             _loggerMock.Object);
     }
 
@@ -81,7 +79,8 @@ public class EmpresaServiceTests
         _storageMock.Setup(s => s.UploadAsync(It.IsAny<Stream>(), "logo.png", "image/png", "logos", null))
             .ReturnsAsync("https://storage/logo.png");
 
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("fake-img"));
+        var pngBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
+        using var stream = new MemoryStream(pngBytes);
         var url = await _service.AtualizarLogotipoAsync(stream, "logo.png", "image/png");
 
         url.Should().Be("https://storage/logo.png");
@@ -97,5 +96,46 @@ public class EmpresaServiceTests
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Formatos permitidos*");
+    }
+
+    [Fact]
+    public async Task AtualizarCorPrimariaAsync_WhenValidColor_UpdatesAndReturnsDto()
+    {
+        var existing = new DadosEmpresa { Id = Guid.NewGuid(), NomeEmpresa = "COTU" };
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(existing);
+
+        var result = await _service.AtualizarCorPrimariaAsync("#112233");
+
+        result.CorPrimaria.Should().Be("#112233");
+        existing.CorPrimaria.Should().Be("#112233");
+        _repoMock.Verify(r => r.SalvarAsync(existing), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarLogotipoAsync_WhenPreviousLogoExists_DeletesPreviousLogo()
+    {
+        var existing = new DadosEmpresa { Id = Guid.NewGuid(), NomeEmpresa = "COTU", LogoUrl = "https://storage/old.png" };
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(existing);
+        _storageMock.Setup(s => s.UploadAsync(It.IsAny<Stream>(), "new.png", "image/png", "logos", null))
+            .ReturnsAsync("https://storage/new.png");
+
+        var pngBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
+        using var stream = new MemoryStream(pngBytes);
+        await _service.AtualizarLogotipoAsync(stream, "new.png", "image/png");
+
+        _storageMock.Verify(s => s.DeleteAsync("https://storage/old.png"), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoverLogotipoAsync_WhenLogoExists_DeletesFromStorageAndClearsLogo()
+    {
+        var existing = new DadosEmpresa { Id = Guid.NewGuid(), NomeEmpresa = "COTU", LogoUrl = "https://storage/logo.png" };
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(existing);
+
+        await _service.RemoverLogotipoAsync();
+
+        existing.LogoUrl.Should().BeNull();
+        _storageMock.Verify(s => s.DeleteAsync("https://storage/logo.png"), Times.Once);
+        _repoMock.Verify(r => r.SalvarAsync(existing), Times.Once);
     }
 }

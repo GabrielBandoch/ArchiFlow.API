@@ -2,6 +2,7 @@ using ArchiFlow.API.Security;
 using ArchiFlow.Application.Clientes.Commands;
 using ArchiFlow.Application.Clientes.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Application.Projetos.Commands;
 using ArchiFlow.Application.Projetos.DTOs;
 using ArchiFlow.Domain.Usuarios;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -21,19 +23,17 @@ public class ProjetosController : ControllerBase
 {
     private const string IdInconsistenteMsg = "ID inconsistente.";
     private readonly IProjetoFacade _facade;
-    private readonly IRepresentanteClienteFacade? _representanteFacade;
-
-    public ProjetosController(IProjetoFacade facade)
-        : this(facade, null)
-    {
-    }
+    private readonly IRepresentanteClienteFacade _representanteFacade;
+    private readonly IAppUrlService _appUrlService;
 
     public ProjetosController(
         IProjetoFacade facade,
-        IRepresentanteClienteFacade? representanteFacade)
+        IRepresentanteClienteFacade representanteFacade,
+        IAppUrlService appUrlService)
     {
         _facade = facade;
         _representanteFacade = representanteFacade;
+        _appUrlService = appUrlService;
     }
 
     [HttpGet("meus-projetos")]
@@ -157,7 +157,6 @@ public class ProjetosController : ControllerBase
     [Authorize(Policy = "ProjetoOwner")]
     public async Task<IActionResult> ObterRepresentantes(Guid id)
     {
-        if (_representanteFacade == null) return Ok(Array.Empty<RepresentanteClienteDto>());
         var projeto = await _facade.GetById(id);
         if (projeto is null) return NotFound();
         if (projeto.ClienteId == Guid.Empty) return Ok(Array.Empty<RepresentanteClienteDto>());
@@ -168,13 +167,11 @@ public class ProjetosController : ControllerBase
     [Authorize(Policy = "ProjetoOwner")]
     public async Task<IActionResult> ConvidarRepresentante(Guid id, [FromBody] ConvidarRepresentanteCommand command)
     {
-        if (_representanteFacade == null) return BadRequest("Serviço de representantes indisponível.");
         var projeto = await _facade.GetById(id);
         if (projeto is null) return NotFound();
         if (projeto.ClienteId == Guid.Empty) return BadRequest("O projeto não possui um cliente vinculado.");
 
-        var baseUrl = ObterBaseUrl();
-        var rep = await _representanteFacade.ConvidarRepresentanteAsync(projeto.ClienteId, command, baseUrl);
+        var rep = await _representanteFacade.ConvidarRepresentanteAsync(projeto.ClienteId, command, ObterBaseUrl());
         return Ok(rep);
     }
 
@@ -182,17 +179,10 @@ public class ProjetosController : ControllerBase
     [Authorize(Policy = "ProjetoOwner")]
     public async Task<IActionResult> ReenviarConvite(Guid id, Guid repId)
     {
-        if (_representanteFacade == null) return BadRequest("Serviço de representantes indisponível.");
-        var baseUrl = ObterBaseUrl();
-        await _representanteFacade.ReenviarConviteAsync(repId, baseUrl);
+        await _representanteFacade.ReenviarConviteAsync(repId, ObterBaseUrl());
         return NoContent();
     }
 
-    private string? ObterBaseUrl()
-    {
-        if (Request == null) return null;
-        var origin = Request.Headers.TryGetValue("Origin", out var val) ? val.ToString() : null;
-        return !string.IsNullOrWhiteSpace(origin) ? origin : $"{Request.Scheme}://{Request.Host}";
-    }
+    private string ObterBaseUrl() =>
+        _appUrlService.ObterUrlBaseConfiavel(Request?.Headers.Origin.FirstOrDefault());
 }
-

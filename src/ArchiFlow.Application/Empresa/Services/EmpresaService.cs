@@ -1,13 +1,11 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Empresa.Commands;
 using ArchiFlow.Application.Empresa.DTOs;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Empresa;
-using ArchiFlow.Domain.Honorarios;
-using ArchiFlow.Domain.Shared;
+using ArchiFlow.Application.Security;
 using Microsoft.Extensions.Logging;
 
 namespace ArchiFlow.Application.Empresa.Services;
@@ -16,18 +14,15 @@ public class EmpresaService : IEmpresaService
 {
     private readonly IDadosEmpresaRepository _empresaRepository;
     private readonly IStorageService _storageService;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EmpresaService> _logger;
 
     public EmpresaService(
         IDadosEmpresaRepository empresaRepository,
         IStorageService storageService,
-        IUnitOfWork unitOfWork,
         ILogger<EmpresaService> logger)
     {
         _empresaRepository = empresaRepository;
         _storageService = storageService;
-        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -105,14 +100,9 @@ public class EmpresaService : IEmpresaService
 
     public async Task<string> AtualizarLogotipoAsync(Stream stream, string fileName, string contentType)
     {
-        var empresa = await _empresaRepository.ObterAsync() ?? new DadosEmpresa { Id = Guid.NewGuid() };
+        FileSecurityValidator.ValidarImagem(stream, fileName, contentType);
 
-        var extensoesValidas = new[] { ".jpg", ".jpeg", ".png", ".webp", ".svg" };
-        var ext = Path.GetExtension(fileName).ToLower();
-        if (!extensoesValidas.Contains(ext))
-        {
-            throw new ArgumentException("Formato de arquivo inválido. Formatos permitidos: JPG, PNG, WEBP e SVG.");
-        }
+        var empresa = await _empresaRepository.ObterAsync() ?? new DadosEmpresa { Id = Guid.NewGuid() };
 
         if (!string.IsNullOrEmpty(empresa.LogoUrl))
         {

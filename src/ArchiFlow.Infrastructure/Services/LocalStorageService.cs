@@ -26,7 +26,7 @@ public class LocalStorageService : IStorageService
 
     public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType, string category, string? subPath = null)
     {
-        var tenantId = _tenantContext?.TenantId ?? "default";
+        var tenantId = SanitizePathPart(_tenantContext?.TenantId ?? "default");
         var safeCategory = string.IsNullOrWhiteSpace(category) ? "geral" : SanitizePathPart(category);
         
         var relativeFolder = Path.Combine("uploads", "tenants", tenantId, safeCategory);
@@ -36,6 +36,11 @@ public class LocalStorageService : IStorageService
         }
 
         var fullFolderPath = Path.GetFullPath(Path.Combine(_rootPath, relativeFolder));
+        if (!fullFolderPath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Caminho de pasta inválido.");
+        }
+
         if (!Directory.Exists(fullFolderPath))
         {
             Directory.CreateDirectory(fullFolderPath);
@@ -55,29 +60,20 @@ public class LocalStorageService : IStorageService
             await fileStream.CopyToAsync(destinationStream);
         }
 
-        var urlPath = "/" + Path.Combine(relativeFolder, uniqueFileName).Replace('\\', '/');
-        return urlPath;
+        var relativeSegments = Path.Combine(relativeFolder, uniqueFileName).Replace('\\', '/');
+        return $"/{relativeSegments}";
     }
 
     public Task DeleteAsync(string fileUrl)
     {
-        if (string.IsNullOrEmpty(fileUrl)) return Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(fileUrl)) return Task.CompletedTask;
 
-        var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var filePath = Path.GetFullPath(Path.Combine(_rootPath, relativePath));
+        var (isValid, filePath) = ResolverEValidarCaminho(fileUrl);
+        if (!isValid || filePath == null) return Task.CompletedTask;
 
-        if (filePath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase) && File.Exists(filePath))
+        if (File.Exists(filePath))
         {
             File.Delete(filePath);
-        }
-        else
-        {
-            var safeFileName = Path.GetFileName(fileUrl);
-            var flatPath = Path.GetFullPath(Path.Combine(_rootPath, "uploads", safeFileName));
-            if (flatPath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase) && File.Exists(flatPath))
-            {
-                File.Delete(flatPath);
-            }
         }
 
         return Task.CompletedTask;
@@ -85,32 +81,75 @@ public class LocalStorageService : IStorageService
 
     public Task<Stream?> DownloadAsync(string fileUrl)
     {
-        if (string.IsNullOrEmpty(fileUrl)) return Task.FromResult<Stream?>(null);
+        if (string.IsNullOrWhiteSpace(fileUrl)) return Task.FromResult<Stream?>(null);
 
-        var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var filePath = Path.GetFullPath(Path.Combine(_rootPath, relativePath));
-
-        if (filePath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase) && File.Exists(filePath))
+        var (isValid, filePath) = ResolverEValidarCaminho(fileUrl);
+        if (!isValid || filePath == null || !File.Exists(filePath))
         {
-            Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult<Stream?>(stream);
+            return Task.FromResult<Stream?>(null);
         }
 
-        var safeFileName = Path.GetFileName(fileUrl);
-        var flatPath = Path.GetFullPath(Path.Combine(_rootPath, "uploads", safeFileName));
-        if (flatPath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase) && File.Exists(flatPath))
-        {
-            Stream stream = new FileStream(flatPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult<Stream?>(stream);
-        }
-
-        return Task.FromResult<Stream?>(null);
+        Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return Task.FromResult<Stream?>(stream);
     }
 
     public string ObterChaveArquivo(string fileUrl)
     {
-        if (string.IsNullOrEmpty(fileUrl)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(fileUrl)) return string.Empty;
         return fileUrl.TrimStart('/');
+    }
+
+    private (bool isValid, string? fullPath) ResolverEValidarCaminho(string fileUrl)
+    {
+        var normalizedUrl = fileUrl.Trim().TrimStart('/');
+        if (normalizedUrl.Contains(".."))
+        {
+            throw new InvalidOperationException("Tentativa de travessia de diretório detectada.");
+        }
+
+        var currentTenantId = _tenantContext?.TenantId;
+        var normalizedSlash = normalizedUrl.Replace('\\', '/');
+
+        if (normalizedSlash.StartsWith("uploads/tenants/", StringComparison.OrdinalIgnoreCase) ||
+            normalizedSlash.StartsWith("tenants/", StringComparison.OrdinalIgnoreCase))
+        {
+            var cleanPrefix = normalizedSlash.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)
+                ? normalizedSlash["uploads/".Length..]
+                : normalizedSlash;
+
+            var segments = cleanPrefix.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length >= 2)
+            {
+                var fileTenantId = segments[1];
+                if (!string.IsNullOrWhiteSpace(currentTenantId) &&
+                    !string.Equals(currentTenantId, fileTenantId, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new UnauthorizedAccessException("Acesso negado: o recurso pertence a outro tenant.");
+                }
+            }
+        }
+
+        var relativePath = normalizedUrl.Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relativePath));
+
+        if (!fullPath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Caminho fora da raiz permitida.");
+        }
+
+        if (File.Exists(fullPath))
+        {
+            return (true, fullPath);
+        }
+
+        var safeFileName = Path.GetFileName(fileUrl);
+        var legacyFlatPath = Path.GetFullPath(Path.Combine(_rootPath, "uploads", safeFileName));
+        if (legacyFlatPath.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase) && File.Exists(legacyFlatPath))
+        {
+            return (true, legacyFlatPath);
+        }
+
+        return (true, fullPath);
     }
 
     private static string SanitizePathPart(string part)

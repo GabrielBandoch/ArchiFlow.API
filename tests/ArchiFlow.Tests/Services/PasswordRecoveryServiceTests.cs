@@ -94,8 +94,7 @@ public class PasswordRecoveryServiceTests
     public async Task RedefinirSenhaAsync_WhenTokenValid_UpdatesPasswordAndInvalidatesToken()
     {
         var rawToken = "raw-secret-token-123";
-        using var sha256 = SHA256.Create();
-        var tokenHash = Convert.ToHexString(sha256.ComputeHash(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
 
         var usuario = new Usuario
         {
@@ -124,5 +123,91 @@ public class PasswordRecoveryServiceTests
         tokenEntity.UsadoEm.Should().NotBeNull();
         BCrypt.Net.BCrypt.Verify("NovaSenhaForte@123", usuario.SenhaHash).Should().BeTrue();
         _uowMock.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidarTokenAsync_WhenTokenValid_ReturnsValido()
+    {
+        var rawToken = "raw-token-valid";
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var tokenEntity = new TokenRecuperacaoSenha
+        {
+            Id = Guid.NewGuid(),
+            TokenHash = tokenHash,
+            Email = "teste@teste.com",
+            ExpiraEm = DateTime.UtcNow.AddMinutes(30),
+            UsadoEm = null
+        };
+        _tokenRepoMock.Setup(t => t.ObterPorTokenHashAsync(tokenHash)).ReturnsAsync(tokenEntity);
+
+        var resultado = await _service.ValidarTokenAsync(rawToken);
+
+        resultado.Valido.Should().BeTrue();
+        resultado.Email.Should().Be("teste@teste.com");
+    }
+
+    [Fact]
+    public async Task RedefinirSenhaAsync_WhenTokenIsForRepresentative_UpdatesRepresentativePassword()
+    {
+        var rawToken = "rep-token-123";
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var rep = new RepresentanteCliente
+        {
+            Id = Guid.NewGuid(),
+            Email = "rep@teste.com",
+            Nome = "Rep",
+            Ativo = true,
+            SenhaHash = "old"
+        };
+        var tokenEntity = new TokenRecuperacaoSenha
+        {
+            Id = Guid.NewGuid(),
+            TokenHash = tokenHash,
+            Email = rep.Email,
+            ExpiraEm = DateTime.UtcNow.AddMinutes(30),
+            UsadoEm = null,
+            TipoUsuario = "representante"
+        };
+
+        _tokenRepoMock.Setup(t => t.ObterPorTokenHashAsync(tokenHash)).ReturnsAsync(tokenEntity);
+        _representanteRepoMock.Setup(r => r.ObterPorEmailAsync(rep.Email)).ReturnsAsync(rep);
+
+        await _service.RedefinirSenhaAsync(rawToken, "NovaSenha@123");
+
+        tokenEntity.UsadoEm.Should().NotBeNull();
+        BCrypt.Net.BCrypt.Verify("NovaSenha@123", rep.SenhaHash).Should().BeTrue();
+        _representanteRepoMock.Verify(r => r.AtualizarAsync(rep), Times.Once);
+    }
+
+    [Fact]
+    public async Task RedefinirSenhaAsync_WhenTokenIsForClient_UpdatesClientPassword()
+    {
+        var rawToken = "client-token-123";
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var cliente = new Cliente
+        {
+            Id = Guid.NewGuid(),
+            Email = "cliente@teste.com",
+            Nome = "Cliente",
+            Ativo = true
+        };
+        var tokenEntity = new TokenRecuperacaoSenha
+        {
+            Id = Guid.NewGuid(),
+            TokenHash = tokenHash,
+            Email = cliente.Email,
+            ExpiraEm = DateTime.UtcNow.AddMinutes(30),
+            UsadoEm = null,
+            TipoUsuario = "cliente"
+        };
+
+        _tokenRepoMock.Setup(t => t.ObterPorTokenHashAsync(tokenHash)).ReturnsAsync(tokenEntity);
+        _clienteRepoMock.Setup(c => c.GetByEmail(cliente.Email)).ReturnsAsync(cliente);
+
+        await _service.RedefinirSenhaAsync(rawToken, "NovaSenha@123");
+
+        tokenEntity.UsadoEm.Should().NotBeNull();
+        BCrypt.Net.BCrypt.Verify("NovaSenha@123", cliente.SenhaPortal).Should().BeTrue();
+        _clienteRepoMock.Setup(c => c.Update(cliente));
     }
 }

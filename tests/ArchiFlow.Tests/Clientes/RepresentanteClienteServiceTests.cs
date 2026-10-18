@@ -108,8 +108,7 @@ public class RepresentanteClienteServiceTests
     public async Task ValidarTokenConviteAsync_WhenValid_ReturnsClientAndRepInfo()
     {
         var rawToken = "invite-token-abc";
-        using var sha = SHA256.Create();
-        var hash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
 
         var cliente = new Cliente { Id = Guid.NewGuid(), Nome = "Empresa Beta" };
         var rep = new RepresentanteCliente
@@ -136,8 +135,7 @@ public class RepresentanteClienteServiceTests
     public async Task AtivarContaAsync_WhenTokenValid_SetsPasswordAndActivates()
     {
         var rawToken = "valid-token-activate";
-        using var sha = SHA256.Create();
-        var hash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
 
         var rep = new RepresentanteCliente
         {
@@ -159,5 +157,105 @@ public class RepresentanteClienteServiceTests
         rep.ConviteTokenHash.Should().BeNull();
         BCrypt.Net.BCrypt.Verify("SenhaSegura@2026", rep.SenhaHash).Should().BeTrue();
         _repRepoMock.Verify(r => r.AtualizarAsync(rep), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterPorClienteIdAsync_DeveRetornarRepresentantes()
+    {
+        var clienteId = Guid.NewGuid();
+        var lista = new List<RepresentanteCliente>
+        {
+            new RepresentanteCliente { Id = Guid.NewGuid(), ClienteId = clienteId, Nome = "Rep 1", Email = "rep1@teste.com" }
+        };
+        _repRepoMock.Setup(r => r.ObterPorClienteIdAsync(clienteId)).ReturnsAsync(lista);
+
+        var result = await _service.ObterPorClienteIdAsync(clienteId);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_QuandoExiste_RetornaDto()
+    {
+        var id = Guid.NewGuid();
+        var rep = new RepresentanteCliente { Id = id, ClienteId = Guid.NewGuid(), Nome = "Rep", Email = "rep@teste.com" };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+
+        var result = await _service.ObterPorIdAsync(id);
+
+        result.Should().NotBeNull();
+        result!.Nome.Should().Be("Rep");
+    }
+
+    [Fact]
+    public async Task AlterarStatusAsync_QuandoExiste_AlteraStatus()
+    {
+        var id = Guid.NewGuid();
+        var rep = new RepresentanteCliente { Id = id, ClienteId = Guid.NewGuid(), Nome = "Rep", Email = "rep@teste.com", Ativo = true };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+
+        var result = await _service.AlterarStatusAsync(id, false);
+
+        result.Ativo.Should().BeFalse();
+        rep.Ativo.Should().BeFalse();
+        _repRepoMock.Verify(r => r.AtualizarAsync(rep), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoverRepresentanteAsync_QuandoExiste_Remove()
+    {
+        var id = Guid.NewGuid();
+        var rep = new RepresentanteCliente { Id = id, ClienteId = Guid.NewGuid(), Nome = "Rep", Email = "rep@teste.com" };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+
+        await _service.RemoverRepresentanteAsync(id);
+
+        _repRepoMock.Verify(r => r.RemoverAsync(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReenviarConviteAsync_QuandoValido_GeraNovoTokenEEnviaEmail()
+    {
+        var id = Guid.NewGuid();
+        var cliente = new Cliente { Id = Guid.NewGuid(), Nome = "Empresa" };
+        var rep = new RepresentanteCliente
+        {
+            Id = id,
+            ClienteId = cliente.Id,
+            Nome = "Rep",
+            Email = "rep@teste.com",
+            Cliente = cliente
+        };
+        _repRepoMock.Setup(r => r.ObterPorIdAsync(id)).ReturnsAsync(rep);
+        _clienteRepoMock.Setup(c => c.GetById(cliente.Id)).ReturnsAsync(cliente);
+
+        await _service.ReenviarConviteAsync(id, "http://localhost:4200");
+
+        rep.ConviteTokenHash.Should().NotBeNullOrEmpty();
+        _emailMock.Verify(e => e.SendEmailAsync(rep.Email, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        _repRepoMock.Verify(r => r.AtualizarAsync(rep), Times.Once);
+    }
+
+    [Fact]
+    public async Task DispararConviteProjetoCriadoAsync_QuandoClienteSemRepresentante_CriaEEnviaConvite()
+    {
+        var clienteId = Guid.NewGuid();
+        var cliente = new Cliente
+        {
+            Id = clienteId,
+            Nome = "Cliente Sem Rep",
+            Email = "novo@cliente.com"
+        };
+
+        _clienteRepoMock.Setup(c => c.GetById(clienteId)).ReturnsAsync(cliente);
+        _repRepoMock.Setup(r => r.ObterPorClienteIdAsync(clienteId)).ReturnsAsync(new List<RepresentanteCliente>());
+        _repRepoMock.Setup(r => r.ObterPorEmailAsync("novo@cliente.com")).ReturnsAsync((RepresentanteCliente?)null);
+
+        await _service.DispararConviteProjetoCriadoAsync(clienteId, "http://localhost:4200");
+
+        _repRepoMock.Verify(r => r.AdicionarAsync(It.Is<RepresentanteCliente>(rep =>
+            rep.ClienteId == clienteId &&
+            rep.Email == "novo@cliente.com"
+        )), Times.Once);
     }
 }

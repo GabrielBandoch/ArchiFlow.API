@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
     private readonly IDadosEmpresaRepository _empresaRepository;
     private readonly IEmailService _emailService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAppUrlService? _appUrlService;
     private readonly ILogger<RepresentanteClienteService> _logger;
 
     public RepresentanteClienteService(
@@ -29,7 +31,8 @@ public class RepresentanteClienteService : IRepresentanteClienteService
         IDadosEmpresaRepository empresaRepository,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
-        ILogger<RepresentanteClienteService> logger)
+        ILogger<RepresentanteClienteService> logger,
+        IAppUrlService? appUrlService = null)
     {
         _representanteRepository = representanteRepository;
         _clienteRepository = clienteRepository;
@@ -37,6 +40,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
         _emailService = emailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _appUrlService = appUrlService;
     }
 
     public async Task<IEnumerable<RepresentanteClienteDto>> ObterPorClienteIdAsync(Guid clienteId)
@@ -53,30 +57,20 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
     public async Task<RepresentanteClienteDto> ConvidarRepresentanteAsync(Guid clienteId, ConvidarRepresentanteCommand command, string? baseUrl = null)
     {
+        var cliente = await _clienteRepository.GetById(clienteId)
+            ?? throw new KeyNotFoundException("Cliente não encontrado.");
+
         if (string.IsNullOrWhiteSpace(command.Nome))
-            throw new ArgumentException("Nome é obrigatório.");
+            throw new ArgumentException("Nome do representante é obrigatório.");
 
         if (string.IsNullOrWhiteSpace(command.Email))
-            throw new ArgumentException("E-mail é obrigatório.");
+            throw new ArgumentException("E-mail do representante é obrigatório.");
 
-        var cliente = await _clienteRepository.GetById(clienteId)
-            ?? throw new KeyNotFoundException($"Cliente {clienteId} não encontrado.");
-
-        var emailNormalizado = command.Email.Trim().ToLowerInvariant();
+        var emailNormalizado = command.Email.Trim().ToLower();
 
         var existente = await _representanteRepository.ObterPorEmailAsync(emailNormalizado);
-        if (existente != null)
+        if (existente != null && existente.ClienteId == clienteId)
         {
-            if (existente.ClienteId != clienteId)
-            {
-                throw new InvalidOperationException("Este e-mail já está associado a outro cliente no sistema.");
-            }
-
-            if (!string.IsNullOrEmpty(existente.SenhaHash))
-            {
-                throw new InvalidOperationException("Este representante já possui conta ativa.");
-            }
-
             if (command.EnviarEmailConvite)
             {
                 await ReenviarConviteAsync(existente.Id, baseUrl);
@@ -114,7 +108,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
         if (command.EnviarEmailConvite && !string.IsNullOrEmpty(rawToken))
         {
-            await EnviarEmailConviteAsync(representante, cliente, rawToken, baseUrl);
+            await EnviarEmailConviteAsync(representante, rawToken, baseUrl);
         }
 
         return MapearParaDto(representante);
@@ -138,7 +132,7 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
         await _representanteRepository.AtualizarAsync(rep);
 
-        await EnviarEmailConviteAsync(rep, cliente, rawToken, baseUrl);
+        await EnviarEmailConviteAsync(rep, rawToken, baseUrl);
     }
 
     public async Task<RepresentanteClienteDto> AlterarStatusAsync(Guid representanteId, bool ativo)
@@ -205,7 +199,6 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
         await _representanteRepository.AtualizarAsync(rep);
 
-        // Also update legacy Cliente password if matching primary client email
         var cliente = await _clienteRepository.GetById(rep.ClienteId);
         if (cliente != null && string.Equals(cliente.Email, rep.Email, StringComparison.OrdinalIgnoreCase))
         {
@@ -225,14 +218,12 @@ public class RepresentanteClienteService : IRepresentanteClienteService
 
         var reps = (await _representanteRepository.ObterPorClienteIdAsync(clienteId)).ToList();
 
-        // Idempotency: If client already has an active representative with password, do NOT send duplicate
         if (reps.Any(r => !string.IsNullOrEmpty(r.SenhaHash) && r.Ativo))
         {
             _logger.LogInformation("Cliente {ClienteId} já possui representante com conta ativa. Convite não reenviado.", clienteId);
             return;
         }
 
-        // If client already has a pending invitation valid for > 24 hours, do NOT send duplicate
         var conviteRecente = reps.FirstOrDefault(r => r.IsConvitePendente());
         if (conviteRecente != null && conviteRecente.ConviteExpiraEm.HasValue && conviteRecente.ConviteExpiraEm.Value > DateTime.UtcNow.AddDays(2))
         {
@@ -240,7 +231,6 @@ public class RepresentanteClienteService : IRepresentanteClienteService
             return;
         }
 
-        // If representative exists for client email, reuse
         var repPrincipal = reps.FirstOrDefault(r => string.Equals(r.Email, cliente.Email.Trim(), StringComparison.OrdinalIgnoreCase));
         if (repPrincipal == null)
         {
@@ -257,19 +247,20 @@ public class RepresentanteClienteService : IRepresentanteClienteService
         }
     }
 
-    private async Task EnviarEmailConviteAsync(RepresentanteCliente rep, Cliente cliente, string rawToken, string? baseUrl)
+    private async Task EnviarEmailConviteAsync(RepresentanteCliente rep, string rawToken, string? baseUrl)
     {
         var empresa = await _empresaRepository.ObterAsync();
         var nomeEmpresa = !string.IsNullOrWhiteSpace(empresa?.NomeEmpresa) ? empresa.NomeEmpresa : "COTU Studio";
 
-        var domain = baseUrl?.TrimEnd('/');
-        if (string.IsNullOrEmpty(domain))
-        {
-            var envDomain = Environment.GetEnvironmentVariable("DOMAIN_NAME") ?? "cotu.com.br";
-            var scheme = envDomain.Contains("localhost") ? "http" : "https";
-            domain = $"{scheme}://{envDomain}";
-        }
+        var domain = _appUrlService != null
+            ? _appUrlService.ObterUrlBaseConfiavel(baseUrl)
+            : ResolverDominioFallback(baseUrl);
+
         var inviteUrl = $"{domain}/ativar-conta?token={rawToken}";
+
+        var repNomeHtml = WebUtility.HtmlEncode(rep.Nome);
+        var nomeEmpresaHtml = WebUtility.HtmlEncode(nomeEmpresa);
+        var repEmailHtml = WebUtility.HtmlEncode(rep.Email);
 
         var htmlBody = $@"
 <!DOCTYPE html>
@@ -285,14 +276,14 @@ public class RepresentanteClienteService : IRepresentanteClienteService
     <tr>
       <td style=""padding: 32px; color: #334155; font-size: 15px; line-height: 1.6;"">
         <h2 style=""margin-top: 0; color: #0f172a; font-size: 18px;"">Bem-vindo ao Portal do Cliente</h2>
-        <p>Olá, <strong>{rep.Nome}</strong>,</p>
-        <p>Você foi convidado pela equipe do escritório <strong>{nomeEmpresa}</strong> para acompanhar seus projetos em andamento com total transparência e organização.</p>
+        <p>Olá, <strong>{repNomeHtml}</strong>,</p>
+        <p>Você foi convidado pela equipe do escritório <strong>{nomeEmpresaHtml}</strong> para acompanhar seus projetos em andamento com total transparência e organização.</p>
         <p>No Portal do Cliente, você poderá visualizar o cronograma de etapas, acessar documentos e plantas técnicas, acompanhar o status em tempo real e interagir diretamente com a equipe técnica.</p>
         <p>Para ativar seu acesso exclusivo e definir sua senha pessoal, clique no botão abaixo:</p>
         <div style=""text-align: center; margin: 32px 0;"">
           <a href=""{inviteUrl}"" style=""background-color: #765538; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 14px;"">Ativar Meu Acesso</a>
         </div>
-        <p style=""font-size: 13px; color: #64748b;"">Este link é exclusivo para <strong>{rep.Email}</strong> e expira em 7 dias.</p>
+        <p style=""font-size: 13px; color: #64748b;"">Este link é exclusivo para <strong>{repEmailHtml}</strong> e expira em 7 dias.</p>
       </td>
     </tr>
     <tr>
@@ -316,6 +307,18 @@ public class RepresentanteClienteService : IRepresentanteClienteService
         {
             _logger.LogWarning(ex, "Falha ao enviar e-mail de convite para {Email}", rep.Email);
         }
+    }
+
+    private static string ResolverDominioFallback(string? baseUrl)
+    {
+        var domain = baseUrl?.TrimEnd('/');
+        if (string.IsNullOrEmpty(domain))
+        {
+            var envDomain = Environment.GetEnvironmentVariable("DOMAIN_NAME") ?? "cotu.com.br";
+            var scheme = envDomain.Contains("localhost") ? "http" : "https";
+            domain = $"{scheme}://{envDomain}";
+        }
+        return domain;
     }
 
     private static string GerarTokenCriptografico()

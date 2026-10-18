@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Interfaces.Services;
+using ArchiFlow.Application.Security;
 using ArchiFlow.Application.Usuarios.Commands;
 using ArchiFlow.Application.Usuarios.DTOs;
 using ArchiFlow.Domain.Shared;
@@ -19,6 +20,8 @@ namespace ArchiFlow.Application.Usuarios.Services;
 public class UsuarioService : IUsuarioService
 {
     private const string MensagemSemPermissaoGerenciarMembro = "Você não possui permissão para gerenciar este membro.";
+    private const string MensagemUsuarioNaoEncontrado = "Usuário não encontrado.";
+    private static readonly char[] ModuleSeparators = [',', ';'];
 
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -74,20 +77,9 @@ public class UsuarioService : IUsuarioService
 
     public async Task<MembroEquipeDto> ConvidarMembroAsync(ConvidarMembroEquipeCommand command)
     {
-        if (string.IsNullOrWhiteSpace(command.Nome))
-            throw new ArgumentException("Nome é obrigatório.");
+        ValidarComandoConvite(command);
 
-        if (string.IsNullOrWhiteSpace(command.Email) || !new EmailAddressAttribute().IsValid(command.Email.Trim()))
-            throw new ArgumentException("E-mail em formato inválido.");
-
-        if (string.IsNullOrWhiteSpace(command.Role) || !Roles.RolesValidasEquipe.Contains(command.Role))
-            throw new ArgumentException($"Função '{command.Role}' inválida.");
-
-        var emailNormalizado = command.Email.Trim().ToLower();
-        if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Não é permitido convidar a conta interna de suporte.");
-
+        var emailNormalizado = command.Email.Trim().ToLowerInvariant();
         var (usuarioAtual, escritorioId) = await ObterUsuarioContextoAsync();
 
         var existente = await _usuarioRepository.GetByEmail(emailNormalizado);
@@ -98,11 +90,7 @@ public class UsuarioService : IUsuarioService
             ? command.SenhaTemporaria
             : GerarSenhaTemporaria();
 
-        var modulos = command.ModulosPermitidos != null && command.ModulosPermitidos.Count > 0
-            ? string.Join(",", command.ModulosPermitidos.Distinct(StringComparer.OrdinalIgnoreCase))
-            : (string.Equals(command.Role, Roles.Administrador, StringComparison.OrdinalIgnoreCase) || string.Equals(command.Role, Roles.ArquitetoAdmin, StringComparison.OrdinalIgnoreCase)
-                ? string.Join(",", ModulosApp.Todos)
-                : null);
+        var modulos = DeterminarModulosIniciais(command.Role, command.ModulosPermitidos);
 
         var novoUsuario = new Usuario
         {
@@ -125,6 +113,45 @@ public class UsuarioService : IUsuarioService
         await _usuarioRepository.Create(novoUsuario);
         await _unitOfWork.Commit();
 
+        await EnviarEmailConviteAsync(novoUsuario, usuarioAtual, senha);
+
+        return MapearParaDto(novoUsuario);
+    }
+
+    private static void ValidarComandoConvite(ConvidarMembroEquipeCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Nome))
+            throw new ArgumentException("Nome é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(command.Email) || !new EmailAddressAttribute().IsValid(command.Email.Trim()))
+            throw new ArgumentException("E-mail em formato inválido.");
+
+        if (string.IsNullOrWhiteSpace(command.Role) || !Roles.RolesValidasEquipe.Contains(command.Role))
+            throw new ArgumentException($"Função '{command.Role}' inválida.");
+
+        var emailNormalizado = command.Email.Trim().ToLowerInvariant();
+        if (string.Equals(emailNormalizado, "suporte.cotu@cotu.com.br", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(emailNormalizado, "admin@cotu.com", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Não é permitido convidar a conta interna de suporte.");
+        }
+    }
+
+    private static string? DeterminarModulosIniciais(string role, IReadOnlyCollection<string>? modulosPermitidos)
+    {
+        if (modulosPermitidos != null && modulosPermitidos.Count > 0)
+        {
+            return string.Join(",", modulosPermitidos.Distinct(StringComparer.OrdinalIgnoreCase));
+        }
+
+        var isAdminRole = string.Equals(role, Roles.Administrador, StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(role, Roles.ArquitetoAdmin, StringComparison.OrdinalIgnoreCase);
+
+        return isAdminRole ? string.Join(",", ModulosApp.Todos) : null;
+    }
+
+    private async Task EnviarEmailConviteAsync(Usuario novoUsuario, Usuario usuarioAtual, string senha)
+    {
         try
         {
             await _emailService.SendEmailAsync(
@@ -137,8 +164,6 @@ public class UsuarioService : IUsuarioService
         {
             _logger.LogWarning(ex, "Falha ao enviar e-mail de convite para {Email}", novoUsuario.Email);
         }
-
-        return MapearParaDto(novoUsuario);
     }
 
     public async Task<MembroEquipeDto> AtualizarMembroAsync(Guid id, AtualizarMembroEquipeCommand command)
@@ -347,7 +372,7 @@ public class UsuarioService : IUsuarioService
             throw new ArgumentException("Nome é obrigatório.");
 
         var usuario = await _usuarioRepository.GetById(usuarioId)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+            ?? throw new KeyNotFoundException(MensagemUsuarioNaoEncontrado);
 
         usuario.Nome = command.Nome.Trim();
         usuario.Cargo = command.Cargo?.Trim();
@@ -369,7 +394,7 @@ public class UsuarioService : IUsuarioService
             throw new ArgumentException("A nova senha deve possuir no mínimo 6 caracteres.");
 
         var usuario = await _usuarioRepository.GetById(usuarioId)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+            ?? throw new KeyNotFoundException(MensagemUsuarioNaoEncontrado);
 
         if (!BCrypt.Net.BCrypt.Verify(command.SenhaAtual, usuario.SenhaHash))
         {
@@ -386,14 +411,9 @@ public class UsuarioService : IUsuarioService
     public async Task<string> AtualizarFotoPerfilAsync(Guid usuarioId, Stream stream, string fileName, string contentType)
     {
         var usuario = await _usuarioRepository.GetById(usuarioId)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+            ?? throw new KeyNotFoundException(MensagemUsuarioNaoEncontrado);
 
-        var extensoesValidas = new[] { ".jpg", ".jpeg", ".png", ".webp", ".svg" };
-        var ext = Path.GetExtension(fileName).ToLower();
-        if (!extensoesValidas.Contains(ext))
-        {
-            throw new ArgumentException("Formato de arquivo inválido. Formatos permitidos: JPG, PNG, WEBP e SVG.");
-        }
+        FileSecurityValidator.ValidarImagem(stream, fileName, contentType);
 
         if (!string.IsNullOrEmpty(usuario.FotoUrl))
         {
@@ -420,7 +440,7 @@ public class UsuarioService : IUsuarioService
     public async Task RemoverFotoPerfilAsync(Guid usuarioId)
     {
         var usuario = await _usuarioRepository.GetById(usuarioId)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+            ?? throw new KeyNotFoundException(MensagemUsuarioNaoEncontrado);
 
         if (!string.IsNullOrEmpty(usuario.FotoUrl))
         {
@@ -500,7 +520,7 @@ public class UsuarioService : IUsuarioService
         else
         {
             modulos = u.ModulosPermitidos
-                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Split(ModuleSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
@@ -535,7 +555,7 @@ public class UsuarioService : IUsuarioService
         else
         {
             modulos = u.ModulosPermitidos
-                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Split(ModuleSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

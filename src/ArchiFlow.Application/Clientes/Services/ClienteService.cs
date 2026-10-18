@@ -21,27 +21,21 @@ public class ClienteService : IClienteService
     private readonly IClienteRepository _clienteRepository;
     private readonly ILeadRepository    _leadRepository;
     private readonly IProjetoRepository _projetoRepository;
-    private readonly IEmailService      _emailService;
     private readonly IUnitOfWork        _unitOfWork;
-    private readonly IConfiguration     _configuration;
-    private readonly ILogger<ClienteService>? _logger;
 
     public ClienteService(
         IClienteRepository clienteRepository,
         ILeadRepository leadRepository,
         IProjetoRepository projetoRepository,
-        IEmailService emailService,
+        IEmailService? emailService,
         IUnitOfWork unitOfWork,
-        IConfiguration configuration,
+        IConfiguration? configuration = null,
         ILogger<ClienteService>? logger = null)
     {
         _clienteRepository = clienteRepository;
         _leadRepository    = leadRepository;
         _projetoRepository = projetoRepository;
-        _emailService      = emailService;
         _unitOfWork        = unitOfWork;
-        _configuration     = configuration;
-        _logger            = logger;
     }
 
     public async Task<IEnumerable<ClienteDto>> GetAll()

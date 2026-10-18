@@ -18,6 +18,8 @@ public class Usuario
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
 
+    private static readonly char[] ModuleSeparators = [',', ';'];
+
     public bool IsAdmin()
     {
         return string.Equals(Role, Roles.AdministradorGeral, StringComparison.OrdinalIgnoreCase) ||
@@ -37,7 +39,7 @@ public class Usuario
             return false;
         }
 
-        var modulos = ModulosPermitidos.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var modulos = ModulosPermitidos.Split(ModuleSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return modulos.Contains(modulo, StringComparer.OrdinalIgnoreCase);
     }
 

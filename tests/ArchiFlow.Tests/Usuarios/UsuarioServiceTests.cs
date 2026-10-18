@@ -23,6 +23,7 @@ public class UsuarioServiceTests
     private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
     private readonly Mock<ILogger<UsuarioService>> _loggerMock;
+    private readonly Mock<IStorageService> _storageServiceMock;
     private readonly UsuarioService _service;
 
     private readonly Guid _usuarioLogadoId = Guid.NewGuid();
@@ -34,6 +35,7 @@ public class UsuarioServiceTests
         _usuarioRepoMock = new Mock<IUsuarioRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _emailServiceMock = new Mock<IEmailService>();
+        _storageServiceMock = new Mock<IStorageService>();
         _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         _loggerMock = new Mock<ILogger<UsuarioService>>();
 
@@ -57,6 +59,7 @@ public class UsuarioServiceTests
             _usuarioRepoMock.Object,
             _unitOfWorkMock.Object,
             _emailServiceMock.Object,
+            _storageServiceMock.Object,
             _httpContextAccessorMock.Object,
             _loggerMock.Object
         );
@@ -720,5 +723,105 @@ public class UsuarioServiceTests
         var act = async () => await _service.ConvidarMembroAsync(command);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task AtualizarFotoPerfilAsync_QuandoImagemValida_SalvaFotoERetornaUrl()
+    {
+        var pngBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D };
+        using var stream = new MemoryStream(pngBytes);
+        _storageServiceMock.Setup(s => s.UploadAsync(It.IsAny<Stream>(), "perfil.png", "image/png", "perfil", _usuarioLogadoId.ToString()))
+            .ReturnsAsync("/uploads/perfil.png");
+
+        var result = await _service.AtualizarFotoPerfilAsync(_usuarioLogadoId, stream, "perfil.png", "image/png");
+
+        result.Should().Be("/uploads/perfil.png");
+        _usuarioLogado.FotoUrl.Should().Be("/uploads/perfil.png");
+        _usuarioRepoMock.Verify(r => r.Update(_usuarioLogado), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarFotoPerfilAsync_QuandoFotoAnteriorExiste_RemoveFotoAnterior()
+    {
+        _usuarioLogado.FotoUrl = "/uploads/antiga.png";
+        var pngBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D };
+        using var stream = new MemoryStream(pngBytes);
+        _storageServiceMock.Setup(s => s.UploadAsync(It.IsAny<Stream>(), "nova.png", "image/png", "perfil", _usuarioLogadoId.ToString()))
+            .ReturnsAsync("/uploads/nova.png");
+
+        await _service.AtualizarFotoPerfilAsync(_usuarioLogadoId, stream, "nova.png", "image/png");
+
+        _storageServiceMock.Verify(s => s.DeleteAsync("/uploads/antiga.png"), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoverFotoPerfilAsync_QuandoFotoExiste_RemoveDoStorageESalvaUsuario()
+    {
+        _usuarioLogado.FotoUrl = "/uploads/foto.png";
+
+        await _service.RemoverFotoPerfilAsync(_usuarioLogadoId);
+
+        _usuarioLogado.FotoUrl.Should().BeNull();
+        _storageServiceMock.Verify(s => s.DeleteAsync("/uploads/foto.png"), Times.Once);
+        _usuarioRepoMock.Verify(r => r.Update(_usuarioLogado), Times.Once);
+    }
+
+    [Fact]
+    public async Task AlterarSenhaAsync_QuandoSenhaAtualCorreta_AtualizaHash()
+    {
+        _usuarioLogado.SenhaHash = BCrypt.Net.BCrypt.HashPassword("SenhaAtual@123", workFactor: 12);
+        var command = new AlterarSenhaCommand("SenhaAtual@123", "NovaSenha@456");
+
+        await _service.AlterarSenhaAsync(_usuarioLogadoId, command);
+
+        BCrypt.Net.BCrypt.Verify("NovaSenha@456", _usuarioLogado.SenhaHash).Should().BeTrue();
+        _usuarioRepoMock.Verify(r => r.Update(_usuarioLogado), Times.Once);
+    }
+
+    [Fact]
+    public async Task AlterarSenhaAsync_QuandoSenhaAtualIncorreta_LancaInvalidOperationException()
+    {
+        _usuarioLogado.SenhaHash = BCrypt.Net.BCrypt.HashPassword("SenhaCorreta@123", workFactor: 12);
+        var command = new AlterarSenhaCommand("SenhaErrada@123", "NovaSenha@456");
+
+        var act = async () => await _service.AlterarSenhaAsync(_usuarioLogadoId, command);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*incorreta*");
+    }
+
+    [Fact]
+    public async Task ObterPerfilAsync_QuandoUsuarioExiste_RetornaPerfilDto()
+    {
+        var perfil = await _service.ObterPerfilAsync(_usuarioLogadoId);
+
+        perfil.Should().NotBeNull();
+        perfil.Nome.Should().Be("Arquiteto Titular");
+        perfil.Email.Should().Be("titular@studio.com");
+    }
+
+    [Fact]
+    public async Task ObterPerfilAsync_QuandoUsuarioNaoExiste_LancaKeyNotFoundException()
+    {
+        var id = Guid.NewGuid();
+        _usuarioRepoMock.Setup(r => r.GetById(id)).ReturnsAsync((Usuario?)null);
+
+        var act = async () => await _service.ObterPerfilAsync(id);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task AtualizarPerfilAsync_QuandoComandoValido_AtualizaDadosERetornaDto()
+    {
+        var command = new AtualizarPerfilCommand("Nome Atualizado", "Sócio Diretor", "(11) 91234-5678");
+
+        var result = await _service.AtualizarPerfilAsync(_usuarioLogadoId, command);
+
+        result.Nome.Should().Be("Nome Atualizado");
+        result.Cargo.Should().Be("Sócio Diretor");
+        result.Telefone.Should().Be("(11) 91234-5678");
+        _usuarioRepoMock.Verify(r => r.Update(_usuarioLogado), Times.Once);
+        _unitOfWorkMock.Verify(u => u.Commit(default), Times.Once);
     }
 }

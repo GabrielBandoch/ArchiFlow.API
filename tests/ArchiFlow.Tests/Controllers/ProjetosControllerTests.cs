@@ -4,6 +4,7 @@ using ArchiFlow.Application.Clientes.DTOs;
 using ArchiFlow.Application.Projetos.Commands;
 using ArchiFlow.Application.Projetos.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Projetos.Enum;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +16,16 @@ namespace ArchiFlow.Tests.Controllers;
 public class ProjetosControllerTests
 {
     private readonly Mock<IProjetoFacade> _facadeMock;
+    private readonly Mock<IRepresentanteClienteFacade> _repFacadeMock;
+    private readonly Mock<IAppUrlService> _appUrlServiceMock;
     private readonly ProjetosController _sut;
 
     public ProjetosControllerTests()
     {
         _facadeMock = new Mock<IProjetoFacade>();
-        _sut        = new ProjetosController(_facadeMock.Object);
+        _repFacadeMock = new Mock<IRepresentanteClienteFacade>();
+        _appUrlServiceMock = new Mock<IAppUrlService>();
+        _sut        = new ProjetosController(_facadeMock.Object, _repFacadeMock.Object, _appUrlServiceMock.Object);
     }
 
     [Fact]
@@ -252,7 +257,7 @@ public class ProjetosControllerTests
         _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
         repFacadeMock.Setup(r => r.ObterPorClienteIdAsync(clienteId)).ReturnsAsync(reps);
 
-        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object);
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
         var result = await controller.ObterRepresentantes(projId);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -267,7 +272,7 @@ public class ProjetosControllerTests
         var repFacadeMock = new Mock<IRepresentanteClienteFacade>();
         _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
 
-        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object);
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
         var result = await controller.ConvidarRepresentante(projId, new ConvidarRepresentanteCommand("A", "a@a.com", null, null));
 
         result.Should().BeOfType<BadRequestObjectResult>();
@@ -286,7 +291,7 @@ public class ProjetosControllerTests
         _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
         repFacadeMock.Setup(r => r.ConvidarRepresentanteAsync(clienteId, cmd, It.IsAny<string?>())).ReturnsAsync(repDto);
 
-        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object);
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
         var result = await controller.ConvidarRepresentante(projId, cmd);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;

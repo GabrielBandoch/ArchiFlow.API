@@ -69,7 +69,9 @@ public class Repository<T> : IRepository<T> where T : class
     protected static DateTime AsUtcEndOfDay(DateTime date)
     {
         var utc = AsUtc(date);
-        return utc.TimeOfDay == TimeSpan.Zero ? utc.Date.AddDays(1).AddTicks(-1) : utc;
+        return utc.TimeOfDay == TimeSpan.Zero
+            ? DateTime.SpecifyKind(utc.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc)
+            : utc;
     }
 }
 

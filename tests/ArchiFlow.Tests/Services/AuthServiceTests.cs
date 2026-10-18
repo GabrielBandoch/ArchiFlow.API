@@ -252,4 +252,99 @@ public class AuthServiceTests
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
+
+    [Fact]
+    public async Task Login_StaffComModulosConfigurados_DeveRetornarListaDeModulos()
+    {
+        var email = "staff@test.com";
+        var password = "password123";
+        var request = new LoginRequestDto(email, password);
+
+        var usuario = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Colaborador",
+            Email = email,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            Role = "Colaborador",
+            ModulosPermitidos = "Projetos,Financeiro",
+            Ativo = true
+        };
+
+        _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync(usuario);
+        _tokenServiceMock.Setup(t => t.GenerateToken(usuario)).Returns("staff-token");
+
+        var response = await _sut.Login(request);
+
+        response.ModulosPermitidos.Should().BeEquivalentTo(new[] { "Projetos", "Financeiro" });
+    }
+
+    [Fact]
+    public async Task Login_StaffAdminComModulosVazios_DeveRetornarTodosOsModulos()
+    {
+        var email = "admin@test.com";
+        var password = "password123";
+        var request = new LoginRequestDto(email, password);
+
+        var usuario = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Admin",
+            Email = email,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            Role = "Administrador",
+            ModulosPermitidos = null,
+            Ativo = true
+        };
+
+        _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync(usuario);
+        _tokenServiceMock.Setup(t => t.GenerateToken(usuario)).Returns("admin-token");
+
+        var response = await _sut.Login(request);
+
+        response.ModulosPermitidos.Should().BeEquivalentTo(ModulosApp.Todos);
+    }
+
+    [Fact]
+    public async Task Login_ComCredenciaisValidasDeRepresentante_DeveRetornarTokenCliente()
+    {
+        var email = "rep@cliente.com";
+        var password = "password123";
+        var request = new LoginRequestDto(email, password);
+
+        var repRepoMock = new Mock<IRepresentanteClienteRepository>();
+        var sutComRep = new AuthService(
+            _userRepoMock.Object,
+            _clientRepoMock.Object,
+            repRepoMock.Object,
+            _projRepoMock.Object,
+            _uowMock.Object,
+            _tokenServiceMock.Object
+        );
+
+        var rep = new RepresentanteCliente
+        {
+            Id = Guid.NewGuid(),
+            ClienteId = Guid.NewGuid(),
+            Nome = "Representante Ana",
+            Email = email,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            Ativo = true
+        };
+
+        var projeto = new Projeto { Id = Guid.NewGuid() };
+
+        _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync((Usuario?)null);
+        repRepoMock.Setup(r => r.ObterPorEmailAsync(email)).ReturnsAsync(rep);
+        _projRepoMock.Setup(r => r.GetByClienteId(rep.ClienteId)).ReturnsAsync(new List<Projeto> { projeto });
+        _tokenServiceMock.Setup(t => t.GenerateToken(rep, projeto.Id)).Returns("rep-token");
+
+        var response = await sutComRep.Login(request);
+
+        response.Should().NotBeNull();
+        response.Token.Should().Be("rep-token");
+        response.Perfil.Should().Be("Cliente");
+        response.Nome.Should().Be("Representante Ana");
+        response.ProjetoId.Should().Be(projeto.Id);
+    }
 }

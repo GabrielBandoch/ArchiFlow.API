@@ -4,7 +4,9 @@ using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Application.Usuarios.Commands;
 using ArchiFlow.Application.Usuarios.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ArchiFlow.API.Controllers;
@@ -16,20 +18,21 @@ public class AutenticacaoController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IPasswordRecoveryService _passwordRecoveryService;
     private readonly IRepresentanteClienteService _representanteClienteService;
-
-    public AutenticacaoController(IAuthService authService)
-        : this(authService, null!, null!)
-    {
-    }
+    private readonly IAppUrlService _appUrlService;
+    private readonly ILogger<AutenticacaoController> _logger;
 
     public AutenticacaoController(
         IAuthService authService,
         IPasswordRecoveryService passwordRecoveryService,
-        IRepresentanteClienteService representanteClienteService)
+        IRepresentanteClienteService representanteClienteService,
+        IAppUrlService appUrlService,
+        ILogger<AutenticacaoController> logger)
     {
         _authService = authService;
         _passwordRecoveryService = passwordRecoveryService;
         _representanteClienteService = representanteClienteService;
+        _appUrlService = appUrlService;
+        _logger = logger;
     }
 
     [HttpPost("login")]
@@ -65,22 +68,20 @@ public class AutenticacaoController : ControllerBase
     {
         try
         {
-            var baseUrl = ObterBaseUrl();
+            var baseUrl = _appUrlService.ObterUrlBaseConfiavel(Request.Headers.Origin.FirstOrDefault());
             await _passwordRecoveryService.SolicitarRecuperacaoAsync(command.Email, baseUrl);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Falha ao processar solicitação de recuperação de senha.");
         }
 
         return Ok(new { message = "Se o e-mail informado estiver cadastrado, as instruções para redefinição de senha foram enviadas." });
     }
 
     [HttpPost("validar-token")]
-    public async Task<IActionResult> ValidarTokenRecuperacao([FromBody] ValidarTokenRecuperacaoCommand command)
-    {
-        var resultado = await _passwordRecoveryService.ValidarTokenAsync(command.Token);
-        return Ok(resultado);
-    }
+    public async Task<IActionResult> ValidarTokenRecuperacao([FromBody] ValidarTokenRecuperacaoCommand command) =>
+        Ok(await _passwordRecoveryService.ValidarTokenAsync(command.Token));
 
     [HttpPost("redefinir-senha")]
     public async Task<IActionResult> RedefinirSenha([FromBody] RedefinirSenhaCommand command)
@@ -97,11 +98,8 @@ public class AutenticacaoController : ControllerBase
     }
 
     [HttpGet("convite/{token}")]
-    public async Task<IActionResult> ValidarTokenConvite(string token)
-    {
-        var resultado = await _representanteClienteService.ValidarTokenConviteAsync(token);
-        return Ok(resultado);
-    }
+    public async Task<IActionResult> ValidarTokenConvite(string token) =>
+        Ok(await _representanteClienteService.ValidarTokenConviteAsync(token));
 
     [HttpPost("ativar-conta")]
     public async Task<IActionResult> AtivarConta([FromBody] AtivarContaRepresentanteCommand command)
@@ -115,11 +113,5 @@ public class AutenticacaoController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
-    }
-
-    private string ObterBaseUrl()
-    {
-        var origin = Request.Headers["Origin"].ToString();
-        return !string.IsNullOrWhiteSpace(origin) ? origin : $"{Request.Scheme}://{Request.Host}";
     }
 }
