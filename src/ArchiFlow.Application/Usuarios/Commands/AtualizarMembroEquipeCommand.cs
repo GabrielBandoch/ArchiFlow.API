@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ArchiFlow.Application.Usuarios.Commands;
@@ -11,11 +12,13 @@ public record AtualizarMembroEquipeCommand(
     string Role,
 
     [StringLength(100, ErrorMessage = "Cargo não pode ultrapassar 100 caracteres.")]
-    string? Cargo,
+    string? Cargo = null,
 
     [StringLength(30, ErrorMessage = "Telefone não pode ultrapassar 30 caracteres.")]
-    string? Telefone,
+    string? Telefone = null,
 
     [EmailAddress(ErrorMessage = "E-mail em formato inválido.")]
-    string? Email = null
+    string? Email = null,
+
+    List<string>? ModulosPermitidos = null
 );

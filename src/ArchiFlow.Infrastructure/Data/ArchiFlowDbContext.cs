@@ -8,6 +8,7 @@ using ArchiFlow.Domain.Dashboard;
 using ArchiFlow.Domain.Financeiro;
 using ArchiFlow.Domain.Fornecedores;
 using ArchiFlow.Domain.Shared;
+using ArchiFlow.Domain.Empresa;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArchiFlow.Infrastructure.Data;
@@ -15,6 +16,11 @@ namespace ArchiFlow.Infrastructure.Data;
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class ArchiFlowDbContext : DbContext
 {
+    static ArchiFlowDbContext()
+    {
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    }
+
     public ArchiFlowDbContext(DbContextOptions<ArchiFlowDbContext> options) : base(options) { }
 
     public DbSet<Projeto>              Projetos              => Set<Projeto>();
@@ -24,6 +30,9 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<TemplateEtapa>        TemplatesEtapa        => Set<TemplateEtapa>();
     public DbSet<Usuario>              Usuarios              => Set<Usuario>();
     public DbSet<Cliente>              Clientes              => Set<Cliente>();
+    public DbSet<RepresentanteCliente> RepresentantesClientes => Set<RepresentanteCliente>();
+    public DbSet<TokenRecuperacaoSenha> TokensRecuperacaoSenha => Set<TokenRecuperacaoSenha>();
+    public DbSet<DadosEmpresa>          DadosEmpresa           => Set<DadosEmpresa>();
     public DbSet<Lead>                 Leads                 => Set<Lead>();
     public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
     public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
@@ -147,6 +156,8 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(u => u.Role).HasColumnName("USR_Role").IsRequired().HasMaxLength(50);
             entity.Property(u => u.Cargo).HasColumnName("USR_Cargo").HasMaxLength(100);
             entity.Property(u => u.Telefone).HasColumnName("USR_Telefone").HasMaxLength(30);
+            entity.Property(u => u.FotoUrl).HasColumnName("USR_Foto_Url");
+            entity.Property(u => u.ModulosPermitidos).HasColumnName("USR_Modulos_Permitidos");
             entity.Property(u => u.Ativo).HasColumnName("USR_Ativo");
             entity.Property(u => u.CriadoEm).HasColumnName("USR_Criado_Em");
             entity.Property(u => u.AtualizadoEm).HasColumnName("USR_Atualizado_Em");
@@ -535,5 +546,98 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(o => o.Rotulo).IsRequired().HasMaxLength(200);
             entity.HasIndex(o => new { o.Categoria, o.Chave }).IsUnique();
         });
+
+        modelBuilder.Entity<TokenRecuperacaoSenha>(entity =>
+        {
+            entity.ToTable("Tokens_Recuperacao_Senha");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasColumnName("TRS_Id");
+            entity.Property(t => t.Email).HasColumnName("TRS_Email").IsRequired().HasMaxLength(256);
+            entity.Property(t => t.TokenHash).HasColumnName("TRS_Token_Hash").IsRequired().HasMaxLength(128);
+            entity.Property(t => t.TipoUsuario).HasColumnName("TRS_Tipo_Usuario").IsRequired().HasMaxLength(20);
+            entity.Property(t => t.CriadoEm).HasColumnName("TRS_Criado_Em").IsRequired();
+            entity.Property(t => t.ExpiraEm).HasColumnName("TRS_Expira_Em").IsRequired();
+            entity.Property(t => t.UsadoEm).HasColumnName("TRS_Usado_Em");
+            entity.Property(t => t.Tentativas).HasColumnName("TRS_Tentativas").IsRequired();
+
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => t.Email);
+        });
+
+        modelBuilder.Entity<RepresentanteCliente>(entity =>
+        {
+            entity.ToTable("Representantes_Clientes");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Id).HasColumnName("REP_Id");
+            entity.Property(r => r.ClienteId).HasColumnName("REP_Cliente_Id").IsRequired();
+            entity.Property(r => r.Nome).HasColumnName("REP_Nome").IsRequired().HasMaxLength(200);
+            entity.Property(r => r.Email).HasColumnName("REP_Email").IsRequired().HasMaxLength(256);
+            entity.Property(r => r.Telefone).HasColumnName("REP_Telefone").HasMaxLength(30);
+            entity.Property(r => r.Cargo).HasColumnName("REP_Cargo").HasMaxLength(100);
+            entity.Property(r => r.SenhaHash).HasColumnName("REP_Senha_Hash");
+            entity.Property(r => r.Ativo).HasColumnName("REP_Ativo").IsRequired();
+            entity.Property(r => r.ConviteTokenHash).HasColumnName("REP_Convite_Token_Hash").HasMaxLength(128);
+            entity.Property(r => r.ConviteExpiraEm).HasColumnName("REP_Convite_Expira_Em");
+            entity.Property(r => r.ConviteUsadoEm).HasColumnName("REP_Convite_Usado_Em");
+            entity.Property(r => r.CriadoEm).HasColumnName("REP_Criado_Em").IsRequired();
+            entity.Property(r => r.AtualizadoEm).HasColumnName("REP_Atualizado_Em");
+
+            entity.HasIndex(r => r.Email).IsUnique();
+            entity.HasIndex(r => r.ClienteId);
+
+            entity.HasOne(r => r.Cliente)
+                  .WithMany()
+                  .HasForeignKey(r => r.ClienteId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DadosEmpresa>(entity =>
+        {
+            entity.ToTable("Dados_Empresa");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("EMP_Id");
+            entity.Property(e => e.EscritorioId).HasColumnName("EMP_Escritorio_Id");
+            entity.Property(e => e.NomeEmpresa).HasColumnName("EMP_Nome_Empresa").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.RazaoSocial).HasColumnName("EMP_Razao_Social").HasMaxLength(200);
+            entity.Property(e => e.Cnpj).HasColumnName("EMP_Cnpj").HasMaxLength(30);
+            entity.Property(e => e.RegistroProfissional).HasColumnName("EMP_Registro_Profissional").HasMaxLength(150);
+            entity.Property(e => e.Slogan).HasColumnName("EMP_Slogan").HasMaxLength(300);
+            entity.Property(e => e.Email).HasColumnName("EMP_Email").HasMaxLength(150);
+            entity.Property(e => e.Telefone).HasColumnName("EMP_Telefone").HasMaxLength(50);
+            entity.Property(e => e.Endereco).HasColumnName("EMP_Endereco").HasMaxLength(300);
+            entity.Property(e => e.Cidade).HasColumnName("EMP_Cidade").HasMaxLength(100);
+            entity.Property(e => e.Estado).HasColumnName("EMP_Estado").HasMaxLength(50);
+            entity.Property(e => e.Cep).HasColumnName("EMP_Cep").HasMaxLength(20);
+            entity.Property(e => e.Website).HasColumnName("EMP_Website").HasMaxLength(200);
+            entity.Property(e => e.LogoUrl).HasColumnName("EMP_Logo_Url");
+            entity.Property(e => e.CorPrimaria).HasColumnName("EMP_Cor_Primaria").HasMaxLength(20);
+        });
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<NullableUtcDateTimeConverter>();
+    }
+}
+
+public class UtcDateTimeConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>
+{
+    public UtcDateTimeConverter()
+        : base(
+            v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc))
+    {
+    }
+}
+
+public class NullableUtcDateTimeConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>
+{
+    public NullableUtcDateTimeConverter()
+        : base(
+            v => !v.HasValue ? v : (v.Value.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)),
+            v => !v.HasValue ? v : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc))
+    {
     }
 }

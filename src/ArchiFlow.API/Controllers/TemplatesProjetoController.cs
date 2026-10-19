@@ -1,5 +1,7 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Projetos.Commands;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -10,6 +12,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/templates-projeto")]
 [Authorize]
+[RequireModule(ModulosApp.Projetos)]
 public class TemplatesProjetoController : ControllerBase
 {
     private readonly IProjetoFacade _facade;

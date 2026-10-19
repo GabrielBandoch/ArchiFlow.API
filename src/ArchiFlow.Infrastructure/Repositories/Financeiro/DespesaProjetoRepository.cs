@@ -32,10 +32,16 @@ public class DespesaProjetoRepository : Repository<DespesaProjeto>, IDespesaProj
             query = query.Where(d => d.Categoria == categoria.Value);
 
         if (dataInicio.HasValue)
-            query = query.Where(d => d.DataDespesa >= dataInicio.Value);
+        {
+            var inicioUtc = AsUtc(dataInicio.Value);
+            query = query.Where(d => d.DataDespesa >= inicioUtc);
+        }
 
         if (dataFim.HasValue)
-            query = query.Where(d => d.DataDespesa <= dataFim.Value);
+        {
+            var fimUtc = AsUtcEndOfDay(dataFim.Value);
+            query = query.Where(d => d.DataDespesa <= fimUtc);
+        }
 
         return await query
             .OrderByDescending(d => d.DataDespesa)

@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Agenda.Commands;
 using ArchiFlow.Application.Agenda.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +16,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[RequireModule(ModulosApp.Agenda)]
 public class AgendaController : ControllerBase
 {
     private readonly IAgendaFacade _agendaFacade;

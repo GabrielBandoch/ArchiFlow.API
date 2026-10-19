@@ -112,7 +112,7 @@ public class ClienteServiceTests
         var result = await _sut.ConvertLead(command);
 
         result.Should().NotBeNull();
-        result.SenhaTemporaria.Should().StartWith("Arch@");
+        result.SenhaTemporaria.Should().BeEmpty();
         result.Cliente.Nome.Should().Be(lead.Nome);
         result.Cliente.Email.Should().Be(lead.Email);
         result.Cliente.Ativo.Should().BeTrue();
@@ -125,14 +125,14 @@ public class ClienteServiceTests
             c.LeadId == leadId &&
             c.CpfCnpj == "12345678901" &&
             c.Endereco == "Rua de Teste" &&
-            c.SenhaPortal != null
+            c.SenhaPortal == null
         )), Times.Once);
 
         _emailServiceMock.Verify(m => m.SendEmailAsync(
-            lead.Email,
+            It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<string>()
-        ), Times.Once);
+        ), Times.Never);
 
         _uowMock.Verify(u => u.Commit(default), Times.Once);
     }

@@ -113,4 +113,68 @@ public class UsuarioFacadeTests
 
         _serviceMock.Verify(s => s.ExcluirMembroAsync(id), Times.Once);
     }
+
+    [Fact]
+    public async Task ObterPerfilAsync_DeveDelegarParaService()
+    {
+        var id = Guid.NewGuid();
+        var dto = new PerfilUsuarioDto(id, null, "Nome", "email@teste.com", "Arquiteto", null, null, null, [], DateTime.UtcNow);
+        _serviceMock.Setup(s => s.ObterPerfilAsync(id)).ReturnsAsync(dto);
+
+        var result = await _facade.ObterPerfilAsync(id);
+
+        result.Should().Be(dto);
+        _serviceMock.Verify(s => s.ObterPerfilAsync(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarPerfilAsync_DeveDelegarParaService()
+    {
+        var id = Guid.NewGuid();
+        var cmd = new AtualizarPerfilCommand("Novo Nome", "Cargo", "12345");
+        var dto = new PerfilUsuarioDto(id, null, "Novo Nome", "email@teste.com", "Arquiteto", "Cargo", "12345", null, [], DateTime.UtcNow);
+        _serviceMock.Setup(s => s.AtualizarPerfilAsync(id, cmd)).ReturnsAsync(dto);
+
+        var result = await _facade.AtualizarPerfilAsync(id, cmd);
+
+        result.Should().Be(dto);
+        _serviceMock.Verify(s => s.AtualizarPerfilAsync(id, cmd), Times.Once);
+    }
+
+    [Fact]
+    public async Task AlterarSenhaAsync_DeveDelegarParaService()
+    {
+        var id = Guid.NewGuid();
+        var cmd = new AlterarSenhaCommand("SenhaAntiga1", "NovaSenha2");
+        _serviceMock.Setup(s => s.AlterarSenhaAsync(id, cmd)).Returns(Task.CompletedTask);
+
+        await _facade.AlterarSenhaAsync(id, cmd);
+
+        _serviceMock.Verify(s => s.AlterarSenhaAsync(id, cmd), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarFotoPerfilAsync_DeveDelegarParaService()
+    {
+        var id = Guid.NewGuid();
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("fake-image"));
+        var url = "https://cdn.teste.com/foto.png";
+        _serviceMock.Setup(s => s.AtualizarFotoPerfilAsync(id, stream, "foto.png", "image/png")).ReturnsAsync(url);
+
+        var result = await _facade.AtualizarFotoPerfilAsync(id, stream, "foto.png", "image/png");
+
+        result.Should().Be(url);
+        _serviceMock.Verify(s => s.AtualizarFotoPerfilAsync(id, stream, "foto.png", "image/png"), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoverFotoPerfilAsync_DeveDelegarParaService()
+    {
+        var id = Guid.NewGuid();
+        _serviceMock.Setup(s => s.RemoverFotoPerfilAsync(id)).Returns(Task.CompletedTask);
+
+        await _facade.RemoverFotoPerfilAsync(id);
+
+        _serviceMock.Verify(s => s.RemoverFotoPerfilAsync(id), Times.Once);
+    }
 }

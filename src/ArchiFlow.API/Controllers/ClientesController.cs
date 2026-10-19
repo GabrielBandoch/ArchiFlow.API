@@ -1,5 +1,7 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Clientes.Commands;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -10,12 +12,15 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/clientes")]
 [Authorize]
+[RequireModule(ModulosApp.Clientes)]
 public class ClientesController : ControllerBase
 {
     private readonly IClienteFacade _facade;
 
-    public ClientesController(IClienteFacade facade) 
-        => _facade = facade;
+    public ClientesController(IClienteFacade facade)
+    {
+        _facade = facade;
+    }
 
     [HttpGet]
     [Authorize(Policy = "AcessoArquiteto")]

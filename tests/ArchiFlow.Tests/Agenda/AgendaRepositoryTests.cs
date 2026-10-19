@@ -153,4 +153,33 @@ public class AgendaRepositoryTests
         var inexistente = await repo.ObterPorEscritorioIdAsync(Guid.NewGuid());
         inexistente.Should().BeNull();
     }
+
+    [Fact]
+    public async Task CompromissoRepository_ObterPorPeriodoAsync_DeveSuportarDateTimeKindUnspecified()
+    {
+        using var context = TestDbContextFactory.Create();
+        var repo = new CompromissoRepository(context);
+
+        var escritorioId = Guid.NewGuid();
+        var c = new Compromisso
+        {
+            Id = Guid.NewGuid(),
+            EscritorioId = escritorioId,
+            Titulo = "Reuniao Alinhamento",
+            DataHoraInicio = new DateTime(2026, 10, 15, 10, 0, 0, DateTimeKind.Utc),
+            DataHoraFim = new DateTime(2026, 10, 15, 11, 0, 0, DateTimeKind.Utc),
+            Status = StatusCompromisso.Agendado
+        };
+
+        context.Compromissos.Add(c);
+        await context.SaveChangesAsync();
+
+        var inicioUnspecified = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Unspecified);
+        var fimUnspecified = new DateTime(2026, 10, 18, 0, 0, 0, DateTimeKind.Unspecified);
+
+        var resultado = await repo.ObterPorPeriodoAsync(escritorioId, inicioUnspecified, fimUnspecified);
+
+        resultado.Should().ContainSingle();
+        resultado.First().Id.Should().Be(c.Id);
+    }
 }

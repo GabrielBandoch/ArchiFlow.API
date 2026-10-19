@@ -12,12 +12,11 @@ namespace ArchiFlow.Tests.Controllers;
 
 public class AutenticacaoControllerTests
 {
-    private readonly Mock<IAuthService> _authServiceMock;
+    private readonly Mock<IAuthService> _authServiceMock = new();
     private readonly AutenticacaoController _sut;
 
     public AutenticacaoControllerTests()
     {
-        _authServiceMock = new Mock<IAuthService>();
         _sut = new AutenticacaoController(_authServiceMock.Object);
     }
 

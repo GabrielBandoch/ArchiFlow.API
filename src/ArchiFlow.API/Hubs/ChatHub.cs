@@ -1,7 +1,12 @@
+using ArchiFlow.API.Middleware;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Shared;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -10,15 +15,74 @@ namespace ArchiFlow.API.Hubs;
 [Authorize]
 public class ChatHub : Hub
 {
-    private readonly IMensagemChatFacade _mensagemFacade;
+    private readonly IMensagemChatFacade? _mensagemFacade;
+    private readonly IServiceProvider? _serviceProvider;
+    private readonly ITenantContext? _tenantContext;
 
     public ChatHub(IMensagemChatFacade mensagemFacade)
     {
         _mensagemFacade = mensagemFacade;
     }
 
+    [ActivatorUtilitiesConstructor]
+    public ChatHub(IServiceProvider serviceProvider, ITenantContext tenantContext)
+    {
+        _serviceProvider = serviceProvider;
+        _tenantContext = tenantContext;
+    }
+
+    private IMensagemChatFacade GetFacade()
+    {
+        if (_mensagemFacade != null)
+        {
+            return _mensagemFacade;
+        }
+
+        if (_serviceProvider != null)
+        {
+            return _serviceProvider.GetRequiredService<IMensagemChatFacade>();
+        }
+
+        throw new InvalidOperationException("Nenhum serviço de mensagens configurado.");
+    }
+
+    private void EnsureTenantContext()
+    {
+        if (_tenantContext == null) return;
+
+        var user = Context.User;
+        var tenant = user?.FindFirst("tenant")?.Value;
+        if (string.IsNullOrWhiteSpace(tenant))
+        {
+            tenant = user?.FindFirst("escritorio_id")?.Value
+                  ?? user?.FindFirst("EscritorioId")?.Value;
+        }
+
+        Microsoft.AspNetCore.Http.HttpContext? httpContext = null;
+        try
+        {
+            httpContext = Context.GetHttpContext();
+        }
+        catch (NullReferenceException)
+        {
+        }
+
+        var host = httpContext?.Request?.Host.Host ?? "localhost";
+
+        if (string.IsNullOrWhiteSpace(tenant) && httpContext != null)
+        {
+            tenant = TenantResolutionMiddleware.ResolveTenantFromHost(host);
+        }
+
+        if (!string.IsNullOrWhiteSpace(tenant))
+        {
+            _tenantContext.SetTenant(tenant, host);
+        }
+    }
+
     public async Task EntrarNoProjeto(string projetoIdStr)
     {
+        EnsureTenantContext();
         if (Guid.TryParse(projetoIdStr, out var projetoId) && PossuiAcessoAoProjeto(projetoId))
         {
             var grupo = ObterNomeGrupo(projetoId);
@@ -27,7 +91,8 @@ public class ChatHub : Hub
             var usuarioId = ObterUsuarioId();
             if (usuarioId.HasValue)
             {
-                await _mensagemFacade.MarcarComoLidas(projetoId, usuarioId.Value);
+                var facade = GetFacade();
+                await facade.MarcarComoLidas(projetoId, usuarioId.Value);
             }
         }
     }
@@ -43,6 +108,7 @@ public class ChatHub : Hub
 
     public async Task EnviarMensagem(string projetoIdStr, string conteudo)
     {
+        EnsureTenantContext();
         if (!Guid.TryParse(projetoIdStr, out var projetoId) || string.IsNullOrWhiteSpace(conteudo) || !PossuiAcessoAoProjeto(projetoId))
         {
             return;
@@ -52,7 +118,8 @@ public class ChatHub : Hub
         var usuarioNome = ObterUsuarioNome() ?? "Usuário";
         var usuarioPerfil = ObterUsuarioPerfil() ?? "Colaborador";
 
-        var mensagemDto = await _mensagemFacade.EnviarMensagem(
+        var facade = GetFacade();
+        var mensagemDto = await facade.EnviarMensagem(
             projetoId,
             usuarioId,
             usuarioNome,
@@ -73,7 +140,7 @@ public class ChatHub : Hub
         }
 
         var userType = user.FindFirst("user_type")?.Value;
-        if (userType == "staff")
+        if (string.Equals(userType, "staff", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
@@ -81,12 +148,32 @@ public class ChatHub : Hub
         var role = user.FindFirst(ClaimTypes.Role)?.Value
                 ?? user.FindFirst("role")?.Value;
 
-        if (role == "Administrador" || role == "Gerente" || role == "Colaborador" || role == "Arquiteto")
+        if (!string.IsNullOrEmpty(role))
         {
-            return true;
+            var allowedRoles = new[]
+            {
+                Roles.Administrador,
+                Roles.Gerente,
+                Roles.Colaborador,
+                Roles.AdministradorGeral,
+                Roles.ArquitetoAdmin,
+                Roles.ArquitetoColaborador,
+                Roles.Estagiario,
+                Roles.Financeiro,
+                "Administrador",
+                "Gerente",
+                "Colaborador",
+                "Arquiteto",
+                "AdministradorGeral"
+            };
+
+            if (allowedRoles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
         }
 
-        if (userType == "client" || role == "Cliente")
+        if (string.Equals(userType, "client", StringComparison.OrdinalIgnoreCase) || string.Equals(role, "Cliente", StringComparison.OrdinalIgnoreCase))
         {
             var claimProjetoId = user.FindFirst("projeto_id")?.Value
                               ?? user.FindFirst("projetoId")?.Value;

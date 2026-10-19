@@ -1,6 +1,8 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Financeiro.Commands;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Domain.Financeiro;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -11,6 +13,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/financeiro")]
 [Authorize]
+[RequireModule(ModulosApp.Financeiro)]
 public class FinanceiroController : ControllerBase
 {
     private readonly IFinanceiroFacade _facade;

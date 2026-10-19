@@ -1,7 +1,10 @@
 using ArchiFlow.API.Controllers;
+using ArchiFlow.Application.Clientes.Commands;
+using ArchiFlow.Application.Clientes.DTOs;
 using ArchiFlow.Application.Projetos.Commands;
 using ArchiFlow.Application.Projetos.DTOs;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Projetos.Enum;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
@@ -13,12 +16,16 @@ namespace ArchiFlow.Tests.Controllers;
 public class ProjetosControllerTests
 {
     private readonly Mock<IProjetoFacade> _facadeMock;
+    private readonly Mock<IRepresentanteClienteFacade> _repFacadeMock;
+    private readonly Mock<IAppUrlService> _appUrlServiceMock;
     private readonly ProjetosController _sut;
 
     public ProjetosControllerTests()
     {
         _facadeMock = new Mock<IProjetoFacade>();
-        _sut        = new ProjetosController(_facadeMock.Object);
+        _repFacadeMock = new Mock<IRepresentanteClienteFacade>();
+        _appUrlServiceMock = new Mock<IAppUrlService>();
+        _sut        = new ProjetosController(_facadeMock.Object, _repFacadeMock.Object, _appUrlServiceMock.Object);
     }
 
     [Fact]
@@ -233,5 +240,61 @@ public class ProjetosControllerTests
 
         result.Should().BeOfType<NoContentResult>();
         _facadeMock.Verify(f => f.Delete(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ObterRepresentantes_QuandoProjetoExisteEClientePossuiRepresentantes_DeveRetornarOk()
+    {
+        var projId = Guid.NewGuid();
+        var clienteId = Guid.NewGuid();
+        var projetoDto = new ProjetoDto(projId, "P1", "", StatusProjeto.Briefing, "Briefing", TipoProjeto.Residencial, "Residencial", DateTime.UtcNow, null, 100, clienteId, DateTime.UtcNow, null, new List<EtapaProjetoDto>(), 0);
+        var reps = new List<RepresentanteClienteDto>
+        {
+            new(Guid.NewGuid(), clienteId, "João", "joao@teste.com", "1199999999", "Diretor", true, "Convite Enviado", DateTime.UtcNow, null)
+        };
+
+        var repFacadeMock = new Mock<IRepresentanteClienteFacade>();
+        _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
+        repFacadeMock.Setup(r => r.ObterPorClienteIdAsync(clienteId)).ReturnsAsync(reps);
+
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
+        var result = await controller.ObterRepresentantes(projId);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().BeEquivalentTo(reps);
+    }
+
+    [Fact]
+    public async Task ConvidarRepresentante_QuandoProjetoSemCliente_DeveRetornarBadRequest()
+    {
+        var projId = Guid.NewGuid();
+        var projetoDto = new ProjetoDto(projId, "P1", "", StatusProjeto.Briefing, "Briefing", TipoProjeto.Residencial, "Residencial", DateTime.UtcNow, null, 100, Guid.Empty, DateTime.UtcNow, null, new List<EtapaProjetoDto>(), 0);
+        var repFacadeMock = new Mock<IRepresentanteClienteFacade>();
+        _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
+
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
+        var result = await controller.ConvidarRepresentante(projId, new ConvidarRepresentanteCommand("A", "a@a.com", null, null));
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task ConvidarRepresentante_QuandoProjetoValido_DeveRetornarOk()
+    {
+        var projId = Guid.NewGuid();
+        var clienteId = Guid.NewGuid();
+        var projetoDto = new ProjetoDto(projId, "P1", "", StatusProjeto.Briefing, "Briefing", TipoProjeto.Residencial, "Residencial", DateTime.UtcNow, null, 100, clienteId, DateTime.UtcNow, null, new List<EtapaProjetoDto>(), 0);
+        var cmd = new ConvidarRepresentanteCommand("Maria", "maria@teste.com", null, null);
+        var repDto = new RepresentanteClienteDto(Guid.NewGuid(), clienteId, "Maria", "maria@teste.com", null, null, true, "Pendente", DateTime.UtcNow, null);
+
+        var repFacadeMock = new Mock<IRepresentanteClienteFacade>();
+        _facadeMock.Setup(f => f.GetById(projId)).ReturnsAsync(projetoDto);
+        repFacadeMock.Setup(r => r.ConvidarRepresentanteAsync(clienteId, cmd, It.IsAny<string?>())).ReturnsAsync(repDto);
+
+        var controller = new ProjetosController(_facadeMock.Object, repFacadeMock.Object, _appUrlServiceMock.Object);
+        var result = await controller.ConvidarRepresentante(projId, cmd);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().Be(repDto);
     }
 }

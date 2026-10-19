@@ -83,7 +83,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
         services.AddScoped<ITemplateProjetoRepository, TemplateProjetoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<ITokenRecuperacaoSenhaRepository, TokenRecuperacaoSenhaRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
+        services.AddScoped<IRepresentanteClienteRepository, RepresentanteClienteRepository>();
+        services.AddScoped<ArchiFlow.Domain.Empresa.IDadosEmpresaRepository, ArchiFlow.Infrastructure.Repositories.Empresa.DadosEmpresaRepository>();
         services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
         services.AddScoped<IArquivoRepository, ArquivoRepository>();
@@ -110,6 +113,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrigemLeadFacade, OrigemLeadFacade>();
         services.AddScoped<IClienteService, ClienteService>();
         services.AddScoped<IClienteFacade, ClienteFacade>();
+        services.AddScoped<IRepresentanteClienteService, RepresentanteClienteService>();
+        services.AddScoped<IRepresentanteClienteFacade, RepresentanteClienteFacade>();
+        services.AddScoped<ArchiFlow.Application.Interfaces.Services.IEmpresaService, ArchiFlow.Application.Empresa.Services.EmpresaService>();
+        services.AddScoped<ArchiFlow.Application.Interfaces.Facades.IEmpresaFacade, ArchiFlow.Application.Empresa.Facades.EmpresaFacade>();
+        services.AddScoped<ArchiFlow.Application.Autenticacao.Services.PasswordRecoveryRepositories>();
+        services.AddScoped<IPasswordRecoveryService, ArchiFlow.Application.Autenticacao.Services.PasswordRecoveryService>();
+        services.AddSingleton<IAppUrlService, AppUrlService>();
         services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();
         services.AddScoped<IArquivoFacade, ArchiFlow.Application.Arquivos.Facades.ArquivoFacade>();
         // Financeiro Services & Facades
@@ -155,7 +165,8 @@ public static class ServiceCollectionExtensions
             ?? Environment.GetEnvironmentVariable("AWS_DEFAULT_REGION");
 
         var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
-        if (!string.IsNullOrWhiteSpace(smtpUser))
+        var smtpHost = Environment.GetEnvironmentVariable("SMTP_HOST") ?? Environment.GetEnvironmentVariable("SMTP_SERVER");
+        if (!string.IsNullOrWhiteSpace(smtpUser) || !string.IsNullOrWhiteSpace(smtpHost))
         {
             services.AddScoped<IEmailService, SmtpEmailService>();
         }
@@ -169,7 +180,8 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IEmailService, ConsoleEmailService>();
         }
 
-        if (environment.IsProduction() && !string.IsNullOrWhiteSpace(awsRegion))
+        var s3Bucket = Environment.GetEnvironmentVariable("AWS_S3_BUCKET") ?? Environment.GetEnvironmentVariable("S3_BUCKET");
+        if (!string.IsNullOrWhiteSpace(s3Bucket) || (environment.IsProduction() && !string.IsNullOrWhiteSpace(awsRegion)))
         {
             services.AddScoped<Amazon.S3.IAmazonS3, Amazon.S3.AmazonS3Client>();
             services.AddScoped<IStorageService, S3StorageService>();

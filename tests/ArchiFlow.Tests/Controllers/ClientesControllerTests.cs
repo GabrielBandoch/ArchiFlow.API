@@ -14,12 +14,11 @@ namespace ArchiFlow.Tests.Controllers;
 
 public class ClientesControllerTests
 {
-    private readonly Mock<IClienteFacade> _facadeMock;
+    private readonly Mock<IClienteFacade> _facadeMock = new();
     private readonly ClientesController _sut;
 
     public ClientesControllerTests()
     {
-        _facadeMock = new Mock<IClienteFacade>();
         _sut = new ClientesController(_facadeMock.Object);
     }
 

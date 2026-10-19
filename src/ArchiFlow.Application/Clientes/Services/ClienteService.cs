@@ -21,27 +21,21 @@ public class ClienteService : IClienteService
     private readonly IClienteRepository _clienteRepository;
     private readonly ILeadRepository    _leadRepository;
     private readonly IProjetoRepository _projetoRepository;
-    private readonly IEmailService      _emailService;
     private readonly IUnitOfWork        _unitOfWork;
-    private readonly IConfiguration     _configuration;
-    private readonly ILogger<ClienteService>? _logger;
 
     public ClienteService(
         IClienteRepository clienteRepository,
         ILeadRepository leadRepository,
         IProjetoRepository projetoRepository,
-        IEmailService emailService,
+        IEmailService? emailService,
         IUnitOfWork unitOfWork,
-        IConfiguration configuration,
+        IConfiguration? configuration = null,
         ILogger<ClienteService>? logger = null)
     {
         _clienteRepository = clienteRepository;
         _leadRepository    = leadRepository;
         _projetoRepository = projetoRepository;
-        _emailService      = emailService;
         _unitOfWork        = unitOfWork;
-        _configuration     = configuration;
-        _logger            = logger;
     }
 
     public async Task<IEnumerable<ClienteDto>> GetAll()
@@ -100,10 +94,6 @@ public class ClienteService : IClienteService
             throw new ArgumentException("Este e-mail já está cadastrado para outro cliente.");
         }
 
-        var tempCode = RandomNumberGenerator.GetInt32(1000, 10000);
-        var tempPassword = $"Arch@{tempCode}";
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12);
-
         var cliente = new Cliente
         {
             Id = Guid.NewGuid(),
@@ -114,7 +104,7 @@ public class ClienteService : IClienteService
             CpfCnpj = command.CpfCnpj,
             Endereco = command.Endereco,
             FotoUrl = command.FotoUrl,
-            SenhaPortal = passwordHash,
+            SenhaPortal = null,
             Ativo = true
         };
 
@@ -124,28 +114,6 @@ public class ClienteService : IClienteService
         await _clienteRepository.Create(cliente);
         await _leadRepository.Update(lead);
         await _unitOfWork.Commit();
-
-        var appName = _configuration["APP_NAME"] ?? "Duna";
-        var companyName = _configuration["COMPANY_NAME"] ?? "Duna Arquitetura";
-        var emailSubject = $"Bem-vindo ao Portal do Cliente - {appName}";
-        var emailBody = $@"
-            <h2>Olá, {cliente.Nome}!</h2>
-            <p>Seu cadastro como cliente no {appName} foi concluído com sucesso.</p>
-            <p>A partir de agora, você pode acompanhar todas as etapas, cronograma e arquivos do seu projeto em tempo real.</p>
-            <h3>Suas credenciais de acesso:</h3>
-            <p><strong>E-mail:</strong> {cliente.Email}</p>
-            <p><strong>Senha Temporária:</strong> {tempPassword}</p>
-            <p>Recomendamos alterar sua senha no primeiro acesso.</p>
-            <p>Atenciosamente,<br/>Equipe {companyName}</p>";
-
-        try
-        {
-            await _emailService.SendEmailAsync(cliente.Email, emailSubject, emailBody);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Falha ao enviar e-mail de acesso ao portal para o cliente {Email}.", cliente.Email);
-        }
 
         var dto = new ClienteDto(
             cliente.Id,
@@ -160,7 +128,7 @@ public class ClienteService : IClienteService
             cliente.FotoUrl
         );
 
-        return new ConversaoClienteResponseDto(dto, tempPassword);
+        return new ConversaoClienteResponseDto(dto, string.Empty);
     }
 
     public async Task<ClienteDto> Update(AtualizarClienteCommand command)

@@ -5,6 +5,8 @@ using ArchiFlow.API.Hubs;
 using ArchiFlow.Infrastructure.Data;
 using Serilog;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 await EnvLoader.LoadAsync();

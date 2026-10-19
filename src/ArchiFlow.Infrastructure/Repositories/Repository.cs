@@ -57,4 +57,21 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task<bool> Exists(Guid id) =>
         await _dbSet.FindAsync(id) is not null;
+
+    protected static DateTime AsUtc(DateTime date) =>
+        date.Kind switch
+        {
+            DateTimeKind.Utc => date,
+            DateTimeKind.Local => date.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(date, DateTimeKind.Utc)
+        };
+
+    protected static DateTime AsUtcEndOfDay(DateTime date)
+    {
+        var utc = AsUtc(date);
+        return utc.TimeOfDay == TimeSpan.Zero
+            ? DateTime.SpecifyKind(utc.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc)
+            : utc;
+    }
 }
+

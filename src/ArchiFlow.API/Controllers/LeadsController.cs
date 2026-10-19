@@ -1,5 +1,7 @@
+using ArchiFlow.API.Security;
 using ArchiFlow.Application.Leads.Commands;
 using ArchiFlow.Application.Interfaces.Facades;
+using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -10,6 +12,7 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/leads")]
 [Authorize]
+[RequireModule(ModulosApp.Leads)]
 public class LeadsController : ControllerBase
 {
     private const string IdInconsistenteMsg = "ID inconsistente.";

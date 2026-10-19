@@ -49,6 +49,19 @@ public class ProjetoService : IProjetoService
         return projetos.Select(p => ToDto(p, p.ClienteId.HasValue && clientesMap.TryGetValue(p.ClienteId.Value, out var nome) ? nome : null));
     }
 
+    public async Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId)
+    {
+        var projetos = await _repository.GetByClienteId(clienteId);
+        string? clienteNome = null;
+        if (_clienteRepository != null)
+        {
+            var cliente = await _clienteRepository.GetById(clienteId);
+            clienteNome = cliente?.Nome;
+        }
+
+        return projetos.Select(p => ToDto(p, clienteNome));
+    }
+
     public async Task<ProjetoDto?> GetById(Guid id)
     {
         var projeto = await _repository.GetByIdWithEtapas(id);
@@ -76,6 +89,7 @@ public class ProjetoService : IProjetoService
             var cliente = await _clienteRepository.GetById(projeto.ClienteId.Value);
             clienteNome = cliente?.Nome;
         }
+
 
         return ToDto(projeto, clienteNome);
     }

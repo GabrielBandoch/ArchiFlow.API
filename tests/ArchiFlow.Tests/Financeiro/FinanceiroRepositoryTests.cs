@@ -89,4 +89,95 @@ public class FinanceiroRepositoryTests
         resultado.Should().HaveCount(1);
         resultado.First().Categoria.Should().Be(CategoriaDespesa.PlotagemImpressao);
     }
+
+    [Fact]
+    public async Task DespesaRepository_ObterComFiltroAsync_Should_Filter_By_Date_Range_With_Unspecified_Kind()
+    {
+        var proj = new Projeto { Id = Guid.NewGuid(), Nome = "Projeto Despesa Datas" };
+        await _context.Projetos.AddAsync(proj);
+
+        var dDentro = new DespesaProjeto
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "Dentro do periodo",
+            Valor = 150m,
+            DataDespesa = new DateTime(2026, 10, 15, 14, 30, 0, DateTimeKind.Utc),
+            Categoria = CategoriaDespesa.Outros
+        };
+        var dNoUltimoDia = new DespesaProjeto
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "No limite do ultimo dia",
+            Valor = 200m,
+            DataDespesa = new DateTime(2026, 10, 18, 22, 0, 0, DateTimeKind.Utc),
+            Categoria = CategoriaDespesa.Outros
+        };
+        var dFora = new DespesaProjeto
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "Fora do periodo",
+            Valor = 80m,
+            DataDespesa = new DateTime(2026, 10, 19, 10, 0, 0, DateTimeKind.Utc),
+            Categoria = CategoriaDespesa.Outros
+        };
+
+        await _context.DespesasProjetos.AddRangeAsync(dDentro, dNoUltimoDia, dFora);
+        await _context.SaveChangesAsync();
+
+        var inicioUnspecified = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Unspecified);
+        var fimUnspecified = new DateTime(2026, 10, 18, 0, 0, 0, DateTimeKind.Unspecified);
+
+        var resultado = await _despesaRepo.ObterComFiltroAsync(proj.Id, null, inicioUnspecified, fimUnspecified);
+
+        resultado.Should().HaveCount(2);
+        resultado.Select(d => d.Id).Should().Contain(new[] { dDentro.Id, dNoUltimoDia.Id });
+        resultado.Select(d => d.Id).Should().NotContain(dFora.Id);
+    }
+
+    [Fact]
+    public async Task ParcelaRepository_ObterComFiltroAsync_Should_Filter_By_Date_Range_With_Unspecified_Kind()
+    {
+        var proj = new Projeto { Id = Guid.NewGuid(), Nome = "Projeto Parcela Datas" };
+        await _context.Projetos.AddAsync(proj);
+
+        var pDentro = new ParcelaFinanceira
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "Parcela Dentro",
+            Valor = 500m,
+            DataVencimento = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc)
+        };
+        var pNoUltimoDia = new ParcelaFinanceira
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "Parcela No Limite",
+            Valor = 500m,
+            DataVencimento = new DateTime(2026, 10, 18, 18, 0, 0, DateTimeKind.Utc)
+        };
+        var pFora = new ParcelaFinanceira
+        {
+            Id = Guid.NewGuid(),
+            ProjetoId = proj.Id,
+            Descricao = "Parcela Fora",
+            Valor = 500m,
+            DataVencimento = new DateTime(2026, 10, 25, 0, 0, 0, DateTimeKind.Utc)
+        };
+
+        await _context.ParcelasFinanceiras.AddRangeAsync(pDentro, pNoUltimoDia, pFora);
+        await _context.SaveChangesAsync();
+
+        var inicioUnspecified = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Unspecified);
+        var fimUnspecified = new DateTime(2026, 10, 18, 0, 0, 0, DateTimeKind.Unspecified);
+
+        var resultado = await _parcelaRepo.ObterComFiltroAsync(proj.Id, null, inicioUnspecified, fimUnspecified);
+
+        resultado.Should().HaveCount(2);
+        resultado.Select(p => p.Id).Should().Contain(new[] { pDentro.Id, pNoUltimoDia.Id });
+        resultado.Select(p => p.Id).Should().NotContain(pFora.Id);
+    }
 }
