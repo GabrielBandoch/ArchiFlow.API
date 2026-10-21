@@ -611,6 +611,7 @@ public class ArchiFlowDbContext : DbContext
             entity.Property(e => e.Website).HasColumnName("EMP_Website").HasMaxLength(200);
             entity.Property(e => e.LogoUrl).HasColumnName("EMP_Logo_Url");
             entity.Property(e => e.CorPrimaria).HasColumnName("EMP_Cor_Primaria").HasMaxLength(20);
+            entity.Property(e => e.AtualizadoEm).HasColumnName("EMP_Atualizado_Em");
         });
     }
 
