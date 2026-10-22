@@ -81,7 +81,15 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
     }
 
-    private string ResolveDatabaseName(string tenant)
+    private static void ValidarNomeBanco(string dbName)
+    {
+        if (string.IsNullOrWhiteSpace(dbName) || !System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-z0-9_]+$"))
+        {
+            throw new ArgumentException($"Nome de banco de dados inválido: '{dbName}'", nameof(dbName));
+        }
+    }
+
+    private static string ResolveDatabaseName(string tenant)
     {
         var envDb = Environment.GetEnvironmentVariable("DB_NAME");
         var baseDb = !string.IsNullOrWhiteSpace(envDb) ? envDb.Trim().ToLowerInvariant() : "cotu";
@@ -94,6 +102,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         return $"{baseDb}_{tenant.ToLowerInvariant().Replace("-", "_")}";
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S2077", Justification = "PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist.")]
     private async Task EnsureDatabaseExistsOnServerAsync(string targetDbName)
     {
         if (string.IsNullOrWhiteSpace(_baseConnectionString))
@@ -121,8 +130,11 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
             {
                 _logger.LogInformation("Banco de dados '{DbName}' não encontrado no PostgreSQL. Criando novo banco...", targetDbName);
 
+                ValidarNomeBanco(targetDbName);
                 await using var createCmd = conn.CreateCommand();
+#pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
                 createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+#pragma warning restore S2077
                 await createCmd.ExecuteNonQueryAsync();
 
                 _logger.LogInformation("Banco de dados '{DbName}' criado com sucesso no PostgreSQL.", targetDbName);
@@ -131,11 +143,12 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         catch (NpgsqlException ex) when (ex.Message.Contains("postgres"))
         {
             // Caso o banco "postgres" não exista ou não tenha permissão, tenta conectar diretamente no banco base
-            _logger.LogWarning("Não foi possível conectar ao banco de manutenção 'postgres', tentando conexão no banco base.");
+            _logger.LogWarning(ex, "Não foi possível conectar ao banco de manutenção 'postgres', tentando conexão no banco base.");
             await EnsureDatabaseExistsFallbackAsync(targetDbName);
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S2077", Justification = "PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist.")]
     private async Task EnsureDatabaseExistsFallbackAsync(string targetDbName)
     {
         await using var conn = new NpgsqlConnection(_baseConnectionString);
@@ -148,8 +161,11 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         var exists = await checkCmd.ExecuteScalarAsync();
         if (exists == null)
         {
+            ValidarNomeBanco(targetDbName);
             await using var createCmd = conn.CreateCommand();
+#pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
             createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+#pragma warning restore S2077
             await createCmd.ExecuteNonQueryAsync();
         }
     }
