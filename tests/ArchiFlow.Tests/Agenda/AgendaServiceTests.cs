@@ -119,6 +119,104 @@ public class AgendaServiceTests
     }
 
     [Fact]
+    public async Task CriarCompromissoAsync_ComDataHoraLocal_DeveConverterParaUtc()
+    {
+        var inicioLocal = DateTime.SpecifyKind(DateTime.Now.AddDays(1), DateTimeKind.Local);
+        var fimLocal = inicioLocal.AddHours(2);
+        var cmd = new CriarCompromissoCommand(
+            "Reunião Local",
+            inicioLocal,
+            fimLocal,
+            TiposCompromisso.Geral,
+            null,
+            null,
+            null,
+            null,
+            null,
+            GerarGoogleMeet: false
+        );
+
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+
+        var result = await _service.CriarCompromissoAsync(cmd);
+
+        _compromissoRepoMock.Verify(r => r.Create(It.Is<Compromisso>(c =>
+            c.DataHoraInicio.Kind == DateTimeKind.Utc &&
+            c.DataHoraInicio == inicioLocal.ToUniversalTime() &&
+            c.DataHoraFim.Kind == DateTimeKind.Utc &&
+            c.DataHoraFim == fimLocal.ToUniversalTime())), Times.Once);
+    }
+
+    [Fact]
+    public async Task CriarCompromissoAsync_ComDataHoraUnspecified_DeveEspecificarUtc()
+    {
+        var inicioUnspec = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(1), DateTimeKind.Unspecified);
+        var fimUnspec = inicioUnspec.AddHours(2);
+        var cmd = new CriarCompromissoCommand(
+            "Reunião Unspecified",
+            inicioUnspec,
+            fimUnspec,
+            TiposCompromisso.Geral,
+            null,
+            null,
+            null,
+            null,
+            null,
+            GerarGoogleMeet: false
+        );
+
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+
+        var result = await _service.CriarCompromissoAsync(cmd);
+
+        _compromissoRepoMock.Verify(r => r.Create(It.Is<Compromisso>(c =>
+            c.DataHoraInicio.Kind == DateTimeKind.Utc &&
+            c.DataHoraFim.Kind == DateTimeKind.Utc)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarCompromissoAsync_ComDataHoraLocal_DeveConverterParaUtc()
+    {
+        var id = Guid.NewGuid();
+        var compromisso = new Compromisso
+        {
+            Id = id,
+            EscritorioId = _escritorioId,
+            Titulo = "Titulo Antigo",
+            Tipo = TiposCompromisso.Geral,
+            Status = StatusCompromisso.Agendado,
+            DataHoraInicio = DateTime.UtcNow.AddDays(1),
+            DataHoraFim = DateTime.UtcNow.AddDays(1).AddHours(1)
+        };
+        _compromissoRepoMock.Setup(r => r.GetById(id)).ReturnsAsync(compromisso);
+        _configuracaoRepoMock.Setup(c => c.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
+
+        var inicioLocal = DateTime.SpecifyKind(DateTime.Now.AddDays(2), DateTimeKind.Local);
+        var fimLocal = inicioLocal.AddHours(1);
+
+        var cmd = new AtualizarCompromissoCommand(
+            "Titulo Atualizado",
+            inicioLocal,
+            fimLocal,
+            TiposCompromisso.VisitaObra,
+            StatusCompromisso.Agendado,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+
+        var result = await _service.AtualizarCompromissoAsync(id, cmd);
+
+        compromisso.DataHoraInicio.Kind.Should().Be(DateTimeKind.Utc);
+        compromisso.DataHoraInicio.Should().Be(inicioLocal.ToUniversalTime());
+        compromisso.DataHoraFim.Kind.Should().Be(DateTimeKind.Utc);
+        compromisso.DataHoraFim.Should().Be(fimLocal.ToUniversalTime());
+    }
+
+    [Fact]
     public async Task CriarCompromissoAsync_SemIntegracaoGoogle_NaoDeveGerarLinkFakeDeMeet()
     {
         var inicio = DateTime.UtcNow.AddDays(1);

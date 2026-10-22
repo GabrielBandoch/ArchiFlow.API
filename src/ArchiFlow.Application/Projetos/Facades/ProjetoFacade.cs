@@ -33,5 +33,7 @@ public class ProjetoFacade : IProjetoFacade
     public Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo)      => _service.ObterTemplatePorCodigo(codigo);
     public Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command) => _service.CriarTemplate(command);
     public Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command) => _service.AtualizarTemplate(command);
+    public Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command) => _service.AtualizarTemplatePorCodigo(command);
     public Task ExcluirTemplate(Guid id)                                        => _service.ExcluirTemplate(id);
+    public Task ExcluirTemplatePorCodigo(string codigo)                         => _service.ExcluirTemplatePorCodigo(codigo);
 }

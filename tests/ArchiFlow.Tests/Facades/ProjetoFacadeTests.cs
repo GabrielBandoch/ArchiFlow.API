@@ -199,6 +199,43 @@ public class ProjetoFacadeTests
     }
 
     [Fact]
+    public async Task ObterTemplatePorCodigo_DeveChamarService()
+    {
+        var codigo = "residencial";
+        var dto = new TemplateProjetoDto(Guid.NewGuid(), codigo, "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.ObterTemplatePorCodigo(codigo)).ReturnsAsync(dto);
+
+        var result = await _sut.ObterTemplatePorCodigo(codigo);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.ObterTemplatePorCodigo(codigo), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_DeveChamarService()
+    {
+        var command = new AtualizarTemplatePorCodigoCommand("res", "Res", "Desc", "home", new List<CriarTemplateEtapaItemCommand>());
+        var dto = new TemplateProjetoDto(Guid.NewGuid(), "res", "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.AtualizarTemplatePorCodigo(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AtualizarTemplatePorCodigo(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_DeveChamarService()
+    {
+        var codigo = "res";
+        _serviceMock.Setup(s => s.ExcluirTemplatePorCodigo(codigo)).Returns(Task.CompletedTask);
+
+        await _sut.ExcluirTemplatePorCodigo(codigo);
+
+        _serviceMock.Verify(s => s.ExcluirTemplatePorCodigo(codigo), Times.Once);
+    }
+
+    [Fact]
     public async Task ExcluirTemplate_DeveChamarService()
     {
         var id = Guid.NewGuid();

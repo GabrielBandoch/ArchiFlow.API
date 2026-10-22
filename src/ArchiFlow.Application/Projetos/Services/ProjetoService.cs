@@ -312,6 +312,44 @@ public class ProjetoService : IProjetoService
         return ToTemplateDto(template);
     }
 
+    public async Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command)
+    {
+        if (_templateRepository == null)
+            throw new InvalidOperationException("Repositório de templates não configurado.");
+
+        var template = await _templateRepository.GetByCodigoWithEtapas(command.Codigo);
+        if (template == null)
+        {
+            return await CriarTemplate(new CriarTemplateProjetoCommand(
+                Codigo: command.Codigo,
+                Nome: command.Nome,
+                Descricao: command.Descricao,
+                Icone: command.Icone,
+                Etapas: command.Etapas
+            ));
+        }
+
+        return await AtualizarTemplate(new AtualizarTemplateProjetoCommand(
+            Id: template.Id,
+            Nome: command.Nome,
+            Descricao: command.Descricao,
+            Icone: command.Icone,
+            Etapas: command.Etapas
+        ));
+    }
+
+    public async Task ExcluirTemplatePorCodigo(string codigo)
+    {
+        if (_templateRepository == null)
+            throw new InvalidOperationException("Repositório de templates não configurado.");
+
+        var template = await _templateRepository.GetByCodigoWithEtapas(codigo);
+        if (template != null)
+        {
+            await ExcluirTemplate(template.Id);
+        }
+    }
+
     public async Task ExcluirTemplate(Guid id)
     {
         if (_templateRepository == null)

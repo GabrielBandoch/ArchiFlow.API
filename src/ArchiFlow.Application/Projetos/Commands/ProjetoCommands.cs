@@ -67,6 +67,14 @@ public record AtualizarTemplateProjetoCommand(
     List<CriarTemplateEtapaItemCommand>? Etapas = null
 );
 
+public record AtualizarTemplatePorCodigoCommand(
+    string Codigo = "",
+    string Nome = "",
+    string? Descricao = null,
+    string? Icone = null,
+    List<CriarTemplateEtapaItemCommand>? Etapas = null
+);
+
 public record CriarTemplateEtapaItemCommand(
     string Nome,
     string? Descricao,

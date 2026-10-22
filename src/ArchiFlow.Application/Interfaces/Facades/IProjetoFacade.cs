@@ -27,5 +27,7 @@ public interface IProjetoFacade
     Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo);
     Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command);
     Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command);
+    Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command);
     Task ExcluirTemplate(Guid id);
+    Task ExcluirTemplatePorCodigo(string codigo);
 }

@@ -298,6 +298,131 @@ public class ProjetoServiceTests
     }
 
     [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoExiste_DeveRetornarTemplate()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "comercial-v1",
+            "Comercial Inicial",
+            "Descricao",
+            "business"
+        ));
+
+        var template = await _sut.ObterTemplatePorCodigo("comercial-v1");
+
+        template.Should().NotBeNull();
+        template!.Codigo.Should().Be("comercial-v1");
+        template.Nome.Should().Be("Comercial Inicial");
+    }
+
+    [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoNaoExiste_DeveRetornarNull()
+    {
+        var template = await _sut.ObterTemplatePorCodigo("codigo-inexistente");
+        template.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoRepositorioNulo_DeveRetornarNull()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var template = await sutSemRepo.ObterTemplatePorCodigo("codigo");
+        template.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoNaoExiste_DeveCriarTemplate()
+    {
+        var command = new AtualizarTemplatePorCodigoCommand(
+            Codigo: "novo-codigo-upsert",
+            Nome: "Template Criado via Upsert",
+            Descricao: "Descricao Upsert",
+            Icone: "build",
+            Etapas: new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Etapa 1", "Desc", 1, new List<string> { "Tarefa 1" })
+            }
+        );
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().NotBeNull();
+        result.Codigo.Should().Be("novo-codigo-upsert");
+        result.Nome.Should().Be("Template Criado via Upsert");
+        result.Etapas.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoExiste_DeveAtualizarTemplate()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "codigo-existente",
+            "Template Original",
+            "Desc Original",
+            "home"
+        ));
+
+        var command = new AtualizarTemplatePorCodigoCommand(
+            Codigo: "codigo-existente",
+            Nome: "Template Modificado",
+            Descricao: "Desc Nova",
+            Icone: "palette"
+        );
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().NotBeNull();
+        result.Nome.Should().Be("Template Modificado");
+        result.Icone.Should().Be("palette");
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoRepositorioNulo_DeveLancarInvalidOperationException()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var act = () => sutSemRepo.AtualizarTemplatePorCodigo(new AtualizarTemplatePorCodigoCommand("codigo", "Nome"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoExiste_DeveExcluir()
+    {
+        var template = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "codigo-para-excluir",
+            "Para Excluir",
+            "Desc",
+            "delete"
+        ));
+
+        await _sut.ExcluirTemplatePorCodigo("codigo-para-excluir");
+
+        var obtido = await _sut.ObterTemplatePorCodigo("codigo-para-excluir");
+        obtido.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoNaoExiste_NaoDeveLancarExcecao()
+    {
+        var act = () => _sut.ExcluirTemplatePorCodigo("codigo-inexistente-qualquer");
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoRepositorioNulo_DeveLancarInvalidOperationException()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var act = () => sutSemRepo.ExcluirTemplatePorCodigo("codigo");
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task ExcluirTemplate_DeveRemoverTemplate()
     {
         var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
