@@ -229,6 +229,14 @@ public class ProjetoService : IProjetoService
         return template is null ? null : ToTemplateDto(template);
     }
 
+    public async Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo)
+    {
+        if (_templateRepository == null) return null;
+
+        var template = await _templateRepository.GetByCodigoWithEtapas(codigo);
+        return template is null ? null : ToTemplateDto(template);
+    }
+
     public async Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command)
     {
         if (_templateRepository == null)

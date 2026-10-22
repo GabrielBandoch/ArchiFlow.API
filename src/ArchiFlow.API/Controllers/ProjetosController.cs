@@ -145,7 +145,7 @@ public class ProjetosController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "ApenasAdmin")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> Delete(Guid id)
     {

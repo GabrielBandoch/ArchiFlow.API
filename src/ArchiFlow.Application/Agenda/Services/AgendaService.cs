@@ -678,8 +678,12 @@ public class AgendaService : IAgendaService
         return dtos;
     }
 
-    private static DateTime GarantirUtc(DateTime dt) =>
-        dt.Kind == DateTimeKind.Utc ? dt : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+    private static DateTime GarantirUtc(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Utc) return dt;
+        if (dt.Kind == DateTimeKind.Local) return dt.ToUniversalTime();
+        return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+    }
 
     private static void ValidarHorarios(DateTime inicio, DateTime fim)
     {

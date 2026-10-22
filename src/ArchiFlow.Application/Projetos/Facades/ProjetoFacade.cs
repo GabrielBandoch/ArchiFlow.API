@@ -30,6 +30,7 @@ public class ProjetoFacade : IProjetoFacade
 
     public Task<IEnumerable<TemplateProjetoDto>> ObterTemplates()               => _service.ObterTemplates();
     public Task<TemplateProjetoDto?> ObterTemplatePorId(Guid id)                => _service.ObterTemplatePorId(id);
+    public Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo)      => _service.ObterTemplatePorCodigo(codigo);
     public Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command) => _service.CriarTemplate(command);
     public Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command) => _service.AtualizarTemplate(command);
     public Task ExcluirTemplate(Guid id)                                        => _service.ExcluirTemplate(id);
