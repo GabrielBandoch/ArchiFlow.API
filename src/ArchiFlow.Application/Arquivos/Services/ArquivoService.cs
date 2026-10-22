@@ -37,7 +37,7 @@ public class ArquivoService : IArquivoService
         return await GetByProjetoId(projetoId, isClient);
     }
 
-    public async Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente)
+    public async Task<IEnumerable<ArquivoDto>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false)
     {
         var arquivos = await _arquivoRepository.GetByProjetoId(projetoId, apenasVisiveisCliente);
         return arquivos.Select(a => new ArquivoDto(

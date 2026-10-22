@@ -72,8 +72,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Falha ao provisionar o banco de dados do tenant '{Tenant}'", cleanTenant);
-            throw;
+            throw new InvalidOperationException($"Falha ao provisionar o banco de dados do tenant '{cleanTenant}'", ex);
         }
         finally
         {
@@ -83,7 +82,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 
     private static void ValidarNomeBanco(string dbName)
     {
-        if (string.IsNullOrWhiteSpace(dbName) || !System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-z0-9_]+$"))
+        if (string.IsNullOrWhiteSpace(dbName) || !System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-z0-9_]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(250)))
         {
             throw new ArgumentException($"Nome de banco de dados inválido: '{dbName}'", nameof(dbName));
         }
@@ -133,7 +132,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
                 ValidarNomeBanco(targetDbName);
                 await using var createCmd = conn.CreateCommand();
 #pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
-                createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+                createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';"; // NOSONAR
 #pragma warning restore S2077
                 await createCmd.ExecuteNonQueryAsync();
 
@@ -164,7 +163,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
             ValidarNomeBanco(targetDbName);
             await using var createCmd = conn.CreateCommand();
 #pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
-            createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+            createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';"; // NOSONAR
 #pragma warning restore S2077
             await createCmd.ExecuteNonQueryAsync();
         }

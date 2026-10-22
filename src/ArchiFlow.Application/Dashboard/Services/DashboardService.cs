@@ -438,16 +438,16 @@ public class DashboardService : IDashboardService
                 if (!seenIds.Add(widgetId))
                     throw new ArgumentException($"O widget '{widgetId}' está duplicado no layout.");
 
-                if (element.TryGetProperty("ordem", out var ordemProp) &&
-                    (ordemProp.ValueKind != JsonValueKind.Number || !ordemProp.TryGetInt32(out var ordem) || ordem < 1 || ordem > 50))
+                if (element.TryGetProperty("ordem", out var ordemProp))
                 {
-                    throw new ArgumentException($"A ordem do widget '{widgetId}' deve ser um número inteiro entre 1 e 50.");
+                    if (ordemProp.ValueKind != JsonValueKind.Number || !ordemProp.TryGetInt32(out var ordem) || ordem < 1 || ordem > 50)
+                        throw new ArgumentException($"A ordem do widget '{widgetId}' deve ser um número inteiro entre 1 e 50.");
                 }
 
-                if (element.TryGetProperty("visivel", out var visivelProp) &&
-                    visivelProp.ValueKind != JsonValueKind.True && visivelProp.ValueKind != JsonValueKind.False)
+                if (element.TryGetProperty("visivel", out var visivelProp))
                 {
-                    throw new ArgumentException($"A propriedade 'visivel' do widget '{widgetId}' deve ser um booleano.");
+                    if (visivelProp.ValueKind != JsonValueKind.True && visivelProp.ValueKind != JsonValueKind.False)
+                        throw new ArgumentException($"A propriedade 'visivel' do widget '{widgetId}' deve ser um booleano.");
                 }
 
                 if (element.TryGetProperty("largura", out var larguraProp))

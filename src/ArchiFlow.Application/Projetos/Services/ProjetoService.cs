@@ -18,6 +18,7 @@ public class ProjetoService : IProjetoService
 {
     private readonly IProjetoRepository _repository;
     private readonly ITemplateProjetoRepository? _templateRepository;
+    private const string MsgRepoTemplatesNaoConfigurado = "Repositório de templates não configurado.";
     private readonly IClienteRepository? _clienteRepository;
     private readonly IUnitOfWork        _unitOfWork;
     private readonly IMapper            _mapper;
@@ -240,7 +241,7 @@ public class ProjetoService : IProjetoService
     public async Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command)
     {
         if (_templateRepository == null)
-            throw new InvalidOperationException("Repositório de templates não configurado.");
+            throw new InvalidOperationException(MsgRepoTemplatesNaoConfigurado);
 
         var templateId = Guid.NewGuid();
         var template = new TemplateProjeto
@@ -276,7 +277,7 @@ public class ProjetoService : IProjetoService
     public async Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command)
     {
         if (_templateRepository == null)
-            throw new InvalidOperationException("Repositório de templates não configurado.");
+            throw new InvalidOperationException(MsgRepoTemplatesNaoConfigurado);
 
         var template = await _templateRepository.GetByIdWithEtapas(command.Id)
             ?? throw new KeyNotFoundException($"Template {command.Id} não encontrado.");
@@ -315,7 +316,7 @@ public class ProjetoService : IProjetoService
     public async Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command)
     {
         if (_templateRepository == null)
-            throw new InvalidOperationException("Repositório de templates não configurado.");
+            throw new InvalidOperationException(MsgRepoTemplatesNaoConfigurado);
 
         var template = await _templateRepository.GetByCodigoWithEtapas(command.Codigo);
         if (template == null)
@@ -341,7 +342,7 @@ public class ProjetoService : IProjetoService
     public async Task ExcluirTemplatePorCodigo(string codigo)
     {
         if (_templateRepository == null)
-            throw new InvalidOperationException("Repositório de templates não configurado.");
+            throw new InvalidOperationException(MsgRepoTemplatesNaoConfigurado);
 
         var template = await _templateRepository.GetByCodigoWithEtapas(codigo);
         if (template != null)
@@ -353,7 +354,7 @@ public class ProjetoService : IProjetoService
     public async Task ExcluirTemplate(Guid id)
     {
         if (_templateRepository == null)
-            throw new InvalidOperationException("Repositório de templates não configurado.");
+            throw new InvalidOperationException(MsgRepoTemplatesNaoConfigurado);
 
         var template = await _templateRepository.GetByIdWithEtapas(id)
             ?? throw new KeyNotFoundException($"Template {id} não encontrado.");
