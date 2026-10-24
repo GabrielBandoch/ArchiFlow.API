@@ -399,67 +399,82 @@ public class DashboardService : IDashboardService
         if (layoutJson.Length > 16384)
             throw new ArgumentException("O tamanho do layout JSON excede o limite máximo permitido de 16KB.");
 
-        JsonDocument doc;
+        using var doc = FazerParseJson(layoutJson);
+        ValidarEstruturaLayout(doc.RootElement);
+    }
+
+    private static JsonDocument FazerParseJson(string layoutJson)
+    {
         try
         {
-            doc = JsonDocument.Parse(layoutJson);
+            return JsonDocument.Parse(layoutJson);
         }
         catch (JsonException)
         {
             throw new ArgumentException("O formato do layout não é um JSON válido.");
         }
+    }
 
-        using (doc)
+    private static void ValidarEstruturaLayout(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Array)
+            throw new ArgumentException("O layout deve ser uma lista (array) de widgets.");
+
+        var arrayLength = root.GetArrayLength();
+        if (arrayLength == 0)
+            throw new ArgumentException("O layout deve conter pelo menos um widget configurado.");
+
+        if (arrayLength > 20)
+            throw new ArgumentException("O layout não pode conter mais de 20 widgets.");
+
+        var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var element in root.EnumerateArray())
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                throw new ArgumentException("O layout deve ser uma lista (array) de widgets.");
+            ValidarWidgetElement(element, seenIds);
+        }
+    }
 
-            var arrayLength = doc.RootElement.GetArrayLength();
-            if (arrayLength == 0)
-                throw new ArgumentException("O layout deve conter pelo menos um widget configurado.");
+    private static void ValidarWidgetElement(JsonElement element, HashSet<string> seenIds)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException("Cada item do layout deve ser um objeto representando um widget.");
 
-            if (arrayLength > 20)
-                throw new ArgumentException("O layout não pode conter mais de 20 widgets.");
+        if (!element.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
+            throw new ArgumentException("Todo widget deve conter a propriedade 'id' do tipo string.");
 
-            var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var widgetId = idProp.GetString()?.Trim();
+        if (string.IsNullOrEmpty(widgetId) || !KnownWidgetIds.Contains(widgetId))
+            throw new ArgumentException($"O identificador de widget '{widgetId}' é desconhecido ou inválido.");
 
-            foreach (var element in doc.RootElement.EnumerateArray())
-            {
-                if (element.ValueKind != JsonValueKind.Object)
-                    throw new ArgumentException("Cada item do layout deve ser um objeto representando um widget.");
+        if (!seenIds.Add(widgetId))
+            throw new ArgumentException($"O widget '{widgetId}' está duplicado no layout.");
 
-                if (!element.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
-                    throw new ArgumentException("Todo widget deve conter a propriedade 'id' do tipo string.");
+        ValidarPropriedadesOpcionaisWidget(element, widgetId);
+    }
 
-                var widgetId = idProp.GetString()?.Trim();
-                if (string.IsNullOrEmpty(widgetId) || !KnownWidgetIds.Contains(widgetId))
-                    throw new ArgumentException($"O identificador de widget '{widgetId}' é desconhecido ou inválido.");
+    private static void ValidarPropriedadesOpcionaisWidget(JsonElement element, string widgetId)
+    {
+        if (element.TryGetProperty("ordem", out var ordemProp) &&
+            (ordemProp.ValueKind != JsonValueKind.Number || !ordemProp.TryGetInt32(out var ordem) || ordem < 1 || ordem > 50))
+        {
+            throw new ArgumentException($"A ordem do widget '{widgetId}' deve ser um número inteiro entre 1 e 50.");
+        }
 
-                if (!seenIds.Add(widgetId))
-                    throw new ArgumentException($"O widget '{widgetId}' está duplicado no layout.");
+        if (element.TryGetProperty("visivel", out var visivelProp) &&
+            (visivelProp.ValueKind != JsonValueKind.True && visivelProp.ValueKind != JsonValueKind.False))
+        {
+            throw new ArgumentException($"A propriedade 'visivel' do widget '{widgetId}' deve ser um booleano.");
+        }
 
-                if (element.TryGetProperty("ordem", out var ordemProp))
-                {
-                    if (ordemProp.ValueKind != JsonValueKind.Number || !ordemProp.TryGetInt32(out var ordem) || ordem < 1 || ordem > 50)
-                        throw new ArgumentException($"A ordem do widget '{widgetId}' deve ser um número inteiro entre 1 e 50.");
-                }
+        if (element.TryGetProperty("largura", out var larguraProp))
+        {
+            if (larguraProp.ValueKind != JsonValueKind.String)
+                throw new ArgumentException($"A propriedade 'largura' do widget '{widgetId}' deve ser uma string.");
 
-                if (element.TryGetProperty("visivel", out var visivelProp))
-                {
-                    if (visivelProp.ValueKind != JsonValueKind.True && visivelProp.ValueKind != JsonValueKind.False)
-                        throw new ArgumentException($"A propriedade 'visivel' do widget '{widgetId}' deve ser um booleano.");
-                }
-
-                if (element.TryGetProperty("largura", out var larguraProp))
-                {
-                    if (larguraProp.ValueKind != JsonValueKind.String)
-                        throw new ArgumentException($"A propriedade 'largura' do widget '{widgetId}' deve ser uma string.");
-
-                    var largura = larguraProp.GetString()?.Trim().ToLowerInvariant();
-                    if (largura != "full" && largura != "half")
-                        throw new ArgumentException($"A largura do widget '{widgetId}' deve ser 'full' ou 'half'.");
-                }
-            }
+            var largura = larguraProp.GetString()?.Trim().ToLowerInvariant();
+            if (largura != "full" && largura != "half")
+                throw new ArgumentException($"A largura do widget '{widgetId}' deve ser 'full' ou 'half'.");
         }
     }
 
