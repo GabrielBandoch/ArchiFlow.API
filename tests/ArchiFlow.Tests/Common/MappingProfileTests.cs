@@ -13,3 +13,4 @@ public class MappingProfileTests
         config.AssertConfigurationIsValid();
     }
 }
+

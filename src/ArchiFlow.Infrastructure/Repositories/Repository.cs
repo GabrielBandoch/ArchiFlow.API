@@ -12,7 +12,7 @@ public class Repository<T> : IRepository<T> where T : class
     public Repository(ArchiFlowDbContext context)
     {
         _context = context;
-        _dbSet   = context.Set<T>();
+        _dbSet = context.Set<T>();
     }
 
     public async Task<IEnumerable<T>> GetAll() =>
@@ -74,4 +74,5 @@ public class Repository<T> : IRepository<T> where T : class
             : utc;
     }
 }
+
 

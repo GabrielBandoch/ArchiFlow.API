@@ -22,7 +22,7 @@ public class SmtpEmailServiceTests
     [Fact]
     public async Task SendEmailAsync_SemCredenciaisConfiguradas_NaoEnviaERetornaSemExcecao()
     {
-        // Arrange
+
         var inMemorySettings = new Dictionary<string, string?>
         {
             {"SMTP_HOST", "smtp.hostinger.com"},
@@ -37,17 +37,17 @@ public class SmtpEmailServiceTests
 
         var service = new SmtpEmailService(configuration, _loggerMock.Object);
 
-        // Act
+
         var act = async () => await service.SendEmailAsync("destino@teste.com", "Assunto", "Mensagem");
 
-        // Assert
+
         await act.Should().NotThrowAsync();
     }
 
     [Fact]
     public async Task SendEmailAsync_ComSenhaVazia_NaoEnviaERetornaSemExcecao()
     {
-        // Arrange
+
         var inMemorySettings = new Dictionary<string, string?>
         {
             {"SMTP_HOST", "smtp.hostinger.com"},
@@ -62,17 +62,17 @@ public class SmtpEmailServiceTests
 
         var service = new SmtpEmailService(configuration, _loggerMock.Object);
 
-        // Act
+
         var act = async () => await service.SendEmailAsync("destino@teste.com", "Assunto", "Mensagem");
 
-        // Assert
+
         await act.Should().NotThrowAsync();
     }
 
     [Fact]
     public async Task SendEmailAsync_ComCredenciaisMasFalhaDeConexao_LancaInvalidOperationExceptionComContexto()
     {
-        // Arrange
+
         var inMemorySettings = new Dictionary<string, string?>
         {
             {"SMTP_HOST", "127.0.0.1"},
@@ -89,7 +89,7 @@ public class SmtpEmailServiceTests
 
         var service = new SmtpEmailService(configuration, _loggerMock.Object);
 
-        // Act & Assert - test plain text HTML formatting branch
+
         var act = async () => await service.SendEmailAsync("destino@teste.com", "Assunto", "Linha 1\nLinha 2");
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Falha no envio de e-mail via SMTP para destino@teste.com.*");
@@ -98,7 +98,7 @@ public class SmtpEmailServiceTests
     [Fact]
     public async Task SendEmailAsync_ComHtmlJaExistenteMasFalhaDeConexao_LancaInvalidOperationExceptionComContexto()
     {
-        // Arrange
+
         var inMemorySettings = new Dictionary<string, string?>
         {
             {"SMTP_HOST", "127.0.0.1"},
@@ -113,9 +113,10 @@ public class SmtpEmailServiceTests
 
         var service = new SmtpEmailService(configuration, _loggerMock.Object);
 
-        // Act & Assert - test HTML branch
+
         var act = async () => await service.SendEmailAsync("destino@teste.com", "Assunto", "<html><body>Ola</body></html>");
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Falha no envio de e-mail via SMTP para destino@teste.com.*");
     }
 }
+

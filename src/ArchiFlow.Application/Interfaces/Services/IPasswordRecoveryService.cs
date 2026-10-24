@@ -9,3 +9,4 @@ public interface IPasswordRecoveryService
     Task<ResultadoValidacaoTokenDto> ValidarTokenAsync(string token);
     Task RedefinirSenhaAsync(string token, string novaSenha);
 }
+

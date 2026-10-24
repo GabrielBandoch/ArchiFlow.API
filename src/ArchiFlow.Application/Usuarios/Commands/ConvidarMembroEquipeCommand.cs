@@ -26,3 +26,4 @@ public record ConvidarMembroEquipeCommand(
 
     List<string>? ModulosPermitidos = null
 );
+

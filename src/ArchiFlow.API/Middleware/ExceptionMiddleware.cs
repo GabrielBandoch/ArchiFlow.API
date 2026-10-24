@@ -10,7 +10,7 @@ public class ExceptionMiddleware
 
     public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
     {
-        _next   = next;
+        _next = next;
         _logger = logger;
     }
 
@@ -45,8 +45,9 @@ public class ExceptionMiddleware
 
     private static async Task WriteResponse(HttpContext context, HttpStatusCode status, string message)
     {
-        context.Response.StatusCode  = (int)status;
+        context.Response.StatusCode = (int)status;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }), context.RequestAborted);
     }
 }
+

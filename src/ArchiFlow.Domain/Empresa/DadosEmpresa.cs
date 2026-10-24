@@ -22,3 +22,4 @@ public class DadosEmpresa
     public string CorPrimaria { get; set; } = "#765538";
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 }
+

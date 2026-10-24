@@ -7,3 +7,4 @@ public enum PadraoImovel
     AltoPadrao = 2,
     Luxo = 3
 }
+

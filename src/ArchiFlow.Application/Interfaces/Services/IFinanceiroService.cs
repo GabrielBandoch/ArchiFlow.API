@@ -28,3 +28,4 @@ public interface IFinanceiroService
     Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command);
     Task ExcluirComprovanteAsync(string fileUrl);
 }
+

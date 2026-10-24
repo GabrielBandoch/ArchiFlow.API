@@ -163,3 +163,4 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         return list;
     }
 }
+

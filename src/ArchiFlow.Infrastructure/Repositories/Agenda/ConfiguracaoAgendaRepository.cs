@@ -18,3 +18,4 @@ public class ConfiguracaoAgendaRepository : Repository<ConfiguracaoAgendaEscrito
             .FirstOrDefaultAsync(c => c.EscritorioId == escritorioId);
     }
 }
+

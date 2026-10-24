@@ -10,3 +10,4 @@ public interface ILeadRepository : IRepository<Lead>
     Task<Lead?> GetByEmail(string email);
     Task<HistoricoContatoLead> CreateHistorico(HistoricoContatoLead historico);
 }
+

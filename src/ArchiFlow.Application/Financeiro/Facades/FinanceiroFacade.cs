@@ -72,3 +72,4 @@ public class FinanceiroFacade : IFinanceiroFacade
     public Task ExcluirComprovanteAsync(string fileUrl) =>
         _financeiroService.ExcluirComprovanteAsync(fileUrl);
 }
+

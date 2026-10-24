@@ -16,3 +16,4 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
         return await _dbSet.FirstOrDefaultAsync(c => c.Email.ToLower() == normalizedEmail);
     }
 }
+

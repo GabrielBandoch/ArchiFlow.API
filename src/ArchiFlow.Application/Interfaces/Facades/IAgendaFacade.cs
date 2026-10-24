@@ -23,3 +23,4 @@ public interface IAgendaFacade
     Task<ConfiguracaoAgendaEscritorioDto> ConectarGoogleOAuthAsync(ConectarGoogleOAuthCommand command);
     Task DesconectarGoogleOAuthAsync();
 }
+

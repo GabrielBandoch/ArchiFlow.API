@@ -86,3 +86,4 @@ public class EmpresaFacadeTests
         _serviceMock.Verify(s => s.RemoverLogotipoAsync(), Times.Once);
     }
 }
+

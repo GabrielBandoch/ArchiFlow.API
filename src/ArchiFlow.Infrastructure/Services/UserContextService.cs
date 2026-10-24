@@ -38,3 +38,4 @@ public class UserContextService : IUserContextService
         return (usuario, escritorioId);
     }
 }
+

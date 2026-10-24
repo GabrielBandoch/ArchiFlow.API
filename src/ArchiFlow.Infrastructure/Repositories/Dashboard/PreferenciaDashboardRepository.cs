@@ -15,3 +15,4 @@ public class PreferenciaDashboardRepository : Repository<PreferenciaDashboard>, 
         return await _dbSet.FirstOrDefaultAsync(p => p.UsuarioId == usuarioId);
     }
 }
+

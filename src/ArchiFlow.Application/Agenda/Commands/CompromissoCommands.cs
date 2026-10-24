@@ -61,3 +61,4 @@ public record AlterarStatusCompromissoCommand(
     [Required(ErrorMessage = "Status é obrigatório.")]
     string Status
 );
+

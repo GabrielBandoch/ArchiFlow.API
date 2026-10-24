@@ -13,7 +13,7 @@ namespace ArchiFlow.Application.Leads.Services;
 public class OrigemLeadService : IOrigemLeadService
 {
     private readonly IOrigemLeadRepository _repository;
-    private readonly IUnitOfWork           _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public OrigemLeadService(
         IOrigemLeadRepository repository,
@@ -50,10 +50,10 @@ public class OrigemLeadService : IOrigemLeadService
 
         var origem = new OrigemLead
         {
-            Id        = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Descricao = command.Descricao.Trim(),
-            Ativo     = true,
-            CriadoEm  = DateTime.UtcNow
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
         };
 
         await _repository.Create(origem);
@@ -105,3 +105,4 @@ public class OrigemLeadService : IOrigemLeadService
     private static OrigemLeadDto ToDto(OrigemLead o) =>
         new(o.Id, o.Descricao, o.Ativo, o.CriadoEm);
 }
+

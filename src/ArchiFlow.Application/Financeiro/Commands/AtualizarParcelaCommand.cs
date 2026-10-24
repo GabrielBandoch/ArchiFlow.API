@@ -13,3 +13,4 @@ public record AtualizarParcelaCommand(
     string? Observacoes,
     string? ComprovanteUrl
 );
+

@@ -13,9 +13,10 @@ public class ConfiguracaoAgendaEscritorio
     public string? GoogleOAuthEmail { get; set; }
     public string? GoogleClientId { get; set; }
     public string? GoogleClientSecret { get; set; }
-    public string TipoIntegracao { get; set; } = "ServiceAccount"; // "ServiceAccount", "OAuth", "Nenhum"
+    public string TipoIntegracao { get; set; } = "ServiceAccount";
     public string NomeAgenda { get; set; } = "Agenda Oficial do Escritório";
     public bool SincronizacaoAutomaticaAtiva { get; set; } = true;
     public DateTime ConectadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
 }
+

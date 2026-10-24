@@ -10,3 +10,4 @@ public interface IMensagemChatRepository
     Task<MensagemChat> Create(MensagemChat mensagem);
     Task MarcarComoLidas(Guid projetoId, Guid usuarioId);
 }
+

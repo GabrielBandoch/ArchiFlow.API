@@ -409,3 +409,4 @@ public class FornecedorServiceTests
         fornecedor.TotalAvaliacoes.Should().Be(0);
     }
 }
+

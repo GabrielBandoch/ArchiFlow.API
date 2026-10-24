@@ -87,3 +87,4 @@ public class LocalStorageServiceTests : IDisposable
         downloadStream.Should().NotBeNull();
     }
 }
+

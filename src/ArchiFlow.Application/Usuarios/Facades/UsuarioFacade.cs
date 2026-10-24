@@ -54,3 +54,4 @@ public class UsuarioFacade : IUsuarioFacade
     public Task RemoverFotoPerfilAsync(Guid usuarioId) =>
         _usuarioService.RemoverFotoPerfilAsync(usuarioId);
 }
+

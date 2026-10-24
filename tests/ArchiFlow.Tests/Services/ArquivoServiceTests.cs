@@ -35,7 +35,7 @@ public class ArquivoServiceTests
     [Fact]
     public async Task GetByProjetoId_Should_Return_Mapped_Dtos_For_Non_Client()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var lista = new List<Arquivo>
         {
@@ -53,10 +53,10 @@ public class ArquivoServiceTests
 
         _mockRepo.Setup(r => r.GetByProjetoId(projetoId, false)).ReturnsAsync(lista);
 
-        // Act
+
         var result = await _service.GetByProjetoId(projetoId);
 
-        // Assert
+
         result.Should().HaveCount(1);
         var dto = result.First();
         dto.Nome.Should().Be("Planta_Baixa.pdf");
@@ -66,7 +66,7 @@ public class ArquivoServiceTests
     [Fact]
     public async Task GetByProjetoId_Should_Filter_Only_Visible_When_User_Is_Client()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var lista = new List<Arquivo>
         {
@@ -95,10 +95,10 @@ public class ArquivoServiceTests
         var serviceWithContext = new ArquivoService(_mockRepo.Object, _mockStorage.Object, _mockUow.Object, mockContextAccessor.Object);
         _mockRepo.Setup(r => r.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
 
-        // Act
+
         var result = await serviceWithContext.GetByProjetoId(projetoId);
 
-        // Assert
+
         result.Should().HaveCount(1);
         _mockRepo.Verify(r => r.GetByProjetoId(projetoId, true), Times.Once);
     }
@@ -106,7 +106,7 @@ public class ArquivoServiceTests
     [Fact]
     public async Task GetByProjetoId_ComApenasVisiveisCliente_Should_Pass_Flag_To_Repository()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var lista = new List<Arquivo>
         {
@@ -124,10 +124,10 @@ public class ArquivoServiceTests
 
         _mockRepo.Setup(r => r.GetByProjetoId(projetoId, true)).ReturnsAsync(lista);
 
-        // Act
+
         var result = await _service.GetByProjetoId(projetoId, true);
 
-        // Assert
+
         result.Should().HaveCount(1);
         _mockRepo.Verify(r => r.GetByProjetoId(projetoId, true), Times.Once);
     }
@@ -135,17 +135,17 @@ public class ArquivoServiceTests
     [Fact]
     public async Task Upload_Should_Throw_When_File_Is_Null_Or_Empty()
     {
-        // Arrange
+
         var command = new UploadArquivoCommand(
             Guid.NewGuid(),
             null,
             true
         );
 
-        // Act
+
         var act = async () => await _service.Upload(command);
 
-        // Assert
+
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Nenhum arquivo enviado.");
     }
@@ -153,7 +153,7 @@ public class ArquivoServiceTests
     [Fact]
     public async Task Upload_Should_Throw_When_Length_Exceeds_20MB()
     {
-        // Arrange
+
         var mockFile = new Mock<IFormFile>();
         mockFile.Setup(f => f.Length).Returns(21 * 1024 * 1024);
 
@@ -163,10 +163,10 @@ public class ArquivoServiceTests
             true
         );
 
-        // Act
+
         var act = async () => await _service.Upload(command);
 
-        // Assert
+
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("O arquivo excede o limite de tamanho permitido de 20MB.");
     }
@@ -174,7 +174,7 @@ public class ArquivoServiceTests
     [Fact]
     public async Task Upload_Should_Save_To_Storage_And_Repository_Successfully()
     {
-        // Arrange
+
         var content = "hello";
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
         var mockFile = new Mock<IFormFile>();
@@ -192,10 +192,10 @@ public class ArquivoServiceTests
         _mockStorage.Setup(s => s.UploadAsync(stream, "render.png", "image/png"))
             .ReturnsAsync("https://s3.amazonaws.com/render.png");
 
-        // Act
+
         var result = await _service.Upload(command);
 
-        // Assert
+
         result.Should().NotBeNull();
         result.Nome.Should().Be("render.png");
         result.UrlStorage.Should().Be("https://s3.amazonaws.com/render.png");
@@ -206,21 +206,21 @@ public class ArquivoServiceTests
     [Fact]
     public async Task Delete_Should_Throw_When_Arquivo_Not_Found()
     {
-        // Arrange
+
         var id = Guid.NewGuid();
         _mockRepo.Setup(r => r.GetById(id)).ReturnsAsync((Arquivo?)null);
 
-        // Act
+
         var act = async () => await _service.Delete(id);
 
-        // Assert
+
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
     [Fact]
     public async Task Delete_Should_Remove_From_Storage_And_Repository()
     {
-        // Arrange
+
         var id = Guid.NewGuid();
         var arquivo = new Arquivo
         {
@@ -229,12 +229,13 @@ public class ArquivoServiceTests
         };
         _mockRepo.Setup(r => r.GetById(id)).ReturnsAsync(arquivo);
 
-        // Act
+
         await _service.Delete(id);
 
-        // Assert
+
         _mockStorage.Verify(s => s.DeleteAsync(arquivo.UrlStorage), Times.Once);
         _mockRepo.Verify(r => r.Delete(id), Times.Once);
         _mockUow.Verify(u => u.Commit(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+

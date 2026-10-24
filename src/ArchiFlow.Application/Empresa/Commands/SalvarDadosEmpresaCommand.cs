@@ -46,3 +46,4 @@ public record SalvarDadosEmpresaCommand(
     [StringLength(20)]
     string? CorPrimaria = null
 );
+

@@ -178,3 +178,4 @@ public class UsuarioFacadeTests
         _serviceMock.Verify(s => s.RemoverFotoPerfilAsync(id), Times.Once);
     }
 }
+

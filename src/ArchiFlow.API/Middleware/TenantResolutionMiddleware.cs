@@ -308,3 +308,4 @@ public class TenantResolutionMiddleware
         return string.IsNullOrWhiteSpace(sanitized) ? DefaultTenant : sanitized.ToLowerInvariant();
     }
 }
+

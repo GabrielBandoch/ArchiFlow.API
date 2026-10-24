@@ -14,3 +14,4 @@ public interface IClienteFacade
     Task<ClienteDto> Update(AtualizarClienteCommand command);
     Task<ClienteDto> UpdatePortalAccess(AtualizarPortalAccessCommand command);
 }
+

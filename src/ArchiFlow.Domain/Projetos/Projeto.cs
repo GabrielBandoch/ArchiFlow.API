@@ -6,7 +6,7 @@ public class Projeto
 {
     public Guid Id { get; set; }
     public string? Nome { get; set; }
-    public string? Descricao { get; set; } 
+    public string? Descricao { get; set; }
     public StatusProjeto? Status { get; set; }
     public TipoProjeto? Tipo { get; set; }
     public DateTime? DataInicio { get; set; }

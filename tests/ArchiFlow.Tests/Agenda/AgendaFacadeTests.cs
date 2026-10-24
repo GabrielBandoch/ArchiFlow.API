@@ -91,3 +91,4 @@ public class AgendaFacadeTests
         _serviceMock.Verify(s => s.DesconectarGoogleOAuthAsync(), Times.Once);
     }
 }
+

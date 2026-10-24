@@ -273,3 +273,4 @@ public class AgendaControllerTests
         noContentResult!.StatusCode.Should().Be(204);
     }
 }
+

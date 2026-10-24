@@ -45,3 +45,4 @@ public class SesEmailService : IEmailService
         await _sesClient.SendEmailAsync(sendRequest);
     }
 }
+

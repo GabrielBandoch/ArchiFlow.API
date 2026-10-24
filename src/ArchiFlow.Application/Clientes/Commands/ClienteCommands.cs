@@ -24,3 +24,4 @@ public record AtualizarPortalAccessCommand(
     Guid Id,
     bool Ativo
 );
+

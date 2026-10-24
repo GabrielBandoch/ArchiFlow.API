@@ -84,3 +84,4 @@ public class ExceptionMiddlewareTests
         context.Response.StatusCode.Should().Be((int)HttpStatusCode.InternalServerError);
     }
 }
+

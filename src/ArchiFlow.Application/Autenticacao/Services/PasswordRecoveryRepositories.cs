@@ -8,3 +8,4 @@ public record PasswordRecoveryRepositories(
     IRepresentanteClienteRepository RepresentanteRepository,
     IClienteRepository ClienteRepository,
     ITokenRecuperacaoSenhaRepository TokenRepository);
+

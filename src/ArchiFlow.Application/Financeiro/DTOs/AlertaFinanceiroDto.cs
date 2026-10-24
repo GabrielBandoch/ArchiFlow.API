@@ -14,3 +14,4 @@ public record AlertaFinanceiroDto(
     int DiasDiferenca,
     bool EmAtraso
 );
+

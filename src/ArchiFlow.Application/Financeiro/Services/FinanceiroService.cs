@@ -16,7 +16,7 @@ namespace ArchiFlow.Application.Financeiro.Services;
 
 public class FinanceiroService : IFinanceiroService
 {
-    private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
+    private const long MaxFileSize = 20 * 1024 * 1024;
 
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -733,3 +733,4 @@ public class FinanceiroService : IFinanceiroService
 
     #endregion
 }
+

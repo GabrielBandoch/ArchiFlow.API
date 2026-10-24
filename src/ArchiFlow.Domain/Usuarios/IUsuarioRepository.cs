@@ -10,3 +10,4 @@ public interface IUsuarioRepository : IRepository<Usuario>
     Task<Usuario?> GetByEmail(string email);
     Task<IEnumerable<Usuario>> ObterPorEscritorioIdAsync(Guid escritorioId);
 }
+

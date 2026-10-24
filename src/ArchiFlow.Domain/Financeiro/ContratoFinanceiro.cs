@@ -17,3 +17,4 @@ public class ContratoFinanceiro
     public Projeto? Projeto { get; set; }
     public ICollection<ParcelaFinanceira> Parcelas { get; set; } = new List<ParcelaFinanceira>();
 }
+

@@ -19,3 +19,4 @@ public class ConsoleEmailService : IEmailService
         return Task.CompletedTask;
     }
 }
+

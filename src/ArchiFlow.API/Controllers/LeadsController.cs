@@ -18,7 +18,7 @@ public class LeadsController : ControllerBase
     private const string IdInconsistenteMsg = "ID inconsistente.";
     private readonly ILeadFacade _facade;
 
-    public LeadsController(ILeadFacade facade) 
+    public LeadsController(ILeadFacade facade)
         => _facade = facade;
 
     [HttpGet]
@@ -46,7 +46,7 @@ public class LeadsController : ControllerBase
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> Update(Guid id, [FromBody] AtualizarLeadCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.Update(command));
     }
@@ -55,7 +55,7 @@ public class LeadsController : ControllerBase
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] AtualizarStatusLeadCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatus(command));
     }
@@ -64,7 +64,7 @@ public class LeadsController : ControllerBase
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> RegisterContact(Guid id, [FromBody] RegistrarContatoLeadCommand command)
     {
-        if (id != command.LeadId) 
+        if (id != command.LeadId)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.RegisterContact(command));
     }
@@ -77,3 +77,4 @@ public class LeadsController : ControllerBase
         return NoContent();
     }
 }
+

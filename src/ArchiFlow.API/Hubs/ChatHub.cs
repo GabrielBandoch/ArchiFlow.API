@@ -215,3 +215,4 @@ public class ChatHub : Hub
         return role ?? "Arquiteto";
     }
 }
+

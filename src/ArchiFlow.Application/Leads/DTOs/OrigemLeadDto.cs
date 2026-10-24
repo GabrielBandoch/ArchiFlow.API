@@ -8,3 +8,4 @@ public record OrigemLeadDto(
     bool Ativo,
     DateTime CriadoEm
 );
+

@@ -26,3 +26,4 @@ public record CompromissoDto(
     Guid? LeadId = null,
     string? NomeLead = null
 );
+

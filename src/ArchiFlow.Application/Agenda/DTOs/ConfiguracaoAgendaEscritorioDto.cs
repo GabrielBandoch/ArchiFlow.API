@@ -12,10 +12,11 @@ public class ConfiguracaoAgendaEscritorioDto
     public string? GoogleOAuthEmail { get; set; }
     public bool PossuiOAuthConectado { get; set; }
     public string? GoogleClientId { get; set; }
-    public string TipoIntegracao { get; set; } = "ServiceAccount"; // "ServiceAccount", "OAuth", "Nenhum"
+    public string TipoIntegracao { get; set; } = "ServiceAccount";
     public string NomeAgenda { get; set; } = string.Empty;
     public bool SincronizacaoAutomaticaAtiva { get; set; }
     public string LinkEmbedGoogleCalendar { get; set; } = string.Empty;
     public DateTime ConectadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }
 }
+

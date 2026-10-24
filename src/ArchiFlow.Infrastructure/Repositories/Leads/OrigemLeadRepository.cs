@@ -17,3 +17,4 @@ public class OrigemLeadRepository : Repository<OrigemLead>, IOrigemLeadRepositor
             .OrderBy(o => o.Descricao)
             .ToListAsync();
 }
+

@@ -15,3 +15,4 @@ public class EtapaProjeto
     public virtual Projeto? Projeto { get; set; }
     public virtual ICollection<TarefaEtapa> Tarefas { get; set; } = new List<TarefaEtapa>();
 }
+

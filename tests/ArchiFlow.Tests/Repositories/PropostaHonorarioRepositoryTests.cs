@@ -158,3 +158,4 @@ public class PropostaHonorarioRepositoryTests
         resInexistente.Should().BeNull();
     }
 }
+

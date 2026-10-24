@@ -13,3 +13,4 @@ public interface ILeadService
     Task<HistoricoContatoLeadDto> RegisterContact(RegistrarContatoLeadCommand command);
     Task Delete(Guid id);
 }
+

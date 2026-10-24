@@ -20,3 +20,4 @@ public record CriarPropostaCommand(
     List<string>? EtapasInclusas,
     string? Observacoes
 );
+

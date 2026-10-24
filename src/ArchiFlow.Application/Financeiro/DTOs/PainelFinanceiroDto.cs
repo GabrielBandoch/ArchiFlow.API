@@ -14,3 +14,4 @@ public record PainelFinanceiroDto(
     List<AlertaFinanceiroDto> Alertas,
     List<ParcelaFinanceiraDto> ParcelasRecentes
 );
+

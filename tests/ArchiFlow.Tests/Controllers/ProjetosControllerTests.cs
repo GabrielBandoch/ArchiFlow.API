@@ -25,7 +25,7 @@ public class ProjetosControllerTests
         _facadeMock = new Mock<IProjetoFacade>();
         _repFacadeMock = new Mock<IRepresentanteClienteFacade>();
         _appUrlServiceMock = new Mock<IAppUrlService>();
-        _sut        = new ProjetosController(_facadeMock.Object, _repFacadeMock.Object, _appUrlServiceMock.Object);
+        _sut = new ProjetosController(_facadeMock.Object, _repFacadeMock.Object, _appUrlServiceMock.Object);
     }
 
     [Fact]
@@ -298,3 +298,4 @@ public class ProjetosControllerTests
         ok.Value.Should().Be(repDto);
     }
 }
+

@@ -6,3 +6,4 @@ public interface IOrigemLeadRepository : IRepository<OrigemLead>
 {
     Task<IEnumerable<OrigemLead>> GetAllActive();
 }
+

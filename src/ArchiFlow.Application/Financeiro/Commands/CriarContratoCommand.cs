@@ -12,3 +12,4 @@ public record CriarContratoCommand(
     string? CondicoesPagamento,
     string? Observacoes
 );
+

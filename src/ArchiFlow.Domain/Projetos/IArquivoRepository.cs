@@ -9,3 +9,4 @@ public interface IArquivoRepository : IRepository<Arquivo>
 {
     Task<IEnumerable<Arquivo>> GetByProjetoId(Guid projetoId, bool apenasVisiveisCliente = false);
 }
+

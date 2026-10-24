@@ -17,3 +17,4 @@ public class ConectarGoogleOAuthCommand
 
     public string? ClientSecret { get; set; }
 }
+

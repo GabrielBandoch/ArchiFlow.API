@@ -19,9 +19,9 @@ namespace ArchiFlow.Application.Clientes.Services;
 public class ClienteService : IClienteService
 {
     private readonly IClienteRepository _clienteRepository;
-    private readonly ILeadRepository    _leadRepository;
+    private readonly ILeadRepository _leadRepository;
     private readonly IProjetoRepository _projetoRepository;
-    private readonly IUnitOfWork        _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ClienteService(
         IClienteRepository clienteRepository,
@@ -33,9 +33,9 @@ public class ClienteService : IClienteService
         ILogger<ClienteService>? logger = null)
     {
         _clienteRepository = clienteRepository;
-        _leadRepository    = leadRepository;
+        _leadRepository = leadRepository;
         _projetoRepository = projetoRepository;
-        _unitOfWork        = unitOfWork;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<IEnumerable<ClienteDto>> GetAll()
@@ -200,3 +200,4 @@ public class ClienteService : IClienteService
         );
     }
 }
+

@@ -31,3 +31,4 @@ public class Fornecedor
         AvaliacaoMedia = Math.Round((decimal)Avaliacoes.Average(a => a.Nota), 1);
     }
 }
+

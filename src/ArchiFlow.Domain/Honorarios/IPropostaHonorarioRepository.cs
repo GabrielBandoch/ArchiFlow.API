@@ -13,3 +13,4 @@ public interface IPropostaHonorarioRepository : IRepository<PropostaHonorario>
     Task<IEnumerable<PropostaHonorario>> GetByLeadId(Guid leadId);
     Task<string> GerarProximoCodigo();
 }
+

@@ -92,3 +92,4 @@ public class FornecedoresController : ControllerBase
     public async Task<IActionResult> ObterFornecedoresDoProjeto(Guid projetoId) =>
         Ok(await _service.ObterFornecedoresDoProjetoAsync(projetoId));
 }
+

@@ -12,3 +12,4 @@ public interface IFornecedorRepository : IRepository<Fornecedor>
     Task AdicionarVinculoProjetoAsync(ProjetoFornecedor vinculo);
     Task<bool> RemoverVinculoProjetoAsync(Guid vinculoId);
 }
+

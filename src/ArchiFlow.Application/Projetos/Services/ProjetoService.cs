@@ -20,8 +20,8 @@ public class ProjetoService : IProjetoService
     private readonly ITemplateProjetoRepository? _templateRepository;
     private const string MsgRepoTemplatesNaoConfigurado = "Repositório de templates não configurado.";
     private readonly IClienteRepository? _clienteRepository;
-    private readonly IUnitOfWork        _unitOfWork;
-    private readonly IMapper            _mapper;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
 
     public ProjetoService(
         IProjetoRepository repository,
@@ -30,10 +30,10 @@ public class ProjetoService : IProjetoService
         IClienteRepository? clienteRepository = null,
         ITemplateProjetoRepository? templateRepository = null)
     {
-        _repository         = repository;
-        _unitOfWork         = unitOfWork;
-        _mapper             = mapper;
-        _clienteRepository  = clienteRepository;
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
+        _clienteRepository = clienteRepository;
         _templateRepository = templateRepository;
     }
 
@@ -119,7 +119,7 @@ public class ProjetoService : IProjetoService
         var projeto = await _repository.GetByIdWithEtapas(command.Id)
             ?? throw new KeyNotFoundException($"Projeto {command.Id} não encontrado.");
 
-        projeto.Status      = command.Status;
+        projeto.Status = command.Status;
         projeto.AtualizadoEm = DateTime.UtcNow;
 
         await _repository.Update(projeto);
@@ -139,12 +139,12 @@ public class ProjetoService : IProjetoService
     {
         var etapa = new EtapaProjeto
         {
-            Id              = Guid.NewGuid(),
-            ProjetoId       = command.ProjetoId,
-            Nome            = command.Nome,
-            Descricao       = command.Descricao,
-            Ordem           = command.Ordem,
-            Status          = StatusEtapa.Pendente,
+            Id = Guid.NewGuid(),
+            ProjetoId = command.ProjetoId,
+            Nome = command.Nome,
+            Descricao = command.Descricao,
+            Ordem = command.Ordem,
+            Status = StatusEtapa.Pendente,
             DataFimPrevista = command.DataFimPrevista
         };
 
@@ -203,11 +203,11 @@ public class ProjetoService : IProjetoService
 
         var tarefa = new TarefaEtapa
         {
-            Id         = Guid.NewGuid(),
-            EtapaId    = command.EtapaId,
-            Titulo     = command.Titulo,
-            Concluida  = false,
-            CriadoEm   = DateTime.UtcNow,
+            Id = Guid.NewGuid(),
+            EtapaId = command.EtapaId,
+            Titulo = command.Titulo,
+            Concluida = false,
+            CriadoEm = DateTime.UtcNow,
             DataLimite = command.DataLimite
         };
 
@@ -282,21 +282,21 @@ public class ProjetoService : IProjetoService
         var templateId = Guid.NewGuid();
         var template = new TemplateProjeto
         {
-            Id        = templateId,
-            Codigo    = command.Codigo,
-            Nome      = command.Nome,
+            Id = templateId,
+            Codigo = command.Codigo,
+            Nome = command.Nome,
             Descricao = command.Descricao,
-            Icone     = command.Icone,
-            Ativo     = true,
-            CriadoEm  = DateTime.UtcNow,
-            Etapas    = command.Etapas?.Select(e => new TemplateEtapa
+            Icone = command.Icone,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            Etapas = command.Etapas?.Select(e => new TemplateEtapa
             {
-                Id                = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
                 TemplateProjetoId = templateId,
-                Nome              = e.Nome,
-                Descricao         = e.Descricao,
-                Ordem             = e.Ordem,
-                TarefasJson       = e.Tarefas != null ? JsonSerializer.Serialize(e.Tarefas) : null
+                Nome = e.Nome,
+                Descricao = e.Descricao,
+                Ordem = e.Ordem,
+                TarefasJson = e.Tarefas != null ? JsonSerializer.Serialize(e.Tarefas) : null
             }).ToList() ?? new List<TemplateEtapa>()
         };
 
@@ -401,23 +401,23 @@ public class ProjetoService : IProjetoService
 
     private static ProjetoDto ToDto(Projeto p, string? clienteNome = null)
     {
-        var total      = p.Etapas.Count;
+        var total = p.Etapas.Count;
         var concluidas = p.Etapas.Count(e => e.Status == StatusEtapa.Concluida);
-        var progresso  = total == 0 ? 0 : (int)Math.Round((double)concluidas / total * 100);
+        var progresso = total == 0 ? 0 : (int)Math.Round((double)concluidas / total * 100);
 
         return new ProjetoDto(
-            p.Id, 
-            p.Nome ?? string.Empty, 
+            p.Id,
+            p.Nome ?? string.Empty,
             p.Descricao ?? string.Empty,
-            p.Status ?? StatusProjeto.Briefing,  
+            p.Status ?? StatusProjeto.Briefing,
             (p.Status ?? StatusProjeto.Briefing).ToString(),
-            p.Tipo ?? TipoProjeto.Residencial,    
+            p.Tipo ?? TipoProjeto.Residencial,
             (p.Tipo ?? TipoProjeto.Residencial).ToString(),
-            p.DataInicio ?? DateTime.UtcNow, 
+            p.DataInicio ?? DateTime.UtcNow,
             p.DataPrevistaEntrega,
-            p.MetragemTotal ?? 0, 
+            p.MetragemTotal ?? 0,
             p.ClienteId ?? Guid.Empty,
-            p.CriadoEm ?? DateTime.UtcNow, 
+            p.CriadoEm ?? DateTime.UtcNow,
             p.AtualizadoEm,
             p.Etapas.OrderBy(e => e.Ordem ?? 0).Select(ToEtapaDto),
             progresso,
@@ -426,13 +426,13 @@ public class ProjetoService : IProjetoService
     }
 
     private static EtapaProjetoDto ToEtapaDto(EtapaProjeto e) =>
-        new(e.Id, 
-            e.ProjetoId ?? Guid.Empty, 
-            e.Nome ?? string.Empty, 
+        new(e.Id,
+            e.ProjetoId ?? Guid.Empty,
+            e.Nome ?? string.Empty,
             e.Descricao ?? string.Empty,
-            e.Status ?? StatusEtapa.Pendente, 
-            (e.Status ?? StatusEtapa.Pendente).ToString(), 
-            e.Ordem ?? 0, 
+            e.Status ?? StatusEtapa.Pendente,
+            (e.Status ?? StatusEtapa.Pendente).ToString(),
+            e.Ordem ?? 0,
             e.DataConclusao,
             e.Tarefas?.OrderBy(t => t.CriadoEm).Select(t => new TarefaEtapaDto(t.Id, t.EtapaId, t.Titulo, t.Concluida, t.CriadoEm, t.DataLimite)),
             e.DataFimPrevista);
@@ -450,8 +450,9 @@ public class ProjetoService : IProjetoService
                 e.Nome,
                 e.Descricao,
                 e.Ordem,
-                string.IsNullOrEmpty(e.TarefasJson) 
-                    ? Enumerable.Empty<string>() 
+                string.IsNullOrEmpty(e.TarefasJson)
+                    ? Enumerable.Empty<string>()
                     : JsonSerializer.Deserialize<List<string>>(e.TarefasJson) ?? Enumerable.Empty<string>()
             )));
 }
+

@@ -33,3 +33,4 @@ public interface IProjetoService
     Task ExcluirTemplate(Guid id);
     Task ExcluirTemplatePorCodigo(string codigo);
 }
+

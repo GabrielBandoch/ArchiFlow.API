@@ -125,3 +125,4 @@ public class RepresentanteClienteFacadeTests
         _serviceMock.Verify(s => s.AtivarContaAsync(cmd), Times.Once);
     }
 }
+

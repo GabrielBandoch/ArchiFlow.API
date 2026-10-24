@@ -32,14 +32,14 @@ public class DbSeederTests
     public async Task SeedAsync_QuandoBancoJaTemUsuarios_NaoDeveInserirNada()
     {
         using var context = TestDbContextFactory.Create();
-        context.Usuarios.Add(new Usuario 
-        { 
-            Id = Guid.NewGuid(), 
-            Nome = "Existente", 
-            Email = "existente@test.com", 
-            SenhaHash = "hash", 
-            Role = Roles.Administrador, 
-            Ativo = true 
+        context.Usuarios.Add(new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Existente",
+            Email = "existente@test.com",
+            SenhaHash = "hash",
+            Role = Roles.Administrador,
+            Ativo = true
         });
         await context.SaveChangesAsync();
 
@@ -59,16 +59,16 @@ public class DbSeederTests
 
         servicesMock.Setup(s => s.GetService(typeof(IServiceScopeFactory))).Returns(scopeFactoryMock.Object);
         scopeFactoryMock.Setup(s => s.CreateScope()).Returns(scopeMock.Object);
-        
+
         var scopedServicesMock = new Mock<IServiceProvider>();
         scopeMock.Setup(s => s.ServiceProvider).Returns(scopedServicesMock.Object);
-        
+
         scopedServicesMock.Setup(s => s.GetService(typeof(ArchiFlowDbContext))).Returns(context);
 
         var loggerMock = new Mock<ILogger>();
         var loggerFactoryMock = new Mock<ILoggerFactory>();
         loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
-        
+
         scopedServicesMock.Setup(s => s.GetService(typeof(ILoggerFactory))).Returns(loggerFactoryMock.Object);
 
         var act = async () => await DbSeeder.MigrateAndSeedAsync(servicesMock.Object);
@@ -85,3 +85,4 @@ public class DbSeederTests
             Times.Once);
     }
 }
+

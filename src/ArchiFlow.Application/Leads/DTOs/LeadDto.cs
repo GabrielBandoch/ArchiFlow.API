@@ -24,3 +24,4 @@ public record HistoricoContatoLeadDto(
     string Canal,
     string Resumo
 );
+

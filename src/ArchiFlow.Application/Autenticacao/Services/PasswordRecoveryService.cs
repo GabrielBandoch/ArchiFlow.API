@@ -230,3 +230,4 @@ public class PasswordRecoveryService : IPasswordRecoveryService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
+

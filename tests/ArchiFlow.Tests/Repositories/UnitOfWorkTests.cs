@@ -38,8 +38,9 @@ public class UnitOfWorkTests
 
         uow.Dispose();
 
-        // Verificar que dispose pode ser chamado multiplas vezes sem estourar erro
+
         var act = () => uow.Dispose();
         act.Should().NotThrow();
     }
 }
+

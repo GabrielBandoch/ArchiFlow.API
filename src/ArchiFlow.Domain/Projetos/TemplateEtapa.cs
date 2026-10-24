@@ -10,3 +10,4 @@ public class TemplateEtapa
     public string? TarefasJson { get; set; }
     public virtual TemplateProjeto? TemplateProjeto { get; set; }
 }
+

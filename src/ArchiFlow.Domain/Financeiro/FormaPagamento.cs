@@ -10,3 +10,4 @@ public enum FormaPagamento
     Dinheiro = 6,
     Outro = 7
 }
+

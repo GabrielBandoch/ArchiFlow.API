@@ -23,34 +23,34 @@ public class ArchiFlowDbContext : DbContext
 
     public ArchiFlowDbContext(DbContextOptions<ArchiFlowDbContext> options) : base(options) { }
 
-    public DbSet<Projeto>              Projetos              => Set<Projeto>();
-    public DbSet<EtapaProjeto>         EtapasProjeto         => Set<EtapaProjeto>();
-    public DbSet<TarefaEtapa>          TarefasEtapa          => Set<TarefaEtapa>();
-    public DbSet<TemplateProjeto>      TemplatesProjeto      => Set<TemplateProjeto>();
-    public DbSet<TemplateEtapa>        TemplatesEtapa        => Set<TemplateEtapa>();
-    public DbSet<Usuario>              Usuarios              => Set<Usuario>();
-    public DbSet<Cliente>              Clientes              => Set<Cliente>();
+    public DbSet<Projeto> Projetos => Set<Projeto>();
+    public DbSet<EtapaProjeto> EtapasProjeto => Set<EtapaProjeto>();
+    public DbSet<TarefaEtapa> TarefasEtapa => Set<TarefaEtapa>();
+    public DbSet<TemplateProjeto> TemplatesProjeto => Set<TemplateProjeto>();
+    public DbSet<TemplateEtapa> TemplatesEtapa => Set<TemplateEtapa>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<RepresentanteCliente> RepresentantesClientes => Set<RepresentanteCliente>();
     public DbSet<TokenRecuperacaoSenha> TokensRecuperacaoSenha => Set<TokenRecuperacaoSenha>();
-    public DbSet<DadosEmpresa>          DadosEmpresa           => Set<DadosEmpresa>();
-    public DbSet<Lead>                 Leads                 => Set<Lead>();
+    public DbSet<DadosEmpresa> DadosEmpresa => Set<DadosEmpresa>();
+    public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<HistoricoContatoLead> HistoricosContatoLead => Set<HistoricoContatoLead>();
-    public DbSet<OrigemLead>           OrigensLead           => Set<OrigemLead>();
-    public DbSet<Arquivo>              Arquivos              => Set<Arquivo>();
-    public DbSet<MensagemChat>         MensagensChat         => Set<MensagemChat>();
-    public DbSet<PropostaHonorario>    PropostasHonorarios   => Set<PropostaHonorario>();
-    public DbSet<ItemPropostaEtapa>    ItensPropostasEtapas  => Set<ItemPropostaEtapa>();
+    public DbSet<OrigemLead> OrigensLead => Set<OrigemLead>();
+    public DbSet<Arquivo> Arquivos => Set<Arquivo>();
+    public DbSet<MensagemChat> MensagensChat => Set<MensagemChat>();
+    public DbSet<PropostaHonorario> PropostasHonorarios => Set<PropostaHonorario>();
+    public DbSet<ItemPropostaEtapa> ItensPropostasEtapas => Set<ItemPropostaEtapa>();
     public DbSet<PreferenciaDashboard> PreferenciasDashboard => Set<PreferenciaDashboard>();
-    public DbSet<ContratoFinanceiro>   ContratosFinanceiros  => Set<ContratoFinanceiro>();
-    public DbSet<ParcelaFinanceira>    ParcelasFinanceiras   => Set<ParcelaFinanceira>();
-    public DbSet<DespesaProjeto>       DespesasProjetos      => Set<DespesaProjeto>();
+    public DbSet<ContratoFinanceiro> ContratosFinanceiros => Set<ContratoFinanceiro>();
+    public DbSet<ParcelaFinanceira> ParcelasFinanceiras => Set<ParcelaFinanceira>();
+    public DbSet<DespesaProjeto> DespesasProjetos => Set<DespesaProjeto>();
     public DbSet<ConfiguracaoProposta> ConfiguracoesProposta => Set<ConfiguracaoProposta>();
     public DbSet<ArchiFlow.Domain.Agenda.Compromisso> Compromissos => Set<ArchiFlow.Domain.Agenda.Compromisso>();
     public DbSet<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio> ConfiguracoesAgendaEscritorio => Set<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio>();
-    public DbSet<Fornecedor>           Fornecedores          => Set<Fornecedor>();
-    public DbSet<AvaliacaoFornecedor>  AvaliacoesFornecedores=> Set<AvaliacaoFornecedor>();
-    public DbSet<ProjetoFornecedor>    ProjetosFornecedores  => Set<ProjetoFornecedor>();
-    public DbSet<OpcaoConfiguracao>    OpcoesConfiguracao    => Set<OpcaoConfiguracao>();
+    public DbSet<Fornecedor> Fornecedores => Set<Fornecedor>();
+    public DbSet<AvaliacaoFornecedor> AvaliacoesFornecedores => Set<AvaliacaoFornecedor>();
+    public DbSet<ProjetoFornecedor> ProjetosFornecedores => Set<ProjetoFornecedor>();
+    public DbSet<OpcaoConfiguracao> OpcoesConfiguracao => Set<OpcaoConfiguracao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -650,3 +650,4 @@ public class NullableUtcDateTimeConverter : Microsoft.EntityFrameworkCore.Storag
     {
     }
 }
+

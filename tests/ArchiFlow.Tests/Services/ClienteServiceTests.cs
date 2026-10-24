@@ -20,23 +20,23 @@ namespace ArchiFlow.Tests.Services;
 public class ClienteServiceTests
 {
     private readonly Mock<IClienteRepository> _clienteRepoMock;
-    private readonly Mock<ILeadRepository>    _leadRepoMock;
+    private readonly Mock<ILeadRepository> _leadRepoMock;
     private readonly Mock<IProjetoRepository> _projetoRepoMock;
-    private readonly Mock<IEmailService>      _emailServiceMock;
-    private readonly Mock<IUnitOfWork>        _uowMock;
-    private readonly Mock<IConfiguration>     _configMock;
+    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IUnitOfWork> _uowMock;
+    private readonly Mock<IConfiguration> _configMock;
     private readonly Mock<ILogger<ClienteService>> _loggerMock;
-    private readonly ClienteService           _sut;
+    private readonly ClienteService _sut;
 
     public ClienteServiceTests()
     {
         _clienteRepoMock = new Mock<IClienteRepository>();
-        _leadRepoMock    = new Mock<ILeadRepository>();
+        _leadRepoMock = new Mock<ILeadRepository>();
         _projetoRepoMock = new Mock<IProjetoRepository>();
         _emailServiceMock = new Mock<IEmailService>();
-        _uowMock         = new Mock<IUnitOfWork>();
-        _configMock      = new Mock<IConfiguration>();
-        _loggerMock      = new Mock<ILogger<ClienteService>>();
+        _uowMock = new Mock<IUnitOfWork>();
+        _configMock = new Mock<IConfiguration>();
+        _loggerMock = new Mock<ILogger<ClienteService>>();
 
         _sut = new ClienteService(
             _clienteRepoMock.Object,
@@ -310,3 +310,4 @@ public class ClienteServiceTests
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 }
+

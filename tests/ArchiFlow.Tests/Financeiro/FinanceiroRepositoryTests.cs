@@ -181,3 +181,4 @@ public class FinanceiroRepositoryTests
         resultado.Select(p => p.Id).Should().NotContain(pFora.Id);
     }
 }
+

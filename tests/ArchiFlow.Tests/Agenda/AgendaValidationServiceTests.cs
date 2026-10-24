@@ -208,3 +208,4 @@ public class AgendaValidationServiceTests
         batch.Usuarios.Should().ContainKey(uid).WhoseValue.Should().Be("Felipe Usuario");
     }
 }
+

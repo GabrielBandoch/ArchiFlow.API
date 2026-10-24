@@ -11,3 +11,4 @@ public interface IStorageService
     Task<Stream?> DownloadAsync(string fileUrl);
     string ObterChaveArquivo(string fileUrl);
 }
+

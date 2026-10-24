@@ -97,3 +97,4 @@ public record CriarTemplateEtapaItemCommand(
     int Ordem,
     List<string>? Tarefas = null
 );
+

@@ -15,3 +15,4 @@ public class TokenRecuperacaoSenha
 
     public bool IsValido() => UsadoEm == null && ExpiraEm > DateTime.UtcNow;
 }
+

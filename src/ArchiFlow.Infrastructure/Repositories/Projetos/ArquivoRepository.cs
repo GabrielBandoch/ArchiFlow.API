@@ -24,3 +24,4 @@ public class ArquivoRepository : Repository<Arquivo>, IArquivoRepository
             .ToListAsync();
     }
 }
+

@@ -9,3 +9,4 @@ public class HistoricoContatoLead
     public string Canal { get; set; } = string.Empty;
     public string Resumo { get; set; } = string.Empty;
 }
+

@@ -171,3 +171,4 @@ public class TemplatesProjetoControllerTests
         _facadeMock.Verify(f => f.ExcluirTemplate(id), Times.Once);
     }
 }
+

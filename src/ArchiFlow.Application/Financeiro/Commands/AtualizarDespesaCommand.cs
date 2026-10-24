@@ -13,3 +13,4 @@ public record AtualizarDespesaCommand(
     bool? Pago = null,
     DateTime? DataPagamento = null
 );
+

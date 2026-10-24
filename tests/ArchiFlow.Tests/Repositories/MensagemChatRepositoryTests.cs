@@ -84,7 +84,7 @@ public class MensagemChatRepositoryTests
         await repo.Create(msgCliente);
         await context.SaveChangesAsync();
 
-        // Arquiteto visualiza o chat
+
         await repo.MarcarComoLidas(projetoId, arquitetoId);
         await context.SaveChangesAsync();
 
@@ -92,3 +92,4 @@ public class MensagemChatRepositoryTests
         atualizada!.Lida.Should().BeTrue();
     }
 }
+

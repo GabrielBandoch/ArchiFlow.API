@@ -8,3 +8,4 @@ public interface IConfiguracaoAgendaRepository : IRepository<ConfiguracaoAgendaE
 {
     Task<ConfiguracaoAgendaEscritorio?> ObterPorEscritorioIdAsync(Guid escritorioId);
 }
+

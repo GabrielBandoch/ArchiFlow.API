@@ -28,3 +28,4 @@ public record RegistrarContatoLeadCommand(
     string Canal,
     string Resumo
 );
+

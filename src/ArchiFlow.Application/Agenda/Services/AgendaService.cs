@@ -111,11 +111,11 @@ public class AgendaService : IAgendaService
             CriadoEm = DateTime.UtcNow
         };
 
-        // Persistência local ocorre primeiro para prevenir eventos órfãos no Google se o banco falhar
+
         await _compromissoRepository.Create(compromisso);
         await _unitOfWork.Commit();
 
-        // Sincronização externa somente após confirmação do commit local
+
         var syncResult = await SincronizarCriacaoComGoogleCalendarAsync(compromisso, escritorioId, command.GerarGoogleMeet);
         if (syncResult is not null && (!string.IsNullOrWhiteSpace(syncResult.GoogleEventId) || !string.IsNullOrWhiteSpace(syncResult.LinkGoogleMeet)))
         {
@@ -691,3 +691,4 @@ public class AgendaService : IAgendaService
             throw new ArgumentException("O horário de término deve ser posterior ao horário de início.");
     }
 }
+

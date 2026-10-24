@@ -14,3 +14,4 @@ public record AtualizarOrigemLeadCommand(
 public record DesativarOrigemLeadCommand(
     Guid Id
 );
+

@@ -14,3 +14,4 @@ public class OpcaoConfiguracao
     public bool Ativo { get; set; } = true;
     public string? DadosExtrasJson { get; set; }
 }
+

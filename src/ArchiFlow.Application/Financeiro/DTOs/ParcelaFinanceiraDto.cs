@@ -24,3 +24,4 @@ public record ParcelaFinanceiraDto(
     string? ComprovanteUrl,
     DateTime CriadoEm
 );
+

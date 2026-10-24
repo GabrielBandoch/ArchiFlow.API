@@ -13,11 +13,6 @@ using Npgsql;
 
 namespace ArchiFlow.Infrastructure.MultiTenancy;
 
-/// <summary>
-/// Implementação do provisionador dinâmico de banco de dados por cliente.
-/// Garante que, ao acessar qualquer subdomínio/tenant (ex: duna, staging),
-/// o banco de dados PostgreSQL correspondente é criado, migrado e inicializado automaticamente.
-/// </summary>
 public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 {
     private readonly string _baseConnectionString;
@@ -45,7 +40,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 
         var cleanTenant = SanitizeTenant(tenantId);
 
-        // Se já foi inicializado nesta sessão do servidor, retorna imediatamente (overhead de 0ms)
+
         if (_initializedTenants.ContainsKey(cleanTenant))
         {
             return;
@@ -109,7 +104,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
             return;
         }
 
-        // Conecta ao banco de manutenção administrativo (postgres ou banco base)
+
         var masterBuilder = new NpgsqlConnectionStringBuilder(_baseConnectionString)
         {
             Database = "postgres"
@@ -131,8 +126,8 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 
                 ValidarNomeBanco(targetDbName);
                 await using var createCmd = conn.CreateCommand();
-#pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
-                createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';"; // NOSONAR
+#pragma warning disable S2077 
+                createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
 #pragma warning restore S2077
                 await createCmd.ExecuteNonQueryAsync();
 
@@ -141,7 +136,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
         catch (NpgsqlException ex) when (ex.Message.Contains("postgres"))
         {
-            // Caso o banco "postgres" não exista ou não tenha permissão, tenta conectar diretamente no banco base
+
             _logger.LogWarning(ex, "Não foi possível conectar ao banco de manutenção 'postgres', tentando conexão no banco base.");
             await EnsureDatabaseExistsFallbackAsync(targetDbName);
         }
@@ -162,8 +157,8 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         {
             ValidarNomeBanco(targetDbName);
             await using var createCmd = conn.CreateCommand();
-#pragma warning disable S2077 // PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist
-            createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';"; // NOSONAR
+#pragma warning disable S2077 
+            createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
 #pragma warning restore S2077
             await createCmd.ExecuteNonQueryAsync();
         }
@@ -193,3 +188,4 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized.ToLowerInvariant();
     }
 }
+

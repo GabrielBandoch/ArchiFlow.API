@@ -189,4 +189,19 @@ public class FinanceiroFacadeTests
         await _facade.ExcluirDespesaAsync(despesaId);
         _serviceMock.Verify(s => s.ExcluirDespesaAsync(despesaId), Times.Once);
     }
+
+    [Fact]
+    public async Task AlternarPagamentoDespesaAsync_Should_Delegate_To_Service()
+    {
+        var id = Guid.NewGuid();
+        var command = new AlternarPagamentoDespesaCommand(true);
+        var dto = new DespesaProjetoDto(id, null, "Geral", "Desc", 100m, DateTime.UtcNow, CategoriaDespesa.Outros, "Outros", null, null, DateTime.UtcNow, true, DateTime.UtcNow);
+        _serviceMock.Setup(s => s.AlternarPagamentoDespesaAsync(id, command)).ReturnsAsync(dto);
+
+        var result = await _facade.AlternarPagamentoDespesaAsync(id, command);
+
+        result.Should().BeEquivalentTo(dto);
+        _serviceMock.Verify(s => s.AlternarPagamentoDespesaAsync(id, command), Times.Once);
+    }
 }
+

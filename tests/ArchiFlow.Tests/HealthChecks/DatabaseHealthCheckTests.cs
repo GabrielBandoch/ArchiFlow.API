@@ -28,7 +28,7 @@ public class DatabaseHealthCheckTests
     {
         var context = TestDbContextFactory.Create();
         context.Dispose();
-        
+
         var healthCheck = new DatabaseHealthCheck(context);
         var healthCheckContext = new HealthCheckContext();
 
@@ -39,3 +39,4 @@ public class DatabaseHealthCheckTests
         result.Exception.Should().NotBeNull();
     }
 }
+

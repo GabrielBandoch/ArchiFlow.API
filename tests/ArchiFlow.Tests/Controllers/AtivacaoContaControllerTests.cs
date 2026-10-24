@@ -57,3 +57,4 @@ public class AtivacaoContaControllerTests
         badResult.Value.Should().BeEquivalentTo(new { message = "Token inválido" });
     }
 }
+

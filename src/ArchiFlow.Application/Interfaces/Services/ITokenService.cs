@@ -10,3 +10,4 @@ public interface ITokenService
     string GenerateToken(Cliente cliente, Guid? projectId);
     string GenerateToken(RepresentanteCliente representante, Guid? projectId);
 }
+

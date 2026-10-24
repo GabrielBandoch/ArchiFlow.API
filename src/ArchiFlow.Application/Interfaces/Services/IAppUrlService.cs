@@ -4,3 +4,4 @@ public interface IAppUrlService
 {
     string ObterUrlBaseConfiavel(string? requestedOrigin = null);
 }
+

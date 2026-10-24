@@ -18,7 +18,7 @@ public class OAuthStateServiceTests
         var state = _service.GerarState(usuarioId, escritorioId);
 
         state.Should().NotBeNullOrWhiteSpace();
-        state.Length.Should().Be(64); // 32 bytes em formato hex
+        state.Length.Should().Be(64);
     }
 
     [Fact]
@@ -88,3 +88,4 @@ public class OAuthStateServiceTests
         valido.Should().BeFalse();
     }
 }
+

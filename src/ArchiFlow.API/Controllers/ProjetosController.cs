@@ -82,7 +82,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> Update(Guid id, [FromBody] AtualizarProjetoCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.Update(command));
     }
@@ -92,7 +92,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] AtualizarStatusProjetoCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatus(command));
     }
@@ -102,7 +102,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> CreateEtapa(Guid id, [FromBody] CriarEtapaCommand command)
     {
-        if (id != command.ProjetoId) 
+        if (id != command.ProjetoId)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.CreateEtapa(command));
     }
@@ -112,7 +112,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> UpdateStatusEtapa(Guid etapaId, [FromBody] AtualizarStatusEtapaCommand command)
     {
-        if (etapaId != command.EtapaId) 
+        if (etapaId != command.EtapaId)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatusEtapa(command));
     }
@@ -206,3 +206,4 @@ public class ProjetosController : ControllerBase
     private string ObterBaseUrl() =>
         _appUrlService.ObterUrlBaseConfiavel(Request?.Headers.Origin.FirstOrDefault());
 }
+

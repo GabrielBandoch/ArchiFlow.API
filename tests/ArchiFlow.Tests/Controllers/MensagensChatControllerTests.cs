@@ -28,7 +28,7 @@ public class MensagensChatControllerTests
     [Fact]
     public async Task GetByProjeto_Should_Return_Ok_With_Messages_From_Facade()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var usuarioId = Guid.NewGuid();
         var mensagens = new List<MensagemChatDto>
@@ -38,10 +38,10 @@ public class MensagensChatControllerTests
 
         _mockFacade.Setup(f => f.GetByProjetoId(projetoId, 50)).ReturnsAsync(mensagens);
 
-        // Act
+
         var result = await _controller.GetByProjeto(projetoId, 50);
 
-        // Assert
+
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(mensagens);
@@ -51,7 +51,7 @@ public class MensagensChatControllerTests
     [Fact]
     public async Task EnviarMensagem_Should_Return_CreatedAtAction_With_New_Message()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var usuarioId = Guid.NewGuid();
         var command = new EnviarMensagemCommand(projetoId, "Mensagem de teste");
@@ -69,13 +69,14 @@ public class MensagensChatControllerTests
         _mockFacade.Setup(f => f.EnviarMensagem(projetoId, command))
                    .ReturnsAsync(msgRetorno);
 
-        // Act
+
         var result = await _controller.EnviarMensagem(projetoId, command);
 
-        // Assert
+
         var createdResult = result as CreatedAtActionResult;
         createdResult.Should().NotBeNull();
         createdResult!.Value.Should().BeEquivalentTo(msgRetorno);
         _mockFacade.Verify(f => f.EnviarMensagem(projetoId, command), Times.Once);
     }
 }
+

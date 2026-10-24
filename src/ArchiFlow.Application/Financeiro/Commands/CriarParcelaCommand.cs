@@ -12,3 +12,4 @@ public record CriarParcelaCommand(
     DateTime DataVencimento,
     string? Observacoes
 );
+

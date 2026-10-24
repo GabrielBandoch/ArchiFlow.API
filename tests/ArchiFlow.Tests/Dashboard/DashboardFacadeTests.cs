@@ -74,3 +74,4 @@ public class DashboardFacadeTests
         _serviceMock.Verify(s => s.SalvarPreferenciasAsync(command), Times.Once);
     }
 }
+

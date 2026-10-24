@@ -34,3 +34,4 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> SalvarPreferencias([FromBody] SalvarPreferenciaDashboardCommand command) =>
         Ok(await _dashboardFacade.SalvarPreferenciasAsync(command));
 }
+

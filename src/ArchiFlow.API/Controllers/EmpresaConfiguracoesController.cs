@@ -72,3 +72,4 @@ public class EmpresaConfiguracoesController : ControllerBase
         return NoContent();
     }
 }
+

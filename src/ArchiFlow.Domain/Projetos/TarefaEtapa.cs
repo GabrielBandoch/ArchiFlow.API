@@ -10,3 +10,4 @@ public class TarefaEtapa
     public DateTime? DataLimite { get; set; }
     public virtual EtapaProjeto? Etapa { get; set; }
 }
+

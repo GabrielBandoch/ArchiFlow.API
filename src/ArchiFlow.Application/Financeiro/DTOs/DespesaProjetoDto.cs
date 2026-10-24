@@ -18,3 +18,4 @@ public record DespesaProjetoDto(
     bool Pago = false,
     DateTime? DataPagamento = null
 );
+

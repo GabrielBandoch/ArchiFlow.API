@@ -123,3 +123,4 @@ public class EmpresaConfiguracoesControllerTests
         _empresaFacadeMock.Verify(f => f.RemoverLogotipoAsync(), Times.Once);
     }
 }
+

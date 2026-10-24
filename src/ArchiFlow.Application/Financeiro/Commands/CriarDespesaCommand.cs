@@ -14,3 +14,4 @@ public record CriarDespesaCommand(
     bool Pago = false,
     DateTime? DataPagamento = null
 );
+

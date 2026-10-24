@@ -7,3 +7,4 @@ public interface IDadosEmpresaRepository
     Task<DadosEmpresa?> ObterAsync();
     Task SalvarAsync(DadosEmpresa dadosEmpresa);
 }
+

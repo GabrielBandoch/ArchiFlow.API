@@ -13,3 +13,4 @@ public interface IEmpresaFacade
     Task<string> AtualizarLogotipoAsync(Stream stream, string fileName, string contentType);
     Task RemoverLogotipoAsync();
 }
+

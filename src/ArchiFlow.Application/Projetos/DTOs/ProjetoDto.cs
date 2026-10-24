@@ -42,3 +42,4 @@ public record TarefaEtapaDto(
     DateTime? CriadoEm = null,
     DateTime? DataLimite = null
 );
+

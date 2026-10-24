@@ -33,3 +33,4 @@ public abstract class CalculoHonorarioStrategyBase : ICalculoHonorarioStrategy
         return Math.Round(valorSubtotal * (0.5m + (fatorEscopo * 0.5m)), 2);
     }
 }
+

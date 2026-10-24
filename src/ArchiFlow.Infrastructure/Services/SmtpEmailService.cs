@@ -21,26 +21,26 @@ public class SmtpEmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string body)
     {
-        var host = _configuration["SMTP_HOST"] 
-            ?? Environment.GetEnvironmentVariable("SMTP_HOST") 
+        var host = _configuration["SMTP_HOST"]
+            ?? Environment.GetEnvironmentVariable("SMTP_HOST")
             ?? "smtp.hostinger.com";
 
-        var portStr = _configuration["SMTP_PORT"] 
-            ?? Environment.GetEnvironmentVariable("SMTP_PORT") 
+        var portStr = _configuration["SMTP_PORT"]
+            ?? Environment.GetEnvironmentVariable("SMTP_PORT")
             ?? "587";
 
-        var user = _configuration["SMTP_USER"] 
+        var user = _configuration["SMTP_USER"]
             ?? Environment.GetEnvironmentVariable("SMTP_USER");
 
-        var password = _configuration["SMTP_PASSWORD"] 
+        var password = _configuration["SMTP_PASSWORD"]
             ?? Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 
-        var fromEmail = _configuration["SMTP_FROM_EMAIL"] 
-            ?? Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL") 
+        var fromEmail = _configuration["SMTP_FROM_EMAIL"]
+            ?? Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL")
             ?? user;
 
-        var fromName = _configuration["SMTP_FROM_NAME"] 
-            ?? Environment.GetEnvironmentVariable("SMTP_FROM_NAME") 
+        var fromName = _configuration["SMTP_FROM_NAME"]
+            ?? Environment.GetEnvironmentVariable("SMTP_FROM_NAME")
             ?? "ArchiFlow";
 
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
@@ -65,9 +65,9 @@ public class SmtpEmailService : IEmailService
         };
         mailMessage.To.Add(to);
 
-        var isHtml = body.Contains("<html", StringComparison.OrdinalIgnoreCase) 
-                  || body.Contains("<div", StringComparison.OrdinalIgnoreCase) 
-                  || body.Contains("<p>", StringComparison.OrdinalIgnoreCase) 
+        var isHtml = body.Contains("<html", StringComparison.OrdinalIgnoreCase)
+                  || body.Contains("<div", StringComparison.OrdinalIgnoreCase)
+                  || body.Contains("<p>", StringComparison.OrdinalIgnoreCase)
                   || body.Contains("<br", StringComparison.OrdinalIgnoreCase);
 
         if (!isHtml)
@@ -117,3 +117,4 @@ public class SmtpEmailService : IEmailService
         }
     }
 }
+

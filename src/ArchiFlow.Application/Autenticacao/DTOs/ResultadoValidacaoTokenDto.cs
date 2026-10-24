@@ -5,3 +5,4 @@ public record ResultadoValidacaoTokenDto(
     string? Email = null,
     string? Mensagem = null
 );
+

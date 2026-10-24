@@ -6,3 +6,4 @@ public record AlternarPagamentoDespesaCommand(
     bool? Pago = null,
     DateTime? DataPagamento = null
 );
+

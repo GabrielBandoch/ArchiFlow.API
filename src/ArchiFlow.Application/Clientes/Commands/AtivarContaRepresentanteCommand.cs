@@ -12,3 +12,4 @@ public record AtivarContaRepresentanteCommand(
 
     string? ConfirmacaoSenha = null
 );
+

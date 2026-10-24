@@ -62,3 +62,4 @@ public class ClienteRepresentantesController : ControllerBase
     private string ObterBaseUrl() =>
         _appUrlService.ObterUrlBaseConfiavel(Request.Headers.Origin.FirstOrDefault());
 }
+

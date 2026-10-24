@@ -20,7 +20,7 @@ public class LeadFacadeTests
     public LeadFacadeTests()
     {
         _serviceMock = new Mock<ILeadService>();
-        _sut         = new LeadFacade(_serviceMock.Object);
+        _sut = new LeadFacade(_serviceMock.Object);
     }
 
     [Fact]
@@ -111,3 +111,4 @@ public class LeadFacadeTests
         _serviceMock.Verify(s => s.Delete(id), Times.Once);
     }
 }
+

@@ -80,3 +80,4 @@ public class MensagemChatFacadeTests
         _mockService.Verify(s => s.MarcarComoLidas(projetoId, usuarioId), Times.Once);
     }
 }
+

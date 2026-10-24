@@ -13,3 +13,4 @@ public interface ITemplateProjetoRepository : IRepository<TemplateProjeto>
     void RemoveEtapas(IEnumerable<TemplateEtapa> etapas);
     void AddEtapas(IEnumerable<TemplateEtapa> etapas);
 }
+

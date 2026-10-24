@@ -24,3 +24,4 @@ public class ParcelaFinanceira
     public Projeto? Projeto { get; set; }
     public ContratoFinanceiro? ContratoFinanceiro { get; set; }
 }
+

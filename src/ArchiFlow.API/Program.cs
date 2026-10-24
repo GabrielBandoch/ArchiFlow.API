@@ -89,7 +89,6 @@ await DbSeeder.MigrateAndSeedAsync(app.Services, app.Environment.IsDevelopment()
 var tenantProvisioner = app.Services.GetService<ArchiFlow.Domain.Shared.ITenantDatabaseProvisioner>();
 if (tenantProvisioner != null)
 {
-    // Pré-aquece e garante os bancos de dados dos ambientes e tenants principais
     await tenantProvisioner.EnsureTenantDatabaseAsync("default");
     await tenantProvisioner.EnsureTenantDatabaseAsync("staging");
     await tenantProvisioner.EnsureTenantDatabaseAsync("duna");
@@ -122,3 +121,4 @@ public partial class Program
 {
     protected Program() { }
 }
+

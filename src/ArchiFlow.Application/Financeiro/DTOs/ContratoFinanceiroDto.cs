@@ -13,3 +13,4 @@ public record ContratoFinanceiroDto(
     DateTime CriadoEm,
     List<ParcelaFinanceiraDto> Parcelas
 );
+

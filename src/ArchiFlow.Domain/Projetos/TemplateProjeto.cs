@@ -11,3 +11,4 @@ public class TemplateProjeto
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public virtual ICollection<TemplateEtapa> Etapas { get; set; } = new List<TemplateEtapa>();
 }
+

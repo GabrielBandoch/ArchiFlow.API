@@ -12,3 +12,4 @@ public record AlterarSenhaCommand(
 
     string? ConfirmacaoNovaSenha = null
 );
+

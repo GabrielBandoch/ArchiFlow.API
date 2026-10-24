@@ -34,3 +34,4 @@ public class LuxoPadraoStrategy : PadraoImovelStrategyBase
     public override decimal Multiplicador => 1.60m;
     public override string Descricao => "Luxo (1.6)";
 }
+

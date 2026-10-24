@@ -17,11 +17,11 @@ public class ProjetoServiceTests
 
     public ProjetoServiceTests()
     {
-        var ctx                = TestDbContextFactory.Create();
-        var repository         = new ProjetoRepository(ctx);
+        var ctx = TestDbContextFactory.Create();
+        var repository = new ProjetoRepository(ctx);
         var templateRepository = new TemplateProjetoRepository(ctx);
-        var unitOfWork         = new UnitOfWork(ctx);
-        var mapper             = MappingFixture.Create();
+        var unitOfWork = new UnitOfWork(ctx);
+        var mapper = MappingFixture.Create();
 
         _sut = new ProjetoService(repository, unitOfWork, mapper, null, templateRepository);
     }
@@ -143,7 +143,7 @@ public class ProjetoServiceTests
     public async Task AtualizarStatusEtapa_ParaConcluida_DeveRegistrarDataConclusao()
     {
         var projeto = await _sut.Create(CriarComando("Apartamento Duplex"));
-        var etapa   = await _sut.CreateEtapa(
+        var etapa = await _sut.CreateEtapa(
             new CriarEtapaCommand(projeto.Id, "Estudo Preliminar", "", 1));
         var command = new AtualizarStatusEtapaCommand(etapa.Id, StatusEtapa.Concluida);
 
@@ -519,12 +519,13 @@ public class ProjetoServiceTests
 
     private static CriarProjetoCommand CriarComando(string nome) =>
         new(
-            Nome:                nome,
-            Descricao:           "Descrição de teste",
-            Tipo:                TipoProjeto.Residencial,
-            DataInicio:          DateTime.UtcNow,
+            Nome: nome,
+            Descricao: "Descrição de teste",
+            Tipo: TipoProjeto.Residencial,
+            DataInicio: DateTime.UtcNow,
             DataPrevistaEntrega: DateTime.UtcNow.AddMonths(6),
-            MetragemTotal:       150,
-            ClienteId:           Guid.NewGuid()
+            MetragemTotal: 150,
+            ClienteId: Guid.NewGuid()
         );
 }
+

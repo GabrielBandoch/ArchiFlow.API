@@ -70,3 +70,4 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
         return true;
     }
 }
+

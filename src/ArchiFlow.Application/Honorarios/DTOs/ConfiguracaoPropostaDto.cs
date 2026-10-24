@@ -54,3 +54,4 @@ public record SalvarConfiguracaoPropostaCommand(
     string TermosGerais,
     string TemplateMensagemWhatsapp
 );
+

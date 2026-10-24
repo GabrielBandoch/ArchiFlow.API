@@ -15,3 +15,4 @@ public interface IFornecedorService
     Task<bool> DesvincularProjetoAsync(Guid vinculoId);
     Task<IEnumerable<ProjetoFornecedorDto>> ObterFornecedoresDoProjetoAsync(Guid projetoId);
 }
+

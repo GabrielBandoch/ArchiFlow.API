@@ -12,3 +12,4 @@ public record MensagemChatDto(
     DateTime CriadoEm,
     bool Lida
 );
+

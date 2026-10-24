@@ -704,3 +704,4 @@ public class AgendaServiceTests
         _googleCalendarMock.Verify(g => g.ExcluirEventoViaOAuthAsync("evt-oauth-123", "primary", "rt-active", "cid", "csec"), Times.Once);
     }
 }
+

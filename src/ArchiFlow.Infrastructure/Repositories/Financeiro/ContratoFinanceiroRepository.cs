@@ -18,3 +18,4 @@ public class ContratoFinanceiroRepository : Repository<ContratoFinanceiro>, ICon
             .FirstOrDefaultAsync(c => c.ProjetoId == projetoId);
     }
 }
+

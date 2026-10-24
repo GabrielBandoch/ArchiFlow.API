@@ -11,3 +11,4 @@ public interface IDespesaProjetoRepository : IRepository<DespesaProjeto>
     Task<IEnumerable<DespesaProjeto>> ObterComFiltroAsync(Guid? projetoId, CategoriaDespesa? categoria, DateTime? dataInicio, DateTime? dataFim);
     Task<IEnumerable<DespesaProjeto>> ObterTodasComProjetoAsync();
 }
+

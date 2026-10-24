@@ -40,3 +40,4 @@ public class LeadRepository : Repository<Lead>, ILeadRepository
         return historico;
     }
 }
+

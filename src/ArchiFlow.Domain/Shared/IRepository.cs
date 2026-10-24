@@ -10,3 +10,4 @@ public interface IRepository<T> where T : class
     Task Delete(Guid id);
     Task<bool> Exists(Guid id);
 }
+

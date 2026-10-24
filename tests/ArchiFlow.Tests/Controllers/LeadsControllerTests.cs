@@ -21,7 +21,7 @@ public class LeadsControllerTests
     public LeadsControllerTests()
     {
         _facadeMock = new Mock<ILeadFacade>();
-        _sut        = new LeadsController(_facadeMock.Object);
+        _sut = new LeadsController(_facadeMock.Object);
     }
 
     [Fact]
@@ -161,3 +161,4 @@ public class LeadsControllerTests
         _facadeMock.Verify(f => f.Delete(id), Times.Once);
     }
 }
+

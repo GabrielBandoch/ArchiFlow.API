@@ -9,3 +9,4 @@ public enum StatusLead
     Convertido = 4,
     Perdido = 5
 }
+

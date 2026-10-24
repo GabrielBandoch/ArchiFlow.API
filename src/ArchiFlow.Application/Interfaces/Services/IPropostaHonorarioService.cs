@@ -19,3 +19,4 @@ public interface IPropostaHonorarioService
     Task<ConfiguracaoPropostaDto> ObterConfiguracaoAsync();
     Task<ConfiguracaoPropostaDto> SalvarConfiguracaoAsync(SalvarConfiguracaoPropostaCommand command);
 }
+

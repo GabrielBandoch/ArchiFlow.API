@@ -30,3 +30,4 @@ public class DashboardFacade : IDashboardFacade
         return _dashboardService.SalvarPreferenciasAsync(command);
     }
 }
+

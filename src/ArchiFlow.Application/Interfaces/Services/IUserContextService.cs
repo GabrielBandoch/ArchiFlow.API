@@ -8,3 +8,4 @@ public interface IUserContextService
 {
     Task<(Usuario Usuario, Guid EscritorioId)> ObterUsuarioContextoAsync();
 }
+

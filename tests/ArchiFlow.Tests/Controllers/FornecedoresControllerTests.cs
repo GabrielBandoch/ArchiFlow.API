@@ -171,3 +171,4 @@ public class FornecedoresControllerTests
         ok.Value.Should().BeEquivalentTo(lista);
     }
 }
+

@@ -50,10 +50,10 @@ public class AuthServiceTests
         var result = await _sut.Registrar(request);
 
         result.Should().NotBeEmpty();
-        _userRepoMock.Verify(r => r.Create(It.Is<Usuario>(u => 
-            u.Email == request.Email && 
-            u.Nome == request.Nome && 
-            u.Role == request.Role && 
+        _userRepoMock.Verify(r => r.Create(It.Is<Usuario>(u =>
+            u.Email == request.Email &&
+            u.Nome == request.Nome &&
+            u.Role == request.Role &&
             u.SenhaHash != request.Senha
         )), Times.Once);
         _uowMock.Verify(u => u.Commit(default), Times.Once);
@@ -242,7 +242,7 @@ public class AuthServiceTests
         {
             Id = Guid.NewGuid(),
             Email = email,
-            SenhaPortal = null, // Senha nula
+            SenhaPortal = null,
             Ativo = true
         };
 
@@ -349,3 +349,4 @@ public class AuthServiceTests
         response.ProjetoId.Should().Be(projeto.Id);
     }
 }
+

@@ -16,3 +16,4 @@ public interface IOrigemLeadService
     Task<OrigemLeadDto> Desativar(Guid id);
     Task<OrigemLeadDto> Reativar(Guid id);
 }
+

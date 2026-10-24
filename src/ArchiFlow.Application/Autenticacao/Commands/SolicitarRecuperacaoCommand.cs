@@ -7,3 +7,4 @@ public record SolicitarRecuperacaoCommand(
     [EmailAddress(ErrorMessage = "E-mail em formato inválido.")]
     string Email
 );
+

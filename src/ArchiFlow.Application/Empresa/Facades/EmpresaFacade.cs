@@ -31,3 +31,4 @@ public class EmpresaFacade : IEmpresaFacade
     public Task RemoverLogotipoAsync() =>
         _empresaService.RemoverLogotipoAsync();
 }
+

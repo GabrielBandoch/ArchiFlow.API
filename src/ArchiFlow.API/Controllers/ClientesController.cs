@@ -50,3 +50,4 @@ public class ClientesController : ControllerBase
     public async Task<IActionResult> UpdatePortalAccess([FromBody] AtualizarPortalAccessCommand command) =>
         Ok(await _facade.UpdatePortalAccess(command));
 }
+
