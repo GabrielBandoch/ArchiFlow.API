@@ -3,7 +3,7 @@ using System;
 namespace ArchiFlow.Application.Financeiro.Commands;
 
 public record CriarParcelaCommand(
-    Guid ProjetoId,
+    Guid? ProjetoId,
     Guid? ContratoFinanceiroId,
     int NumeroParcela,
     int TotalParcelas,

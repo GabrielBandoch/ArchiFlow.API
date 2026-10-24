@@ -16,10 +16,12 @@ public interface IProjetoFacade
     Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command);
     Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command);
     Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command);
+    Task<EtapaProjetoDto> AtualizarDatasEtapa(AtualizarDatasEtapaCommand command);
     Task Delete(Guid id);
 
     Task<TarefaEtapaDto> AdicionarTarefa(AdicionarTarefaCommand command);
     Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId);
+    Task<TarefaEtapaDto> AtualizarPrazoTarefa(AtualizarPrazoTarefaCommand command);
     Task RemoverTarefa(Guid tarefaId);
 
     Task<IEnumerable<TemplateProjetoDto>> ObterTemplates();

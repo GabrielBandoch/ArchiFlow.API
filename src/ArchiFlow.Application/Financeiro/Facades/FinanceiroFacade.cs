@@ -57,6 +57,9 @@ public class FinanceiroFacade : IFinanceiroFacade
     public Task<DespesaProjetoDto> AtualizarDespesaAsync(Guid id, AtualizarDespesaCommand command) =>
         _financeiroService.AtualizarDespesaAsync(id, command);
 
+    public Task<DespesaProjetoDto> AlternarPagamentoDespesaAsync(Guid id, AlternarPagamentoDespesaCommand command) =>
+        _financeiroService.AlternarPagamentoDespesaAsync(id, command);
+
     public Task ExcluirDespesaAsync(Guid id) =>
         _financeiroService.ExcluirDespesaAsync(id);
 

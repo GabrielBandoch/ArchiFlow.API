@@ -22,10 +22,12 @@ public class ProjetoFacade : IProjetoFacade
     public Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command)   => _service.UpdateStatus(command);
     public Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command)              => _service.CreateEtapa(command);
     public Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command) => _service.UpdateStatusEtapa(command);
+    public Task<EtapaProjetoDto> AtualizarDatasEtapa(AtualizarDatasEtapaCommand command) => _service.AtualizarDatasEtapa(command);
     public Task Delete(Guid id)                                                     => _service.Delete(id);
 
     public Task<TarefaEtapaDto> AdicionarTarefa(AdicionarTarefaCommand command) => _service.AdicionarTarefa(command);
     public Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId)                   => _service.AlternarTarefa(tarefaId);
+    public Task<TarefaEtapaDto> AtualizarPrazoTarefa(AtualizarPrazoTarefaCommand command) => _service.AtualizarPrazoTarefa(command);
     public Task RemoverTarefa(Guid tarefaId)                                    => _service.RemoverTarefa(tarefaId);
 
     public Task<IEnumerable<TemplateProjetoDto>> ObterTemplates()               => _service.ObterTemplates();

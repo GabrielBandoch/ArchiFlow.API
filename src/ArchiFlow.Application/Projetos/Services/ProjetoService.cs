@@ -139,12 +139,13 @@ public class ProjetoService : IProjetoService
     {
         var etapa = new EtapaProjeto
         {
-            Id        = Guid.NewGuid(),
-            ProjetoId = command.ProjetoId,
-            Nome      = command.Nome,
-            Descricao = command.Descricao,
-            Ordem     = command.Ordem,
-            Status    = StatusEtapa.Pendente
+            Id              = Guid.NewGuid(),
+            ProjetoId       = command.ProjetoId,
+            Nome            = command.Nome,
+            Descricao       = command.Descricao,
+            Ordem           = command.Ordem,
+            Status          = StatusEtapa.Pendente,
+            DataFimPrevista = command.DataFimPrevista
         };
 
         await _repository.CreateEtapa(etapa);
@@ -160,7 +161,29 @@ public class ProjetoService : IProjetoService
         etapa.Status = command.Status;
 
         if (command.Status == StatusEtapa.Concluida)
-            etapa.DataConclusao = DateTime.UtcNow;
+            etapa.DataConclusao = command.DataConclusao ?? DateTime.UtcNow;
+        else
+            etapa.DataConclusao = null;
+
+        await _repository.UpdateEtapa(etapa);
+        await _unitOfWork.Commit();
+        return ToEtapaDto(etapa);
+    }
+
+    public async Task<EtapaProjetoDto> AtualizarDatasEtapa(AtualizarDatasEtapaCommand command)
+    {
+        var etapa = await _repository.GetEtapaById(command.EtapaId)
+            ?? throw new KeyNotFoundException($"Etapa {command.EtapaId} não encontrada.");
+
+        if (command.LimparDataFimPrevista)
+            etapa.DataFimPrevista = null;
+        else if (command.DataFimPrevista.HasValue)
+            etapa.DataFimPrevista = command.DataFimPrevista.Value;
+
+        if (command.LimparDataConclusao)
+            etapa.DataConclusao = null;
+        else if (command.DataConclusao.HasValue)
+            etapa.DataConclusao = command.DataConclusao.Value;
 
         await _repository.UpdateEtapa(etapa);
         await _unitOfWork.Commit();
@@ -180,17 +203,18 @@ public class ProjetoService : IProjetoService
 
         var tarefa = new TarefaEtapa
         {
-            Id        = Guid.NewGuid(),
-            EtapaId   = command.EtapaId,
-            Titulo    = command.Titulo,
-            Concluida = false,
-            CriadoEm  = DateTime.UtcNow
+            Id         = Guid.NewGuid(),
+            EtapaId    = command.EtapaId,
+            Titulo     = command.Titulo,
+            Concluida  = false,
+            CriadoEm   = DateTime.UtcNow,
+            DataLimite = command.DataLimite
         };
 
         await _repository.CreateTarefa(tarefa);
         await _unitOfWork.Commit();
 
-        return new TarefaEtapaDto(tarefa.Id, tarefa.EtapaId, tarefa.Titulo, tarefa.Concluida, tarefa.CriadoEm);
+        return new TarefaEtapaDto(tarefa.Id, tarefa.EtapaId, tarefa.Titulo, tarefa.Concluida, tarefa.CriadoEm, tarefa.DataLimite);
     }
 
     public async Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId)
@@ -202,7 +226,19 @@ public class ProjetoService : IProjetoService
         await _repository.UpdateTarefa(tarefa);
         await _unitOfWork.Commit();
 
-        return new TarefaEtapaDto(tarefa.Id, tarefa.EtapaId, tarefa.Titulo, tarefa.Concluida, tarefa.CriadoEm);
+        return new TarefaEtapaDto(tarefa.Id, tarefa.EtapaId, tarefa.Titulo, tarefa.Concluida, tarefa.CriadoEm, tarefa.DataLimite);
+    }
+
+    public async Task<TarefaEtapaDto> AtualizarPrazoTarefa(AtualizarPrazoTarefaCommand command)
+    {
+        var tarefa = await _repository.GetTarefaById(command.TarefaId)
+            ?? throw new KeyNotFoundException($"Tarefa {command.TarefaId} não encontrada.");
+
+        tarefa.DataLimite = command.DataLimite;
+        await _repository.UpdateTarefa(tarefa);
+        await _unitOfWork.Commit();
+
+        return new TarefaEtapaDto(tarefa.Id, tarefa.EtapaId, tarefa.Titulo, tarefa.Concluida, tarefa.CriadoEm, tarefa.DataLimite);
     }
 
     public async Task RemoverTarefa(Guid tarefaId)
@@ -398,7 +434,8 @@ public class ProjetoService : IProjetoService
             (e.Status ?? StatusEtapa.Pendente).ToString(), 
             e.Ordem ?? 0, 
             e.DataConclusao,
-            e.Tarefas?.OrderBy(t => t.CriadoEm).Select(t => new TarefaEtapaDto(t.Id, t.EtapaId, t.Titulo, t.Concluida, t.CriadoEm)));
+            e.Tarefas?.OrderBy(t => t.CriadoEm).Select(t => new TarefaEtapaDto(t.Id, t.EtapaId, t.Titulo, t.Concluida, t.CriadoEm, t.DataLimite)),
+            e.DataFimPrevista);
 
     private static TemplateProjetoDto ToTemplateDto(TemplateProjeto t) =>
         new(t.Id,

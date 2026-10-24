@@ -154,6 +154,37 @@ public class ProjetoServiceTests
     }
 
     [Fact]
+    public async Task AtualizarDatasEtapa_DeveAtualizarPrevisaoEDataConclusao()
+    {
+        var projeto = await _sut.Create(CriarComando("Edifício Alpha"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Estudo", "", 1));
+        var dataPrevista = DateTime.UtcNow.AddDays(15);
+        var dataConclusao = DateTime.UtcNow.AddDays(-2);
+
+        var atualizada = await _sut.AtualizarDatasEtapa(new AtualizarDatasEtapaCommand(
+            etapa.Id,
+            DataFimPrevista: dataPrevista,
+            DataConclusao: dataConclusao
+        ));
+
+        atualizada.DataFimPrevista.Should().BeCloseTo(dataPrevista, TimeSpan.FromSeconds(1));
+        atualizada.DataConclusao.Should().BeCloseTo(dataConclusao, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task AtualizarPrazoTarefa_DeveAtualizarDataLimite()
+    {
+        var projeto = await _sut.Create(CriarComando("Edifício Beta"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Layout", "", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Planta Baixa"));
+        var prazo = DateTime.UtcNow.AddDays(7);
+
+        var atualizada = await _sut.AtualizarPrazoTarefa(new AtualizarPrazoTarefaCommand(tarefa.Id, prazo));
+
+        atualizada.DataLimite.Should().BeCloseTo(prazo, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task AtualizarStatusEtapa_ComIdInexistente_DeveLancarKeyNotFoundException()
     {
         var command = new AtualizarStatusEtapaCommand(Guid.NewGuid(), StatusEtapa.Concluida);

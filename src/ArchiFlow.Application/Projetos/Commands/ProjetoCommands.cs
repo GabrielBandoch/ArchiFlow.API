@@ -34,21 +34,37 @@ public record CriarEtapaCommand(
     Guid ProjetoId,
     string Nome,
     string Descricao,
-    int Ordem
+    int Ordem,
+    DateTime? DataFimPrevista = null
 );
 
 public record AtualizarStatusEtapaCommand(
     Guid EtapaId,
-    StatusEtapa Status
+    StatusEtapa Status,
+    DateTime? DataConclusao = null
+);
+
+public record AtualizarDatasEtapaCommand(
+    Guid EtapaId,
+    DateTime? DataFimPrevista = null,
+    DateTime? DataConclusao = null,
+    bool LimparDataFimPrevista = false,
+    bool LimparDataConclusao = false
 );
 
 public record AdicionarTarefaCommand(
     Guid EtapaId,
-    string Titulo
+    string Titulo,
+    DateTime? DataLimite = null
 );
 
 public record AlternarTarefaCommand(
     Guid TarefaId
+);
+
+public record AtualizarPrazoTarefaCommand(
+    Guid TarefaId,
+    DateTime? DataLimite = null
 );
 
 public record CriarTemplateProjetoCommand(

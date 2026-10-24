@@ -1,746 +1,755 @@
-using ArchiFlow.Domain.Usuarios;
-using ArchiFlow.Domain.Leads;
-using ArchiFlow.Domain.Projetos;
-using ArchiFlow.Domain.Financeiro;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text.Json;
-using System.Threading.Tasks;
-
-namespace ArchiFlow.Infrastructure.Data;
-
-[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-public static class DbSeeder
-{
-    public static async Task MigrateAndSeedAsync(IServiceProvider serviceProvider, bool isDevelopment = true)
-    {
-        using var scope = serviceProvider.CreateScope();
-        var services = scope.ServiceProvider;
-        try
-        {
-            var context = services.GetRequiredService<ArchiFlowDbContext>();
-            await MigrateAndSeedContextAsync(context, services, isDevelopment);
-        }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
-            logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
-        }
-    }
-
-    public static async Task MigrateAndSeedContextAsync(ArchiFlowDbContext context, IServiceProvider services, bool isDevelopment = true)
-    {
-        await context.Database.MigrateAsync();
-        await EnsureAdditionalTablesAndColumnsAsync(context, services);
-        await SeedAsync(context, isDevelopment);
-    }
-
-    private static async Task EnsureAdditionalTablesAndColumnsAsync(ArchiFlowDbContext context, IServiceProvider services)
-    {
-        try
-        {
-            await context.Database.ExecuteSqlRawAsync(@"
-                ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
-                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Escritorio_Id"" uuid;
-                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Cargo"" character varying(100);
-                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Telefone"" character varying(30);
-                CREATE INDEX IF NOT EXISTS ""IX_Usuarios_USR_Escritorio_Id"" ON ""Usuarios"" (""USR_Escritorio_Id"");
-
-                CREATE TABLE IF NOT EXISTS ""Tarefas_Etapa"" (
-                    ""TAR_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""TAR_Etapa_Id"" uuid NOT NULL,
-                    ""TAR_Titulo"" character varying(300) NOT NULL,
-                    ""TAR_Concluida"" boolean NOT NULL DEFAULT false,
-                    ""TAR_Criado_Em"" timestamp with time zone NOT NULL,
-                    CONSTRAINT ""FK_Tarefas_Etapa_Etapas_Projeto"" FOREIGN KEY (""TAR_Etapa_Id"") REFERENCES ""Etapas_Projeto"" (""ETo_Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Templates_Projeto"" (
-                    ""TMP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""TMP_Codigo"" character varying(100) NOT NULL,
-                    ""TMP_Nome"" character varying(200) NOT NULL,
-                    ""TMP_Descricao"" text,
-                    ""TMP_Icone"" character varying(50),
-                    ""TMP_Ativo"" boolean NOT NULL DEFAULT true,
-                    ""TMP_Criado_Em"" timestamp with time zone NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Templates_Etapa"" (
-                    ""TME_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""TME_Template_Id"" uuid NOT NULL,
-                    ""TME_Nome"" character varying(200) NOT NULL,
-                    ""TME_Descricao"" text,
-                    ""TME_Ordem"" integer NOT NULL,
-                    ""TME_Tarefas_Json"" text,
-                    CONSTRAINT ""FK_Templates_Etapa_Templates_Projeto"" FOREIGN KEY (""TME_Template_Id"") REFERENCES ""Templates_Projeto"" (""TMP_Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Mensagens_Chat"" (
-                    ""MSG_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""MSG_Projeto_Id"" uuid NOT NULL,
-                    ""MSG_Remetente_Id"" uuid NOT NULL,
-                    ""MSG_Remetente_Nome"" character varying(200) NOT NULL,
-                    ""MSG_Remetente_Perfil"" character varying(50) NOT NULL,
-                    ""MSG_Conteudo"" text NOT NULL,
-                    ""MSG_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""MSG_Lida"" boolean NOT NULL DEFAULT false,
-                    CONSTRAINT ""FK_Mensagens_Chat_Projetos"" FOREIGN KEY (""MSG_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
-
-                CREATE TABLE IF NOT EXISTS ""Propostas_Honorarios"" (
-                    ""PH_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""PH_Titulo"" character varying(200) NOT NULL,
-                    ""PH_Codigo"" character varying(50) NOT NULL,
-                    ""PH_Cliente_Id"" uuid,
-                    ""PH_Cliente_Nome"" character varying(200),
-                    ""PH_Lead_Id"" uuid,
-                    ""PH_Lead_Nome"" character varying(200),
-                    ""PH_Tipo_Projeto"" integer NOT NULL,
-                    ""PH_Padrao_Imovel"" integer NOT NULL,
-                    ""PH_Metragem_Quadrada"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Hora_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_M2_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Horas_Estimadas_Total"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Fator_Padrao"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Fator_Tipologia"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Escopo"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Total_Sugerido"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Final_Ajustado"" numeric(18,2) NOT NULL,
-                    ""PH_Status"" integer NOT NULL,
-                    ""PH_Observacoes"" text,
-                    ""PH_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""PH_Atualizado_Em"" timestamp with time zone
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Itens_Propostas_Etapas"" (
-                    ""IPE_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""IPE_Proposta_Id"" uuid NOT NULL,
-                    ""IPE_Nome_Etapa"" character varying(200) NOT NULL,
-                    ""IPE_Descricao"" text,
-                    ""IPE_Incluso"" boolean NOT NULL,
-                    ""IPE_Percentual"" numeric(18,2) NOT NULL,
-                    ""IPE_Valor"" numeric(18,2) NOT NULL,
-                    ""IPE_Horas_Estimadas"" numeric(18,2) NOT NULL,
-                    ""IPE_Ordem"" integer NOT NULL,
-                    CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
-                );
-
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
-
-                CREATE TABLE IF NOT EXISTS ""Preferencias_Dashboard"" (
-                    ""PDB_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""PDB_Usuario_Id"" uuid NOT NULL,
-                    ""PDB_Layout_Json"" text NOT NULL,
-                    ""PDB_Atualizado_Em"" timestamp with time zone NOT NULL,
-                    CONSTRAINT ""UQ_Preferencias_Dashboard_Usuario"" UNIQUE (""PDB_Usuario_Id"")
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Contratos_Financeiros"" (
-                    ""CTF_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""CTF_Projeto_Id"" uuid NOT NULL,
-                    ""CTF_Valor_Total"" numeric(18,2) NOT NULL,
-                    ""CTF_Condicoes_Pagamento"" character varying(500),
-                    ""CTF_Observacoes"" text,
-                    ""CTF_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""CTF_Atualizado_Em"" timestamp with time zone,
-                    CONSTRAINT ""FK_Contratos_Projetos"" FOREIGN KEY (""CTF_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Parcelas_Financeiras"" (
-                    ""PAR_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""PAR_Projeto_Id"" uuid NOT NULL,
-                    ""PAR_Contrato_Id"" uuid,
-                    ""PAR_Numero_Parcela"" integer NOT NULL,
-                    ""PAR_Total_Parcelas"" integer NOT NULL,
-                    ""PAR_Descricao"" character varying(200) NOT NULL,
-                    ""PAR_Valor"" numeric(18,2) NOT NULL,
-                    ""PAR_Data_Vencimento"" timestamp with time zone NOT NULL,
-                    ""PAR_Data_Pagamento"" timestamp with time zone,
-                    ""PAR_Status"" integer NOT NULL,
-                    ""PAR_Forma_Pagamento"" integer,
-                    ""PAR_Observacoes"" text,
-                    ""PAR_Comprovante_Url"" character varying(1000),
-                    ""PAR_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""PAR_Atualizado_Em"" timestamp with time zone,
-                    CONSTRAINT ""FK_Parcelas_Projetos"" FOREIGN KEY (""PAR_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE,
-                    CONSTRAINT ""FK_Parcelas_Contratos"" FOREIGN KEY (""PAR_Contrato_Id"") REFERENCES ""Contratos_Financeiros"" (""CTF_Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Despesas_Projetos"" (
-                    ""DSP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""DSP_Projeto_Id"" uuid NOT NULL,
-                    ""DSP_Descricao"" character varying(200) NOT NULL,
-                    ""DSP_Valor"" numeric(18,2) NOT NULL,
-                    ""DSP_Data_Despesa"" timestamp with time zone NOT NULL,
-                    ""DSP_Categoria"" integer NOT NULL,
-                    ""DSP_Observacoes"" text,
-                    ""DSP_Comprovante_Url"" character varying(1000),
-                    ""DSP_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""DSP_Atualizado_Em"" timestamp with time zone,
-                    CONSTRAINT ""FK_Despesas_Projetos"" FOREIGN KEY (""DSP_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Configuracoes_Proposta"" (
-                    ""CFP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""CFP_Usuario_Id"" uuid NOT NULL,
-                    ""CFP_Nome_Escritorio"" character varying(200) NOT NULL DEFAULT '',
-                    ""CFP_Slogan"" character varying(300) NOT NULL DEFAULT '',
-                    ""CFP_Registro_Profissional"" character varying(150) NOT NULL DEFAULT '',
-                    ""CFP_Email"" character varying(150) NOT NULL DEFAULT '',
-                    ""CFP_Telefone"" character varying(50) NOT NULL DEFAULT '',
-                    ""CFP_Endereco"" character varying(300) NOT NULL DEFAULT '',
-                    ""CFP_Logo_Url"" text,
-                    ""CFP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
-                    ""CFP_Exibir_Cabecalho"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Resumo"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Tabela_Etapas"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Memoria_Calculo"" boolean NOT NULL DEFAULT false,
-                    ""CFP_Exibir_Condicoes_Pagamento"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Termos_Gerais"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Assinaturas"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Texto_Apresentacao"" text NOT NULL DEFAULT '',
-                    ""CFP_Validade_Dias"" integer NOT NULL DEFAULT 15,
-                    ""CFP_Condicoes_Pagamento_Padrao"" text NOT NULL DEFAULT '',
-                    ""CFP_Chave_Pix"" character varying(100),
-                    ""CFP_Dados_Bancarios"" character varying(300),
-                    ""CFP_Termos_Gerais"" text NOT NULL DEFAULT '',
-                    ""CFP_Template_Mensagem_Whatsapp"" text NOT NULL DEFAULT '',
-                    ""CFP_Configurado"" boolean NOT NULL DEFAULT false,
-                    ""CFP_Atualizado_Em"" timestamp with time zone
-                );
-
-                CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
-
-                CREATE TABLE IF NOT EXISTS ""Compromissos_Agenda"" (
-                    ""CMP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""CMP_Escritorio_Id"" uuid NOT NULL,
-                    ""CMP_Usuario_Id"" uuid,
-                    ""CMP_Projeto_Id"" uuid,
-                    ""CMP_Cliente_Id"" uuid,
-                    ""CMP_Lead_Id"" uuid,
-                    ""CMP_Titulo"" character varying(200) NOT NULL,
-                    ""CMP_Descricao"" text,
-                    ""CMP_Tipo"" character varying(50) NOT NULL,
-                    ""CMP_Status"" character varying(50) NOT NULL,
-                    ""CMP_Data_Hora_Inicio"" timestamp with time zone NOT NULL,
-                    ""CMP_Data_Hora_Fim"" timestamp with time zone NOT NULL,
-                    ""CMP_Local"" character varying(300),
-                    ""CMP_Link_Google_Meet"" character varying(500),
-                    ""CMP_Google_Event_Id"" character varying(200),
-                    ""CMP_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""CMP_Atualizado_Em"" timestamp with time zone
-                );
-
-                ALTER TABLE ""Compromissos_Agenda"" ADD COLUMN IF NOT EXISTS ""CMP_Lead_Id"" uuid;
-                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Escritorio_Id"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"");
-                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Lead_Id"" ON ""Compromissos_Agenda"" (""CMP_Lead_Id"");
-                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_Datas"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"", ""CMP_Data_Hora_Inicio"");
-
-                CREATE TABLE IF NOT EXISTS ""Configuracoes_Agenda_Escritorio"" (
-                    ""CAE_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""CAE_Escritorio_Id"" uuid NOT NULL,
-                    ""CAE_Email_Agenda_Empresa"" character varying(256) NOT NULL,
-                    ""CAE_Google_Calendar_Id"" character varying(300),
-                    ""CAE_Nome_Agenda"" character varying(200),
-                    ""CAE_Sincronizacao_Ativa"" boolean NOT NULL DEFAULT true,
-                    ""CAE_Chave_Service_Account_Json"" text,
-                    ""CAE_Conectado_Em"" timestamp with time zone NOT NULL,
-                    ""CAE_Atualizado_Em"" timestamp with time zone
-                );
-
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Chave_Service_Account_Json"" text;
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Refresh_Token"" text;
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Email"" character varying(256);
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Id"" character varying(300);
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Secret"" character varying(300);
-                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Tipo_Integracao"" character varying(50) DEFAULT 'ServiceAccount';
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Configuracoes_Agenda_Escritorio_EscritorioId"" ON ""Configuracoes_Agenda_Escritorio"" (""CAE_Escritorio_Id"");
-
-                CREATE TABLE IF NOT EXISTS ""Fornecedores"" (
-                    ""Id"" uuid NOT NULL PRIMARY KEY,
-                    ""Nome"" character varying(200) NOT NULL,
-                    ""Especialidade"" character varying(100) NOT NULL,
-                    ""Email"" character varying(200),
-                    ""Telefone"" character varying(50),
-                    ""Cidade"" character varying(100),
-                    ""Estado"" character varying(50),
-                    ""Descricao"" text,
-                    ""AvaliacaoMedia"" numeric(3,1) NOT NULL DEFAULT 5.0,
-                    ""TotalAvaliacoes"" integer NOT NULL DEFAULT 0,
-                    ""Ativo"" boolean NOT NULL DEFAULT true,
-                    ""DataCriacao"" timestamp with time zone NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Avaliacoes_Fornecedores"" (
-                    ""Id"" uuid NOT NULL PRIMARY KEY,
-                    ""FornecedorId"" uuid NOT NULL,
-                    ""ProjetoId"" uuid,
-                    ""Nota"" integer NOT NULL,
-                    ""Comentario"" character varying(1000),
-                    ""AutorNome"" character varying(150),
-                    ""DataAvaliacao"" timestamp with time zone NOT NULL,
-                    CONSTRAINT ""FK_Avaliacoes_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Projetos_Fornecedores"" (
-                    ""Id"" uuid NOT NULL PRIMARY KEY,
-                    ""ProjetoId"" uuid NOT NULL,
-                    ""FornecedorId"" uuid NOT NULL,
-                    ""FuncaoNoProjeto"" character varying(150),
-                    ""DataVinculo"" timestamp with time zone NOT NULL,
-                    CONSTRAINT ""FK_Projetos_Fornecedores_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Opcoes_Configuracao"" (
-                    ""Id"" uuid NOT NULL PRIMARY KEY,
-                    ""Categoria"" character varying(100) NOT NULL,
-                    ""Chave"" character varying(100) NOT NULL,
-                    ""Rotulo"" character varying(200) NOT NULL,
-                    ""SubRotulo"" text,
-                    ""Icone"" character varying(50),
-                    ""Cor"" character varying(20),
-                    ""CorFundo"" character varying(20),
-                    ""Ordem"" integer NOT NULL DEFAULT 0,
-                    ""Ativo"" boolean NOT NULL DEFAULT true,
-                    ""DadosExtrasJson"" text
-                );
-
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
-
-                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Foto_Url"" text;
-                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Modulos_Permitidos"" text;
-
-                CREATE TABLE IF NOT EXISTS ""Tokens_Recuperacao_Senha"" (
-                    ""TRS_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""TRS_Email"" character varying(256) NOT NULL,
-                    ""TRS_Token_Hash"" character varying(128) NOT NULL,
-                    ""TRS_Tipo_Usuario"" character varying(20) NOT NULL,
-                    ""TRS_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""TRS_Expira_Em"" timestamp with time zone NOT NULL,
-                    ""TRS_Usado_Em"" timestamp with time zone,
-                    ""TRS_Tentativas"" integer NOT NULL DEFAULT 0
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Token_Hash"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Token_Hash"");
-                CREATE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Email"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Email"");
-
-                CREATE TABLE IF NOT EXISTS ""Representantes_Clientes"" (
-                    ""REP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""REP_Cliente_Id"" uuid NOT NULL,
-                    ""REP_Nome"" character varying(200) NOT NULL,
-                    ""REP_Email"" character varying(256) NOT NULL,
-                    ""REP_Telefone"" character varying(30),
-                    ""REP_Cargo"" character varying(100),
-                    ""REP_Senha_Hash"" text,
-                    ""REP_Ativo"" boolean NOT NULL DEFAULT true,
-                    ""REP_Convite_Token_Hash"" character varying(128),
-                    ""REP_Convite_Expira_Em"" timestamp with time zone,
-                    ""REP_Convite_Usado_Em"" timestamp with time zone,
-                    ""REP_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""REP_Atualizado_Em"" timestamp with time zone,
-                    CONSTRAINT ""FK_Representantes_Clientes_Clientes"" FOREIGN KEY (""REP_Cliente_Id"") REFERENCES ""Clientes"" (""CLI_Id"") ON DELETE CASCADE
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Email"" ON ""Representantes_Clientes"" (""REP_Email"");
-                CREATE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Cliente_Id"" ON ""Representantes_Clientes"" (""REP_Cliente_Id"");
-
-                CREATE TABLE IF NOT EXISTS ""Dados_Empresa"" (
-                    ""EMP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""EMP_Escritorio_Id"" uuid,
-                    ""EMP_Nome_Empresa"" character varying(200) NOT NULL,
-                    ""EMP_Razao_Social"" character varying(200),
-                    ""EMP_Cnpj"" character varying(30),
-                    ""EMP_Registro_Profissional"" character varying(150),
-                    ""EMP_Slogan"" character varying(300),
-                    ""EMP_Email"" character varying(150),
-                    ""EMP_Telefone"" character varying(50),
-                    ""EMP_Endereco"" character varying(300),
-                    ""EMP_Cidade"" character varying(100),
-                    ""EMP_Estado"" character varying(50),
-                    ""EMP_Cep"" character varying(20),
-                    ""EMP_Website"" character varying(200),
-                    ""EMP_Logo_Url"" text,
-                    ""EMP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
-                    ""EMP_Atualizado_Em"" timestamp with time zone NOT NULL
-                );
-            ");
-        }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
-            logger.LogWarning(ex, "Verificação de tabelas auxiliares concluída.");
-        }
-    }
-
-    public static async Task SeedAsync(ArchiFlowDbContext context, bool isDevelopment = true)
-    {
-        await SeedOrigensLeadAsync(context);
-        await SeedTemplatesProjetoAsync(context);
-        await SeedUsuariosAsync(context, isDevelopment);
-        await SeedDadosEmpresaAsync(context);
-    }
-
-    private static async Task SeedUsuariosAsync(ArchiFlowDbContext context, bool isDevelopment)
-    {
-        if (await context.Usuarios.AnyAsync())
-        {
-            return;
-        }
-
-        var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@cotu.com";
-        var adminName = Environment.GetEnvironmentVariable("SEED_ADMIN_NAME") ?? "Administrador do Sistema";
-        var adminPass = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD") ?? "Admin@123";
-
-        var admin = new Usuario
-        {
-            Id = Guid.NewGuid(),
-            Nome = adminName,
-            Email = adminEmail,
-            SenhaHash = BCrypt.Net.BCrypt.HashPassword(adminPass, workFactor: 12),
-            Role = Roles.AdministradorGeral,
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        var usuarios = new List<Usuario> { admin };
-
-        if (isDevelopment)
-        {
-            var gerenteEmail = Environment.GetEnvironmentVariable("SEED_GERENTE_EMAIL") ?? "gerente@cotu.com";
-            var gerenteName = Environment.GetEnvironmentVariable("SEED_GERENTE_NAME") ?? "Gerente Arquiteto";
-            var gerentePass = Environment.GetEnvironmentVariable("SEED_GERENTE_PASSWORD") ?? "Gerente@123";
-
-            var colabEmail = Environment.GetEnvironmentVariable("SEED_COLABORADOR_EMAIL") ?? "colaborador@cotu.com";
-            var colabName = Environment.GetEnvironmentVariable("SEED_COLABORADOR_NAME") ?? "Colaborador Arquiteto";
-            var colabPass = Environment.GetEnvironmentVariable("SEED_COLABORADOR_PASSWORD") ?? "Colaborador@123";
-
-            usuarios.Add(new Usuario
-            {
-                Id = Guid.NewGuid(),
-                Nome = gerenteName,
-                Email = gerenteEmail,
-                SenhaHash = BCrypt.Net.BCrypt.HashPassword(gerentePass, workFactor: 12),
-                Role = Roles.Gerente,
-                Ativo = true,
-                CriadoEm = DateTime.UtcNow
-            });
-
-            usuarios.Add(new Usuario
-            {
-                Id = Guid.NewGuid(),
-                Nome = colabName,
-                Email = colabEmail,
-                SenhaHash = BCrypt.Net.BCrypt.HashPassword(colabPass, workFactor: 12),
-                Role = Roles.Colaborador,
-                Ativo = true,
-                CriadoEm = DateTime.UtcNow
-            });
-        }
-
-        await context.Usuarios.AddRangeAsync(usuarios);
-        await context.SaveChangesAsync();
-    }
-
-    private static async Task SeedOrigensLeadAsync(ArchiFlowDbContext context)
-    {
-        if (await context.OrigensLead.AnyAsync())
-        {
-            return;
-        }
-
-        var origens = new[]
-        {
-            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Instagram", Ativo = true, CriadoEm = DateTime.UtcNow },
-            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Indicação", Ativo = true, CriadoEm = DateTime.UtcNow },
-            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Site", Ativo = true, CriadoEm = DateTime.UtcNow },
-            new OrigemLead { Id = Guid.NewGuid(), Descricao = "E-mail", Ativo = true, CriadoEm = DateTime.UtcNow },
-            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Outros", Ativo = true, CriadoEm = DateTime.UtcNow }
-        };
-
-        await context.OrigensLead.AddRangeAsync(origens);
-        await context.SaveChangesAsync();
-    }
-
-    private static async Task SeedTemplatesProjetoAsync(ArchiFlowDbContext context)
-    {
-        if (await context.TemplatesProjeto.AnyAsync())
-        {
-            return;
-        }
-
-        var residencialId = Guid.NewGuid();
-        var residencial = new TemplateProjeto
-        {
-            Id = residencialId,
-            Codigo = "residencial-completo",
-            Nome = "Projeto Arquitetônico Residencial",
-            Descricao = "Fluxo completo para casas e edifícios: do levantamento ao caderno executivo final.",
-            Icone = "home",
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow,
-            Etapas = new List<TemplateEtapa>
-            {
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = residencialId,
-                    Ordem = 1,
-                    Nome = "Briefing e Estudo Preliminar",
-                    Descricao = "Levantamento de necessidades, programa e zoneamento espacial.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Entrevista de briefing com o cliente e alinhamento de expectativas",
-                        "Levantamento métrico e fotográfico no terreno/local",
-                        "Estudo de insolação, ventilação e plano diretor municipal",
-                        "Esboço preliminar de zoneamento e volumetria"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = residencialId,
-                    Ordem = 2,
-                    Nome = "Anteprojeto e Modelagem 3D",
-                    Descricao = "Definição arquitetônica, plantas cotadas e maquete eletrônica.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Plantas baixas cotadas com layout humanizado",
-                        "Cortes esquemáticos longitudinais e transversais",
-                        "Fachadas e volumetria externa",
-                        "Modelagem 3D e renderizações fotorealistas"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = residencialId,
-                    Ordem = 3,
-                    Nome = "Projeto Executivo e Detalhamento",
-                    Descricao = "Detalhamento construtivo para obra, ampliações e paginações.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Plantas executivas de alvenaria e cotas de obra",
-                        "Paginação de pisos, revestimentos e forro de gesso",
-                        "Projeto luminotécnico e pontos elétricos/hidráulicos",
-                        "Detalhamento de esquadrias, guarda-corpos e bancadas",
-                        "Memorial descritivo de materiais e acabamentos"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = residencialId,
-                    Ordem = 4,
-                    Nome = "Compatibilização e Entrega Técnica",
-                    Descricao = "Compatibilização com projetos complementares e caderno de pranchas.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Compatibilização com projetos estrutural e hidrossanitário",
-                        "Reunião de entrega técnica e validação final",
-                        "Emissão do caderno final de pranchas em PDF para o cliente"
-                    })
-                }
-            }
-        };
-
-        var interioresId = Guid.NewGuid();
-        var interiores = new TemplateProjeto
-        {
-            Id = interioresId,
-            Codigo = "interiores-reforma",
-            Nome = "Design de Interiores & Reforma",
-            Descricao = "Foco em estética, marcenaria sob medida, iluminação e produção de ambientes.",
-            Icone = "chair",
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow,
-            Etapas = new List<TemplateEtapa>
-            {
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = interioresId,
-                    Ordem = 1,
-                    Nome = "Conceito e Moodboard",
-                    Descricao = "Alinhamento de estilo, paleta de cores e layout funcional.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Entrevista de estilo e levantamento de necessidades dos ambientes",
-                        "Moodboard de referências visuais e paleta de materiais",
-                        "Planta de layout preliminar com disposição de mobiliário"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = interioresId,
-                    Ordem = 2,
-                    Nome = "Modelagem 3D e Especificação",
-                    Descricao = "Renders fotorrealistas e seleção de mobiliário solto.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Modelagem tridimensional dos ambientes decorados",
-                        "Renderizações foto-realistas com iluminação de cena",
-                        "Catálogo preliminar de mobiliário solto e tapeçaria"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = interioresId,
-                    Ordem = 3,
-                    Nome = "Detalhamento de Marcenaria",
-                    Descricao = "Desenhos técnicos de marcenaria, pedras e paginação de acabamentos.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Desenhos técnicos executivos de marcenaria sob medida",
-                        "Detalhamento de bancadas, cubas e marmoraria",
-                        "Planta luminotécnica com circuitos e especificações de lâmpadas",
-                        "Memorial descritivo de tecidos, papéis de parede e tintas"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = interioresId,
-                    Ordem = 4,
-                    Nome = "Acompanhamento e Produção",
-                    Descricao = "Orçamentos de fornecedores, guia de compras e vistoria de montagem.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Planilha consolidada de orçamentos e fornecedores parceiros",
-                        "Guia de compras de objetos de decoração e arte",
-                        "Vistoria de produção e entrega dos ambientes"
-                    })
-                }
-            }
-        };
-
-        var comercialId = Guid.NewGuid();
-        var comercial = new TemplateProjeto
-        {
-            Id = comercialId,
-            Codigo = "comercial-corporativo",
-            Nome = "Projeto Comercial & Corporativo",
-            Descricao = "Projetos de escritórios, lojas e restaurantes com fluxo de clientes e normas.",
-            Icone = "storefront",
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow,
-            Etapas = new List<TemplateEtapa>
-            {
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = comercialId,
-                    Ordem = 1,
-                    Nome = "Identidade e Estudo de Fluxo",
-                    Descricao = "Branding do espaço, ergonomia e circulação de clientes.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Alinhamento de identidade visual e experiência da marca no espaço",
-                        "Estudo de fluxo de clientes, colaboradores e acessibilidade NBR 9050",
-                        "Zoneamento de áreas de atendimento, estoque e trabalho"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = comercialId,
-                    Ordem = 2,
-                    Nome = "Layout Técnico e 3D",
-                    Descricao = "Modulação de estações de trabalho e ambientação comercial.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Planta de layout de estações de trabalho e modulação técnica",
-                        "Modelagem 3D com iluminação comercial e display de produtos",
-                        "Especificação de materiais de alto tráfego e conforto acústico"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = comercialId,
-                    Ordem = 3,
-                    Nome = "Executivo e Aprovações",
-                    Descricao = "Pranchas para execução rápida e conformidade normativa.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Projeto de comunicação visual e fachada comercial",
-                        "Detalhamento de expositores, balcões e marcenaria técnica",
-                        "Compatibilização de ar-condicionado, dados e combate a incêndio"
-                    })
-                }
-            }
-        };
-
-        var consultoriaId = Guid.NewGuid();
-        var consultoria = new TemplateProjeto
-        {
-            Id = consultoriaId,
-            Codigo = "consultoria-viabilidade",
-            Nome = "Consultoria & Estudo de Viabilidade",
-            Descricao = "Diagnóstico rápido de potencial construtivo e viabilidade para investidores.",
-            Icone = "analytics",
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow,
-            Etapas = new List<TemplateEtapa>
-            {
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = consultoriaId,
-                    Ordem = 1,
-                    Nome = "Diagnóstico e Legislação",
-                    Descricao = "Análise de zoneamento municipal e parâmetros urbanísticos.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Levantamento das diretrizes urbanísticas e recuos municipais",
-                        "Vistoria técnica do imóvel ou loteamento",
-                        "Cálculo de taxa de ocupação e potencial construtivo"
-                    })
-                },
-                new TemplateEtapa
-                {
-                    Id = Guid.NewGuid(),
-                    TemplateProjetoId = consultoriaId,
-                    Ordem = 2,
-                    Nome = "Relatório Conceitual",
-                    Descricao = "Emissão do parecer técnico e croquis conceituais.",
-                    TarefasJson = JsonSerializer.Serialize(new[]
-                    {
-                        "Elaboração de croquis conceituais de implantação",
-                        "Estimativa preliminar de custos e prazos de obra",
-                        "Apresentação e emissão do laudo de viabilidade em PDF"
-                    })
-                }
-            }
-        };
-
-        await context.TemplatesProjeto.AddRangeAsync(residencial, interiores, comercial, consultoria);
-        await context.SaveChangesAsync();
-    }
-
-    private static async Task SeedDadosEmpresaAsync(ArchiFlowDbContext context)
-    {
-        if (await context.DadosEmpresa.AnyAsync())
-        {
-            return;
-        }
-
-        var padrao = new ArchiFlow.Domain.Empresa.DadosEmpresa
-        {
-            Id = Guid.NewGuid(),
-            NomeEmpresa = "COTU Studio",
-            CorPrimaria = "#765538",
-            AtualizadoEm = DateTime.UtcNow
-        };
-
-        await context.DadosEmpresa.AddAsync(padrao);
-        await context.SaveChangesAsync();
-    }
-}
-
-
+using ArchiFlow.Domain.Usuarios;
+using ArchiFlow.Domain.Leads;
+using ArchiFlow.Domain.Projetos;
+using ArchiFlow.Domain.Financeiro;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace ArchiFlow.Infrastructure.Data;
+
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+public static class DbSeeder
+{
+    public static async Task MigrateAndSeedAsync(IServiceProvider serviceProvider, bool isDevelopment = true)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ArchiFlowDbContext>();
+            await MigrateAndSeedContextAsync(context, services, isDevelopment);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
+            logger.LogError(ex, "Ocorreu um erro ao aplicar as migrações ou semear o banco.");
+        }
+    }
+
+    public static async Task MigrateAndSeedContextAsync(ArchiFlowDbContext context, IServiceProvider services, bool isDevelopment = true)
+    {
+        await context.Database.MigrateAsync();
+        await EnsureAdditionalTablesAndColumnsAsync(context, services);
+        await SeedAsync(context, isDevelopment);
+    }
+
+    private static async Task EnsureAdditionalTablesAndColumnsAsync(ArchiFlowDbContext context, IServiceProvider services)
+    {
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""Clientes"" ADD COLUMN IF NOT EXISTS ""CLI_Foto_Url"" text;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Escritorio_Id"" uuid;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Cargo"" character varying(100);
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Telefone"" character varying(30);
+                CREATE INDEX IF NOT EXISTS ""IX_Usuarios_USR_Escritorio_Id"" ON ""Usuarios"" (""USR_Escritorio_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Tarefas_Etapa"" (
+                    ""TAR_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TAR_Etapa_Id"" uuid NOT NULL,
+                    ""TAR_Titulo"" character varying(300) NOT NULL,
+                    ""TAR_Concluida"" boolean NOT NULL DEFAULT false,
+                    ""TAR_Criado_Em"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Tarefas_Etapa_Etapas_Projeto"" FOREIGN KEY (""TAR_Etapa_Id"") REFERENCES ""Etapas_Projeto"" (""ETo_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Templates_Projeto"" (
+                    ""TMP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TMP_Codigo"" character varying(100) NOT NULL,
+                    ""TMP_Nome"" character varying(200) NOT NULL,
+                    ""TMP_Descricao"" text,
+                    ""TMP_Icone"" character varying(50),
+                    ""TMP_Ativo"" boolean NOT NULL DEFAULT true,
+                    ""TMP_Criado_Em"" timestamp with time zone NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Templates_Etapa"" (
+                    ""TME_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TME_Template_Id"" uuid NOT NULL,
+                    ""TME_Nome"" character varying(200) NOT NULL,
+                    ""TME_Descricao"" text,
+                    ""TME_Ordem"" integer NOT NULL,
+                    ""TME_Tarefas_Json"" text,
+                    CONSTRAINT ""FK_Templates_Etapa_Templates_Projeto"" FOREIGN KEY (""TME_Template_Id"") REFERENCES ""Templates_Projeto"" (""TMP_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Mensagens_Chat"" (
+                    ""MSG_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""MSG_Projeto_Id"" uuid NOT NULL,
+                    ""MSG_Remetente_Id"" uuid NOT NULL,
+                    ""MSG_Remetente_Nome"" character varying(200) NOT NULL,
+                    ""MSG_Remetente_Perfil"" character varying(50) NOT NULL,
+                    ""MSG_Conteudo"" text NOT NULL,
+                    ""MSG_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""MSG_Lida"" boolean NOT NULL DEFAULT false,
+                    CONSTRAINT ""FK_Mensagens_Chat_Projetos"" FOREIGN KEY (""MSG_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Propostas_Honorarios"" (
+                    ""PH_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PH_Titulo"" character varying(200) NOT NULL,
+                    ""PH_Codigo"" character varying(50) NOT NULL,
+                    ""PH_Cliente_Id"" uuid,
+                    ""PH_Cliente_Nome"" character varying(200),
+                    ""PH_Lead_Id"" uuid,
+                    ""PH_Lead_Nome"" character varying(200),
+                    ""PH_Tipo_Projeto"" integer NOT NULL,
+                    ""PH_Padrao_Imovel"" integer NOT NULL,
+                    ""PH_Metragem_Quadrada"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Hora_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_M2_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Horas_Estimadas_Total"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Base"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Fator_Padrao"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Fator_Tipologia"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Escopo"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Total_Sugerido"" numeric(18,2) NOT NULL,
+                    ""PH_Valor_Final_Ajustado"" numeric(18,2) NOT NULL,
+                    ""PH_Status"" integer NOT NULL,
+                    ""PH_Observacoes"" text,
+                    ""PH_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""PH_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Itens_Propostas_Etapas"" (
+                    ""IPE_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""IPE_Proposta_Id"" uuid NOT NULL,
+                    ""IPE_Nome_Etapa"" character varying(200) NOT NULL,
+                    ""IPE_Descricao"" text,
+                    ""IPE_Incluso"" boolean NOT NULL,
+                    ""IPE_Percentual"" numeric(18,2) NOT NULL,
+                    ""IPE_Valor"" numeric(18,2) NOT NULL,
+                    ""IPE_Horas_Estimadas"" numeric(18,2) NOT NULL,
+                    ""IPE_Ordem"" integer NOT NULL,
+                    CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
+
+                CREATE TABLE IF NOT EXISTS ""Preferencias_Dashboard"" (
+                    ""PDB_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PDB_Usuario_Id"" uuid NOT NULL,
+                    ""PDB_Layout_Json"" text NOT NULL,
+                    ""PDB_Atualizado_Em"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""UQ_Preferencias_Dashboard_Usuario"" UNIQUE (""PDB_Usuario_Id"")
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Contratos_Financeiros"" (
+                    ""CTF_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CTF_Projeto_Id"" uuid NOT NULL,
+                    ""CTF_Valor_Total"" numeric(18,2) NOT NULL,
+                    ""CTF_Condicoes_Pagamento"" character varying(500),
+                    ""CTF_Observacoes"" text,
+                    ""CTF_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""CTF_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Contratos_Projetos"" FOREIGN KEY (""CTF_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Parcelas_Financeiras"" (
+                    ""PAR_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""PAR_Projeto_Id"" uuid NOT NULL,
+                    ""PAR_Contrato_Id"" uuid,
+                    ""PAR_Numero_Parcela"" integer NOT NULL,
+                    ""PAR_Total_Parcelas"" integer NOT NULL,
+                    ""PAR_Descricao"" character varying(200) NOT NULL,
+                    ""PAR_Valor"" numeric(18,2) NOT NULL,
+                    ""PAR_Data_Vencimento"" timestamp with time zone NOT NULL,
+                    ""PAR_Data_Pagamento"" timestamp with time zone,
+                    ""PAR_Status"" integer NOT NULL,
+                    ""PAR_Forma_Pagamento"" integer,
+                    ""PAR_Observacoes"" text,
+                    ""PAR_Comprovante_Url"" character varying(1000),
+                    ""PAR_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""PAR_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Parcelas_Projetos"" FOREIGN KEY (""PAR_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_Parcelas_Contratos"" FOREIGN KEY (""PAR_Contrato_Id"") REFERENCES ""Contratos_Financeiros"" (""CTF_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Despesas_Projetos"" (
+                    ""DSP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""DSP_Projeto_Id"" uuid NOT NULL,
+                    ""DSP_Descricao"" character varying(200) NOT NULL,
+                    ""DSP_Valor"" numeric(18,2) NOT NULL,
+                    ""DSP_Data_Despesa"" timestamp with time zone NOT NULL,
+                    ""DSP_Categoria"" integer NOT NULL,
+                    ""DSP_Observacoes"" text,
+                    ""DSP_Comprovante_Url"" character varying(1000),
+                    ""DSP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""DSP_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Despesas_Projetos"" FOREIGN KEY (""DSP_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Configuracoes_Proposta"" (
+                    ""CFP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CFP_Usuario_Id"" uuid NOT NULL,
+                    ""CFP_Nome_Escritorio"" character varying(200) NOT NULL DEFAULT '',
+                    ""CFP_Slogan"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Registro_Profissional"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Email"" character varying(150) NOT NULL DEFAULT '',
+                    ""CFP_Telefone"" character varying(50) NOT NULL DEFAULT '',
+                    ""CFP_Endereco"" character varying(300) NOT NULL DEFAULT '',
+                    ""CFP_Logo_Url"" text,
+                    ""CFP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
+                    ""CFP_Exibir_Cabecalho"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Resumo"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Tabela_Etapas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Memoria_Calculo"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Exibir_Condicoes_Pagamento"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Termos_Gerais"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Exibir_Assinaturas"" boolean NOT NULL DEFAULT true,
+                    ""CFP_Texto_Apresentacao"" text NOT NULL DEFAULT '',
+                    ""CFP_Validade_Dias"" integer NOT NULL DEFAULT 15,
+                    ""CFP_Condicoes_Pagamento_Padrao"" text NOT NULL DEFAULT '',
+                    ""CFP_Chave_Pix"" character varying(100),
+                    ""CFP_Dados_Bancarios"" character varying(300),
+                    ""CFP_Termos_Gerais"" text NOT NULL DEFAULT '',
+                    ""CFP_Template_Mensagem_Whatsapp"" text NOT NULL DEFAULT '',
+                    ""CFP_Configurado"" boolean NOT NULL DEFAULT false,
+                    ""CFP_Atualizado_Em"" timestamp with time zone
+                );
+
+                CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Compromissos_Agenda"" (
+                    ""CMP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CMP_Escritorio_Id"" uuid NOT NULL,
+                    ""CMP_Usuario_Id"" uuid,
+                    ""CMP_Projeto_Id"" uuid,
+                    ""CMP_Cliente_Id"" uuid,
+                    ""CMP_Lead_Id"" uuid,
+                    ""CMP_Titulo"" character varying(200) NOT NULL,
+                    ""CMP_Descricao"" text,
+                    ""CMP_Tipo"" character varying(50) NOT NULL,
+                    ""CMP_Status"" character varying(50) NOT NULL,
+                    ""CMP_Data_Hora_Inicio"" timestamp with time zone NOT NULL,
+                    ""CMP_Data_Hora_Fim"" timestamp with time zone NOT NULL,
+                    ""CMP_Local"" character varying(300),
+                    ""CMP_Link_Google_Meet"" character varying(500),
+                    ""CMP_Google_Event_Id"" character varying(200),
+                    ""CMP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""CMP_Atualizado_Em"" timestamp with time zone
+                );
+
+                ALTER TABLE ""Compromissos_Agenda"" ADD COLUMN IF NOT EXISTS ""CMP_Lead_Id"" uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Escritorio_Id"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"");
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_CMP_Lead_Id"" ON ""Compromissos_Agenda"" (""CMP_Lead_Id"");
+                CREATE INDEX IF NOT EXISTS ""IX_Compromissos_Agenda_Datas"" ON ""Compromissos_Agenda"" (""CMP_Escritorio_Id"", ""CMP_Data_Hora_Inicio"");
+
+                CREATE TABLE IF NOT EXISTS ""Configuracoes_Agenda_Escritorio"" (
+                    ""CAE_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""CAE_Escritorio_Id"" uuid NOT NULL,
+                    ""CAE_Email_Agenda_Empresa"" character varying(256) NOT NULL,
+                    ""CAE_Google_Calendar_Id"" character varying(300),
+                    ""CAE_Nome_Agenda"" character varying(200),
+                    ""CAE_Sincronizacao_Ativa"" boolean NOT NULL DEFAULT true,
+                    ""CAE_Chave_Service_Account_Json"" text,
+                    ""CAE_Conectado_Em"" timestamp with time zone NOT NULL,
+                    ""CAE_Atualizado_Em"" timestamp with time zone
+                );
+
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Chave_Service_Account_Json"" text;
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Refresh_Token"" text;
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_OAuth_Email"" character varying(256);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Id"" character varying(300);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Google_Client_Secret"" character varying(300);
+                ALTER TABLE ""Configuracoes_Agenda_Escritorio"" ADD COLUMN IF NOT EXISTS ""CAE_Tipo_Integracao"" character varying(50) DEFAULT 'ServiceAccount';
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Configuracoes_Agenda_Escritorio_EscritorioId"" ON ""Configuracoes_Agenda_Escritorio"" (""CAE_Escritorio_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Nome"" character varying(200) NOT NULL,
+                    ""Especialidade"" character varying(100) NOT NULL,
+                    ""Email"" character varying(200),
+                    ""Telefone"" character varying(50),
+                    ""Cidade"" character varying(100),
+                    ""Estado"" character varying(50),
+                    ""Descricao"" text,
+                    ""AvaliacaoMedia"" numeric(3,1) NOT NULL DEFAULT 5.0,
+                    ""TotalAvaliacoes"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DataCriacao"" timestamp with time zone NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Avaliacoes_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""ProjetoId"" uuid,
+                    ""Nota"" integer NOT NULL,
+                    ""Comentario"" character varying(1000),
+                    ""AutorNome"" character varying(150),
+                    ""DataAvaliacao"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Avaliacoes_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Projetos_Fornecedores"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""ProjetoId"" uuid NOT NULL,
+                    ""FornecedorId"" uuid NOT NULL,
+                    ""FuncaoNoProjeto"" character varying(150),
+                    ""DataVinculo"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_Projetos_Fornecedores_Fornecedores"" FOREIGN KEY (""FornecedorId"") REFERENCES ""Fornecedores"" (""Id"") ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Opcoes_Configuracao"" (
+                    ""Id"" uuid NOT NULL PRIMARY KEY,
+                    ""Categoria"" character varying(100) NOT NULL,
+                    ""Chave"" character varying(100) NOT NULL,
+                    ""Rotulo"" character varying(200) NOT NULL,
+                    ""SubRotulo"" text,
+                    ""Icone"" character varying(50),
+                    ""Cor"" character varying(20),
+                    ""CorFundo"" character varying(20),
+                    ""Ordem"" integer NOT NULL DEFAULT 0,
+                    ""Ativo"" boolean NOT NULL DEFAULT true,
+                    ""DadosExtrasJson"" text
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Opcoes_Configuracao_Categoria_Chave"" ON ""Opcoes_Configuracao"" (""Categoria"", ""Chave"");
+
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Foto_Url"" text;
+                ALTER TABLE ""Usuarios"" ADD COLUMN IF NOT EXISTS ""USR_Modulos_Permitidos"" text;
+
+                CREATE TABLE IF NOT EXISTS ""Tokens_Recuperacao_Senha"" (
+                    ""TRS_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""TRS_Email"" character varying(256) NOT NULL,
+                    ""TRS_Token_Hash"" character varying(128) NOT NULL,
+                    ""TRS_Tipo_Usuario"" character varying(20) NOT NULL,
+                    ""TRS_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""TRS_Expira_Em"" timestamp with time zone NOT NULL,
+                    ""TRS_Usado_Em"" timestamp with time zone,
+                    ""TRS_Tentativas"" integer NOT NULL DEFAULT 0
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Token_Hash"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Token_Hash"");
+                CREATE INDEX IF NOT EXISTS ""IX_Tokens_Recuperacao_Senha_TRS_Email"" ON ""Tokens_Recuperacao_Senha"" (""TRS_Email"");
+
+                CREATE TABLE IF NOT EXISTS ""Representantes_Clientes"" (
+                    ""REP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""REP_Cliente_Id"" uuid NOT NULL,
+                    ""REP_Nome"" character varying(200) NOT NULL,
+                    ""REP_Email"" character varying(256) NOT NULL,
+                    ""REP_Telefone"" character varying(30),
+                    ""REP_Cargo"" character varying(100),
+                    ""REP_Senha_Hash"" text,
+                    ""REP_Ativo"" boolean NOT NULL DEFAULT true,
+                    ""REP_Convite_Token_Hash"" character varying(128),
+                    ""REP_Convite_Expira_Em"" timestamp with time zone,
+                    ""REP_Convite_Usado_Em"" timestamp with time zone,
+                    ""REP_Criado_Em"" timestamp with time zone NOT NULL,
+                    ""REP_Atualizado_Em"" timestamp with time zone,
+                    CONSTRAINT ""FK_Representantes_Clientes_Clientes"" FOREIGN KEY (""REP_Cliente_Id"") REFERENCES ""Clientes"" (""CLI_Id"") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Email"" ON ""Representantes_Clientes"" (""REP_Email"");
+                CREATE INDEX IF NOT EXISTS ""IX_Representantes_Clientes_REP_Cliente_Id"" ON ""Representantes_Clientes"" (""REP_Cliente_Id"");
+
+                CREATE TABLE IF NOT EXISTS ""Dados_Empresa"" (
+                    ""EMP_Id"" uuid NOT NULL PRIMARY KEY,
+                    ""EMP_Escritorio_Id"" uuid,
+                    ""EMP_Nome_Empresa"" character varying(200) NOT NULL,
+                    ""EMP_Razao_Social"" character varying(200),
+                    ""EMP_Cnpj"" character varying(30),
+                    ""EMP_Registro_Profissional"" character varying(150),
+                    ""EMP_Slogan"" character varying(300),
+                    ""EMP_Email"" character varying(150),
+                    ""EMP_Telefone"" character varying(50),
+                    ""EMP_Endereco"" character varying(300),
+                    ""EMP_Cidade"" character varying(100),
+                    ""EMP_Estado"" character varying(50),
+                    ""EMP_Cep"" character varying(20),
+                    ""EMP_Website"" character varying(200),
+                    ""EMP_Logo_Url"" text,
+                    ""EMP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
+                    ""EMP_Atualizado_Em"" timestamp with time zone NOT NULL
+                );
+
+                ALTER TABLE ""Contratos_Financeiros"" ALTER COLUMN ""CTF_Projeto_Id"" DROP NOT NULL;
+                ALTER TABLE ""Parcelas_Financeiras"" ALTER COLUMN ""PAR_Projeto_Id"" DROP NOT NULL;
+                ALTER TABLE ""Despesas_Projetos"" ALTER COLUMN ""DSP_Projeto_Id"" DROP NOT NULL;
+                ALTER TABLE ""Despesas_Projetos"" ADD COLUMN IF NOT EXISTS ""DSP_Pago"" boolean NOT NULL DEFAULT false;
+                ALTER TABLE ""Despesas_Projetos"" ADD COLUMN IF NOT EXISTS ""DSP_Data_Pagamento"" timestamp with time zone;
+                CREATE INDEX IF NOT EXISTS ""IX_Despesas_Projetos_DSP_Pago"" ON ""Despesas_Projetos"" (""DSP_Pago"");
+                ALTER TABLE ""Etapas_Projeto"" ADD COLUMN IF NOT EXISTS ""ETo_Data_Fim_Prevista"" timestamp with time zone;
+                ALTER TABLE ""Tarefas_Etapa"" ADD COLUMN IF NOT EXISTS ""TAR_Data_Limite"" timestamp with time zone;
+            ");
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
+            logger.LogWarning(ex, "Verificação de tabelas auxiliares concluída.");
+        }
+    }
+
+    public static async Task SeedAsync(ArchiFlowDbContext context, bool isDevelopment = true)
+    {
+        await SeedOrigensLeadAsync(context);
+        await SeedTemplatesProjetoAsync(context);
+        await SeedUsuariosAsync(context, isDevelopment);
+        await SeedDadosEmpresaAsync(context);
+    }
+
+    private static async Task SeedUsuariosAsync(ArchiFlowDbContext context, bool isDevelopment)
+    {
+        if (await context.Usuarios.AnyAsync())
+        {
+            return;
+        }
+
+        var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@cotu.com";
+        var adminName = Environment.GetEnvironmentVariable("SEED_ADMIN_NAME") ?? "Administrador do Sistema";
+        var adminPass = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD") ?? "Admin@123";
+
+        var admin = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = adminName,
+            Email = adminEmail,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(adminPass, workFactor: 12),
+            Role = Roles.AdministradorGeral,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        var usuarios = new List<Usuario> { admin };
+
+        if (isDevelopment)
+        {
+            var gerenteEmail = Environment.GetEnvironmentVariable("SEED_GERENTE_EMAIL") ?? "gerente@cotu.com";
+            var gerenteName = Environment.GetEnvironmentVariable("SEED_GERENTE_NAME") ?? "Gerente Arquiteto";
+            var gerentePass = Environment.GetEnvironmentVariable("SEED_GERENTE_PASSWORD") ?? "Gerente@123";
+
+            var colabEmail = Environment.GetEnvironmentVariable("SEED_COLABORADOR_EMAIL") ?? "colaborador@cotu.com";
+            var colabName = Environment.GetEnvironmentVariable("SEED_COLABORADOR_NAME") ?? "Colaborador Arquiteto";
+            var colabPass = Environment.GetEnvironmentVariable("SEED_COLABORADOR_PASSWORD") ?? "Colaborador@123";
+
+            usuarios.Add(new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nome = gerenteName,
+                Email = gerenteEmail,
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword(gerentePass, workFactor: 12),
+                Role = Roles.Gerente,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow
+            });
+
+            usuarios.Add(new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nome = colabName,
+                Email = colabEmail,
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword(colabPass, workFactor: 12),
+                Role = Roles.Colaborador,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow
+            });
+        }
+
+        await context.Usuarios.AddRangeAsync(usuarios);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedOrigensLeadAsync(ArchiFlowDbContext context)
+    {
+        if (await context.OrigensLead.AnyAsync())
+        {
+            return;
+        }
+
+        var origens = new[]
+        {
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Instagram", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Indicação", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Site", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "E-mail", Ativo = true, CriadoEm = DateTime.UtcNow },
+            new OrigemLead { Id = Guid.NewGuid(), Descricao = "Outros", Ativo = true, CriadoEm = DateTime.UtcNow }
+        };
+
+        await context.OrigensLead.AddRangeAsync(origens);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedTemplatesProjetoAsync(ArchiFlowDbContext context)
+    {
+        if (await context.TemplatesProjeto.AnyAsync())
+        {
+            return;
+        }
+
+        var residencialId = Guid.NewGuid();
+        var residencial = new TemplateProjeto
+        {
+            Id = residencialId,
+            Codigo = "residencial-completo",
+            Nome = "Projeto Arquitetônico Residencial",
+            Descricao = "Fluxo completo para casas e edifícios: do levantamento ao caderno executivo final.",
+            Icone = "home",
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            Etapas = new List<TemplateEtapa>
+            {
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = residencialId,
+                    Ordem = 1,
+                    Nome = "Briefing e Estudo Preliminar",
+                    Descricao = "Levantamento de necessidades, programa e zoneamento espacial.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Entrevista de briefing com o cliente e alinhamento de expectativas",
+                        "Levantamento métrico e fotográfico no terreno/local",
+                        "Estudo de insolação, ventilação e plano diretor municipal",
+                        "Esboço preliminar de zoneamento e volumetria"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = residencialId,
+                    Ordem = 2,
+                    Nome = "Anteprojeto e Modelagem 3D",
+                    Descricao = "Definição arquitetônica, plantas cotadas e maquete eletrônica.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Plantas baixas cotadas com layout humanizado",
+                        "Cortes esquemáticos longitudinais e transversais",
+                        "Fachadas e volumetria externa",
+                        "Modelagem 3D e renderizações fotorealistas"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = residencialId,
+                    Ordem = 3,
+                    Nome = "Projeto Executivo e Detalhamento",
+                    Descricao = "Detalhamento construtivo para obra, ampliações e paginações.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Plantas executivas de alvenaria e cotas de obra",
+                        "Paginação de pisos, revestimentos e forro de gesso",
+                        "Projeto luminotécnico e pontos elétricos/hidráulicos",
+                        "Detalhamento de esquadrias, guarda-corpos e bancadas",
+                        "Memorial descritivo de materiais e acabamentos"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = residencialId,
+                    Ordem = 4,
+                    Nome = "Compatibilização e Entrega Técnica",
+                    Descricao = "Compatibilização com projetos complementares e caderno de pranchas.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Compatibilização com projetos estrutural e hidrossanitário",
+                        "Reunião de entrega técnica e validação final",
+                        "Emissão do caderno final de pranchas em PDF para o cliente"
+                    })
+                }
+            }
+        };
+
+        var interioresId = Guid.NewGuid();
+        var interiores = new TemplateProjeto
+        {
+            Id = interioresId,
+            Codigo = "interiores-reforma",
+            Nome = "Design de Interiores & Reforma",
+            Descricao = "Foco em estética, marcenaria sob medida, iluminação e produção de ambientes.",
+            Icone = "chair",
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            Etapas = new List<TemplateEtapa>
+            {
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = interioresId,
+                    Ordem = 1,
+                    Nome = "Conceito e Moodboard",
+                    Descricao = "Alinhamento de estilo, paleta de cores e layout funcional.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Entrevista de estilo e levantamento de necessidades dos ambientes",
+                        "Moodboard de referências visuais e paleta de materiais",
+                        "Planta de layout preliminar com disposição de mobiliário"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = interioresId,
+                    Ordem = 2,
+                    Nome = "Modelagem 3D e Especificação",
+                    Descricao = "Renders fotorrealistas e seleção de mobiliário solto.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Modelagem tridimensional dos ambientes decorados",
+                        "Renderizações foto-realistas com iluminação de cena",
+                        "Catálogo preliminar de mobiliário solto e tapeçaria"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = interioresId,
+                    Ordem = 3,
+                    Nome = "Detalhamento de Marcenaria",
+                    Descricao = "Desenhos técnicos de marcenaria, pedras e paginação de acabamentos.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Desenhos técnicos executivos de marcenaria sob medida",
+                        "Detalhamento de bancadas, cubas e marmoraria",
+                        "Planta luminotécnica com circuitos e especificações de lâmpadas",
+                        "Memorial descritivo de tecidos, papéis de parede e tintas"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = interioresId,
+                    Ordem = 4,
+                    Nome = "Acompanhamento e Produção",
+                    Descricao = "Orçamentos de fornecedores, guia de compras e vistoria de montagem.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Planilha consolidada de orçamentos e fornecedores parceiros",
+                        "Guia de compras de objetos de decoração e arte",
+                        "Vistoria de produção e entrega dos ambientes"
+                    })
+                }
+            }
+        };
+
+        var comercialId = Guid.NewGuid();
+        var comercial = new TemplateProjeto
+        {
+            Id = comercialId,
+            Codigo = "comercial-corporativo",
+            Nome = "Projeto Comercial & Corporativo",
+            Descricao = "Projetos de escritórios, lojas e restaurantes com fluxo de clientes e normas.",
+            Icone = "storefront",
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            Etapas = new List<TemplateEtapa>
+            {
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = comercialId,
+                    Ordem = 1,
+                    Nome = "Identidade e Estudo de Fluxo",
+                    Descricao = "Branding do espaço, ergonomia e circulação de clientes.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Alinhamento de identidade visual e experiência da marca no espaço",
+                        "Estudo de fluxo de clientes, colaboradores e acessibilidade NBR 9050",
+                        "Zoneamento de áreas de atendimento, estoque e trabalho"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = comercialId,
+                    Ordem = 2,
+                    Nome = "Layout Técnico e 3D",
+                    Descricao = "Modulação de estações de trabalho e ambientação comercial.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Planta de layout de estações de trabalho e modulação técnica",
+                        "Modelagem 3D com iluminação comercial e display de produtos",
+                        "Especificação de materiais de alto tráfego e conforto acústico"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = comercialId,
+                    Ordem = 3,
+                    Nome = "Executivo e Aprovações",
+                    Descricao = "Pranchas para execução rápida e conformidade normativa.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Projeto de comunicação visual e fachada comercial",
+                        "Detalhamento de expositores, balcões e marcenaria técnica",
+                        "Compatibilização de ar-condicionado, dados e combate a incêndio"
+                    })
+                }
+            }
+        };
+
+        var consultoriaId = Guid.NewGuid();
+        var consultoria = new TemplateProjeto
+        {
+            Id = consultoriaId,
+            Codigo = "consultoria-viabilidade",
+            Nome = "Consultoria & Estudo de Viabilidade",
+            Descricao = "Diagnóstico rápido de potencial construtivo e viabilidade para investidores.",
+            Icone = "analytics",
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            Etapas = new List<TemplateEtapa>
+            {
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = consultoriaId,
+                    Ordem = 1,
+                    Nome = "Diagnóstico e Legislação",
+                    Descricao = "Análise de zoneamento municipal e parâmetros urbanísticos.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Levantamento das diretrizes urbanísticas e recuos municipais",
+                        "Vistoria técnica do imóvel ou loteamento",
+                        "Cálculo de taxa de ocupação e potencial construtivo"
+                    })
+                },
+                new TemplateEtapa
+                {
+                    Id = Guid.NewGuid(),
+                    TemplateProjetoId = consultoriaId,
+                    Ordem = 2,
+                    Nome = "Relatório Conceitual",
+                    Descricao = "Emissão do parecer técnico e croquis conceituais.",
+                    TarefasJson = JsonSerializer.Serialize(new[]
+                    {
+                        "Elaboração de croquis conceituais de implantação",
+                        "Estimativa preliminar de custos e prazos de obra",
+                        "Apresentação e emissão do laudo de viabilidade em PDF"
+                    })
+                }
+            }
+        };
+
+        await context.TemplatesProjeto.AddRangeAsync(residencial, interiores, comercial, consultoria);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedDadosEmpresaAsync(ArchiFlowDbContext context)
+    {
+        if (await context.DadosEmpresa.AnyAsync())
+        {
+            return;
+        }
+
+        var padrao = new ArchiFlow.Domain.Empresa.DadosEmpresa
+        {
+            Id = Guid.NewGuid(),
+            NomeEmpresa = "COTU Studio",
+            CorPrimaria = "#765538",
+            AtualizadoEm = DateTime.UtcNow
+        };
+
+        await context.DadosEmpresa.AddAsync(padrao);
+        await context.SaveChangesAsync();
+    }
+}
+
+
