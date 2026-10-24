@@ -28,8 +28,7 @@ ArchiFlow.sln
 │   ├── ArchiFlow.Domain/          # Entidades, enums — sem dependências externas
 │   ├── ArchiFlow.Infrastructure/  # DbContext, Migrations (EF Core + PostgreSQL)
 │   ├── ArchiFlow.Application/     # Services, Facades, Commands, DTOs, AutoMapper
-│   ├── ArchiFlow.API/             # Controllers, Middleware, Program.cs
-│   └── ArchiFlow.Migrations/      # CLI: migrate · seed · status · reset
+│   └── ArchiFlow.API/             # Controllers, Middleware, Program.cs
 └── tests/
     └── ArchiFlow.Tests/           # xUnit + FluentAssertions + EF InMemory
 ```
@@ -58,11 +57,7 @@ Domain  ←── Application ←── Tests
 ## Como Executar
 
 ```bash
-# 1. Aplicar migrations
-cd src/ArchiFlow.Migrations
-dotnet run -- migrate
-
-# 2. Subir a API
+# Subir a API (migrations e seeds aplicadas na inicialização)
 cd src/ArchiFlow.API
 dotnet run
 ```

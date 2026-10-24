@@ -12,8 +12,7 @@ ArchiFlow.sln
 │   ├── ArchiFlow.Domain/          # Entidades de Domínio, Interfaces base e Enums.
 │   ├── ArchiFlow.Application/     # Serviços de Aplicação, DTOs, Mapeamentos (AutoMapper), Interfaces de Facade e Casos de Uso.
 │   ├── ArchiFlow.Infrastructure/  # Acesso a Dados (EF Core + PostgreSQL), Repositórios, Unit of Work e Migrations.
-│   ├── ArchiFlow.API/             # Controllers, Middlewares de Tratamento de Erros, Configurações de Start (Program.cs) e Health Checks.
-│   └── ArchiFlow.Migrations/      # Ferramenta CLI para controle de Migrations e Seed de Dados de forma independente.
+│   └── ArchiFlow.API/             # Controllers, Middlewares de Tratamento de Erros, Configurações de Start (Program.cs) e Health Checks.
 ```
 
 ### Detalhes das Camadas
