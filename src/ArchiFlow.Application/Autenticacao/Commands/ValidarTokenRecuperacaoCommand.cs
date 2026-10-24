@@ -6,3 +6,4 @@ public record ValidarTokenRecuperacaoCommand(
     [Required(ErrorMessage = "O token é obrigatório.")]
     string Token
 );
+

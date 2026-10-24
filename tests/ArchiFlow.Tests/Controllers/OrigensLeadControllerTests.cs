@@ -20,7 +20,7 @@ public class OrigensLeadControllerTests
     public OrigensLeadControllerTests()
     {
         _facadeMock = new Mock<IOrigemLeadFacade>();
-        _sut        = new OrigensLeadController(_facadeMock.Object);
+        _sut = new OrigensLeadController(_facadeMock.Object);
     }
 
     [Fact]
@@ -136,3 +136,4 @@ public class OrigensLeadControllerTests
         okResult.Value.Should().Be(dto);
     }
 }
+

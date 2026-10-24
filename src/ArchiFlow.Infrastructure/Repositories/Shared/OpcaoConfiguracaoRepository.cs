@@ -30,3 +30,4 @@ public class OpcaoConfiguracaoRepository : Repository<OpcaoConfiguracao>, IOpcao
             .ToDictionary(g => g.Key, g => g.AsEnumerable());
     }
 }
+

@@ -22,3 +22,4 @@ public class RepresentanteCliente
 
     public bool IsConvitePendente() => ConviteUsadoEm == null && ConviteExpiraEm.HasValue && ConviteExpiraEm.Value > DateTime.UtcNow;
 }
+

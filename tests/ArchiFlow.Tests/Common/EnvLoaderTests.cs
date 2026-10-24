@@ -13,7 +13,7 @@ public class EnvLoaderTests
     public async Task LoadAsync_QuandoArquivoEnvExiste_DeveCarregarVariaveis()
     {
         var tempEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
-        // Adicionada uma linha sem '=' (TEST_VAR_INVALID) para cobrir o branch parts.Length != 2
+
         await File.WriteAllTextAsync(tempEnvPath, "TEST_VAR_1=valor1\nTEST_VAR_2=valor2\n# Comentario\n\nTEST_VAR_INVALID\nTEST_VAR_3=valor=com=igual");
 
         try
@@ -66,7 +66,7 @@ public class EnvLoaderTests
     [Fact]
     public async Task LoadAsync_QuandoArquivoEnvNaoExiste_NaoDeveFalhar()
     {
-        // Garante que o arquivo .env temporário local e em níveis acima não exista neste escopo de teste isolado
+
         var tempEnvPath = Path.Combine(AppContext.BaseDirectory, ".env");
         if (File.Exists(tempEnvPath))
         {
@@ -78,3 +78,4 @@ public class EnvLoaderTests
         await act.Should().NotThrowAsync();
     }
 }
+

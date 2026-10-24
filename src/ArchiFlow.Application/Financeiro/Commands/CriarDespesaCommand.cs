@@ -10,5 +10,8 @@ public record CriarDespesaCommand(
     DateTime DataDespesa,
     CategoriaDespesa Categoria,
     string? Observacoes,
-    string? ComprovanteUrl
+    string? ComprovanteUrl,
+    bool Pago = false,
+    DateTime? DataPagamento = null
 );
+

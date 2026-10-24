@@ -18,3 +18,4 @@ public interface IProjetoRepository : IRepository<Projeto>
     Task<TarefaEtapa> UpdateTarefa(TarefaEtapa tarefa);
     Task DeleteTarefa(TarefaEtapa tarefa);
 }
+

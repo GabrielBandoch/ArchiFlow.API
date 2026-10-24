@@ -123,12 +123,12 @@ public class DashboardService : IDashboardService
         );
     }
 
-    /// <summary>
-    /// Calcula os KPIs executivos do dashboard.
-    /// Regra de Negócio para Receita Potencial (ValorTotalPropostas):
-    /// Totaliza o valor de todas as propostas registradas no pipeline.
-    /// Utiliza ValorFinalAjustado caso tenha sido customizado (> 0); caso contrário, adota ValorTotalSugerido.
-    /// </summary>
+
+
+
+
+
+
     private static DashboardKpisDto CalcularKpis(
         List<Projeto> projetos,
         List<Cliente> clientes,

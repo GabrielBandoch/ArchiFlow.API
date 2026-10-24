@@ -126,3 +126,4 @@ public class UserContextServiceTests
             .WithMessage("*não encontrado*");
     }
 }
+

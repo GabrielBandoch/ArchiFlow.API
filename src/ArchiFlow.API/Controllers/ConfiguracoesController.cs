@@ -36,3 +36,4 @@ public class ConfiguracoesController : ControllerBase
     public async Task<IActionResult> SalvarOpcao([FromBody] SalvarOpcaoConfiguracaoCommand command) =>
         Ok(await _service.SalvarOpcaoAsync(command));
 }
+

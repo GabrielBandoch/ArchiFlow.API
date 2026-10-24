@@ -6,7 +6,7 @@ namespace ArchiFlow.Domain.Financeiro;
 public class ParcelaFinanceira
 {
     public Guid Id { get; set; }
-    public Guid ProjetoId { get; set; }
+    public Guid? ProjetoId { get; set; }
     public Guid? ContratoFinanceiroId { get; set; }
     public int NumeroParcela { get; set; }
     public int TotalParcelas { get; set; }
@@ -24,3 +24,4 @@ public class ParcelaFinanceira
     public Projeto? Projeto { get; set; }
     public ContratoFinanceiro? ContratoFinanceiro { get; set; }
 }
+

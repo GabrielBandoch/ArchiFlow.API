@@ -100,3 +100,4 @@ public class PropostasController : ControllerBase
     public async Task<IActionResult> SalvarConfiguracao([FromBody] SalvarConfiguracaoPropostaCommand command) =>
         Ok(await _facade.SalvarConfiguracaoAsync(command));
 }
+

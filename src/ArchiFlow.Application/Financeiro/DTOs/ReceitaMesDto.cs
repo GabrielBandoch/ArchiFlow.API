@@ -8,3 +8,4 @@ public record ReceitaMesDto(
     decimal ValorPrevisto,
     decimal ValorDespesas
 );
+

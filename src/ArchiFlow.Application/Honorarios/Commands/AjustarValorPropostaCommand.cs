@@ -4,3 +4,4 @@ public record AjustarValorPropostaCommand(
     decimal ValorFinalAjustado,
     string? Observacoes
 );
+

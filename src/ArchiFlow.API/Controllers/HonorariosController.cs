@@ -26,3 +26,4 @@ public class HonorariosController : ControllerBase
         return Ok(_facade.Simular(parametros));
     }
 }
+

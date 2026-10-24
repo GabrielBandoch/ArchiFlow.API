@@ -11,8 +11,8 @@ namespace ArchiFlow.Application.Leads.Services;
 public class LeadService : ILeadService
 {
     private readonly ILeadRepository _repository;
-    private readonly IUnitOfWork     _unitOfWork;
-    private readonly IMapper         _mapper;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
 
     public LeadService(
         ILeadRepository repository,
@@ -21,7 +21,7 @@ public class LeadService : ILeadService
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
-        _mapper     = mapper;
+        _mapper = mapper;
     }
 
     public async Task<IEnumerable<LeadDto>> GetAll()
@@ -112,11 +112,11 @@ public class LeadService : ILeadService
 
         var historico = new HistoricoContatoLead
         {
-            Id          = Guid.NewGuid(),
-            LeadId      = command.LeadId,
+            Id = Guid.NewGuid(),
+            LeadId = command.LeadId,
             DataContato = DateTime.UtcNow,
-            Canal       = command.Canal,
-            Resumo      = command.Resumo
+            Canal = command.Canal,
+            Resumo = command.Resumo
         };
 
         lead.AtualizadoEm = DateTime.UtcNow;
@@ -157,3 +157,4 @@ public class LeadService : ILeadService
             h.Canal ?? string.Empty,
             h.Resumo ?? string.Empty);
 }
+

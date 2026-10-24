@@ -30,3 +30,4 @@ public interface IAgendaValidationService
 
     Task<NomesRelacionadosBatch> ObterNomesEmLoteAsync(IEnumerable<Compromisso> compromissos);
 }
+

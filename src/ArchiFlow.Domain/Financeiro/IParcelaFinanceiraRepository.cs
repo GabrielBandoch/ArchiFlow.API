@@ -12,3 +12,4 @@ public interface IParcelaFinanceiraRepository : IRepository<ParcelaFinanceira>
     Task<IEnumerable<ParcelaFinanceira>> ObterAlertasVencimentoAsync(int diasLimite = 7);
     Task<IEnumerable<ParcelaFinanceira>> ObterTodasComProjetoAsync();
 }
+

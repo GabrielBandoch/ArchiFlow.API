@@ -36,3 +36,4 @@ public class PropostaHonorario
     public Lead? Lead { get; set; }
     public ICollection<ItemPropostaEtapa> ItensEtapa { get; set; } = new List<ItemPropostaEtapa>();
 }
+

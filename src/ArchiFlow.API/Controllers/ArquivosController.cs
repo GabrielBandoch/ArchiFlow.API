@@ -14,7 +14,7 @@ public class ArquivosController : ControllerBase
 {
     private readonly IArquivoFacade _facade;
 
-    public ArquivosController(IArquivoFacade facade) 
+    public ArquivosController(IArquivoFacade facade)
         => _facade = facade;
 
     [HttpGet("projeto/{projetoId:guid}")]
@@ -35,3 +35,4 @@ public class ArquivosController : ControllerBase
         return NoContent();
     }
 }
+

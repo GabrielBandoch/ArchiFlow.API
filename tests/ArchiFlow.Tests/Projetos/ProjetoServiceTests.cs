@@ -17,11 +17,11 @@ public class ProjetoServiceTests
 
     public ProjetoServiceTests()
     {
-        var ctx                = TestDbContextFactory.Create();
-        var repository         = new ProjetoRepository(ctx);
+        var ctx = TestDbContextFactory.Create();
+        var repository = new ProjetoRepository(ctx);
         var templateRepository = new TemplateProjetoRepository(ctx);
-        var unitOfWork         = new UnitOfWork(ctx);
-        var mapper             = MappingFixture.Create();
+        var unitOfWork = new UnitOfWork(ctx);
+        var mapper = MappingFixture.Create();
 
         _sut = new ProjetoService(repository, unitOfWork, mapper, null, templateRepository);
     }
@@ -143,7 +143,7 @@ public class ProjetoServiceTests
     public async Task AtualizarStatusEtapa_ParaConcluida_DeveRegistrarDataConclusao()
     {
         var projeto = await _sut.Create(CriarComando("Apartamento Duplex"));
-        var etapa   = await _sut.CreateEtapa(
+        var etapa = await _sut.CreateEtapa(
             new CriarEtapaCommand(projeto.Id, "Estudo Preliminar", "", 1));
         var command = new AtualizarStatusEtapaCommand(etapa.Id, StatusEtapa.Concluida);
 
@@ -151,6 +151,37 @@ public class ProjetoServiceTests
 
         atualizada.Status.Should().Be(StatusEtapa.Concluida);
         atualizada.DataConclusao.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AtualizarDatasEtapa_DeveAtualizarPrevisaoEDataConclusao()
+    {
+        var projeto = await _sut.Create(CriarComando("Edifício Alpha"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Estudo", "", 1));
+        var dataPrevista = DateTime.UtcNow.AddDays(15);
+        var dataConclusao = DateTime.UtcNow.AddDays(-2);
+
+        var atualizada = await _sut.AtualizarDatasEtapa(new AtualizarDatasEtapaCommand(
+            etapa.Id,
+            DataFimPrevista: dataPrevista,
+            DataConclusao: dataConclusao
+        ));
+
+        atualizada.DataFimPrevista.Should().BeCloseTo(dataPrevista, TimeSpan.FromSeconds(1));
+        atualizada.DataConclusao.Should().BeCloseTo(dataConclusao, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task AtualizarPrazoTarefa_DeveAtualizarDataLimite()
+    {
+        var projeto = await _sut.Create(CriarComando("Edifício Beta"));
+        var etapa = await _sut.CreateEtapa(new CriarEtapaCommand(projeto.Id, "Layout", "", 1));
+        var tarefa = await _sut.AdicionarTarefa(new AdicionarTarefaCommand(etapa.Id, "Planta Baixa"));
+        var prazo = DateTime.UtcNow.AddDays(7);
+
+        var atualizada = await _sut.AtualizarPrazoTarefa(new AtualizarPrazoTarefaCommand(tarefa.Id, prazo));
+
+        atualizada.DataLimite.Should().BeCloseTo(prazo, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -298,6 +329,131 @@ public class ProjetoServiceTests
     }
 
     [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoExiste_DeveRetornarTemplate()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "comercial-v1",
+            "Comercial Inicial",
+            "Descricao",
+            "business"
+        ));
+
+        var template = await _sut.ObterTemplatePorCodigo("comercial-v1");
+
+        template.Should().NotBeNull();
+        template!.Codigo.Should().Be("comercial-v1");
+        template.Nome.Should().Be("Comercial Inicial");
+    }
+
+    [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoNaoExiste_DeveRetornarNull()
+    {
+        var template = await _sut.ObterTemplatePorCodigo("codigo-inexistente");
+        template.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterTemplatePorCodigo_QuandoRepositorioNulo_DeveRetornarNull()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var template = await sutSemRepo.ObterTemplatePorCodigo("codigo");
+        template.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoNaoExiste_DeveCriarTemplate()
+    {
+        var command = new AtualizarTemplatePorCodigoCommand(
+            Codigo: "novo-codigo-upsert",
+            Nome: "Template Criado via Upsert",
+            Descricao: "Descricao Upsert",
+            Icone: "build",
+            Etapas: new List<CriarTemplateEtapaItemCommand>
+            {
+                new("Etapa 1", "Desc", 1, new List<string> { "Tarefa 1" })
+            }
+        );
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().NotBeNull();
+        result.Codigo.Should().Be("novo-codigo-upsert");
+        result.Nome.Should().Be("Template Criado via Upsert");
+        result.Etapas.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoExiste_DeveAtualizarTemplate()
+    {
+        await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "codigo-existente",
+            "Template Original",
+            "Desc Original",
+            "home"
+        ));
+
+        var command = new AtualizarTemplatePorCodigoCommand(
+            Codigo: "codigo-existente",
+            Nome: "Template Modificado",
+            Descricao: "Desc Nova",
+            Icone: "palette"
+        );
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().NotBeNull();
+        result.Nome.Should().Be("Template Modificado");
+        result.Icone.Should().Be("palette");
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_QuandoRepositorioNulo_DeveLancarInvalidOperationException()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var act = () => sutSemRepo.AtualizarTemplatePorCodigo(new AtualizarTemplatePorCodigoCommand("codigo", "Nome"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoExiste_DeveExcluir()
+    {
+        var template = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
+            "codigo-para-excluir",
+            "Para Excluir",
+            "Desc",
+            "delete"
+        ));
+
+        await _sut.ExcluirTemplatePorCodigo("codigo-para-excluir");
+
+        var obtido = await _sut.ObterTemplatePorCodigo("codigo-para-excluir");
+        obtido.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoNaoExiste_NaoDeveLancarExcecao()
+    {
+        var act = () => _sut.ExcluirTemplatePorCodigo("codigo-inexistente-qualquer");
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_QuandoRepositorioNulo_DeveLancarInvalidOperationException()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var sutSemRepo = new ProjetoService(new ProjetoRepository(ctx), new UnitOfWork(ctx), MappingFixture.Create(), null, null);
+
+        var act = () => sutSemRepo.ExcluirTemplatePorCodigo("codigo");
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task ExcluirTemplate_DeveRemoverTemplate()
     {
         var templateCriado = await _sut.CriarTemplate(new CriarTemplateProjetoCommand(
@@ -363,12 +519,13 @@ public class ProjetoServiceTests
 
     private static CriarProjetoCommand CriarComando(string nome) =>
         new(
-            Nome:                nome,
-            Descricao:           "Descrição de teste",
-            Tipo:                TipoProjeto.Residencial,
-            DataInicio:          DateTime.UtcNow,
+            Nome: nome,
+            Descricao: "Descrição de teste",
+            Tipo: TipoProjeto.Residencial,
+            DataInicio: DateTime.UtcNow,
             DataPrevistaEntrega: DateTime.UtcNow.AddMonths(6),
-            MetragemTotal:       150,
-            ClienteId:           Guid.NewGuid()
+            MetragemTotal: 150,
+            ClienteId: Guid.NewGuid()
         );
 }
+

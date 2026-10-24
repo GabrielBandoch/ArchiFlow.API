@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace ArchiFlow.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+
     public partial class AddOrigemLeadAndMotivoPerda : Migration
     {
-        /// <inheritdoc />
+
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
@@ -56,7 +56,7 @@ namespace ArchiFlow.Infrastructure.Migrations
                 onDelete: ReferentialAction.Restrict);
         }
 
-        /// <inheritdoc />
+
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
@@ -87,3 +87,4 @@ namespace ArchiFlow.Infrastructure.Migrations
         }
     }
 }
+

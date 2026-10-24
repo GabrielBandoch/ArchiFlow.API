@@ -246,7 +246,7 @@ public class DashboardServiceTests
             Codigo = "PROP-AJUSTADA",
             MetragemQuadrada = 100m,
             ValorTotalSugerido = 10000m,
-            ValorFinalAjustado = 9000m, // Deve usar 9000
+            ValorFinalAjustado = 9000m,
             Status = StatusProposta.Enviada,
             CriadoEm = DateTime.UtcNow
         };
@@ -258,7 +258,7 @@ public class DashboardServiceTests
             Codigo = "PROP-PADRAO",
             MetragemQuadrada = 100m,
             ValorTotalSugerido = 5000m,
-            ValorFinalAjustado = 0m, // Deve usar 5000
+            ValorFinalAjustado = 0m,
             Status = StatusProposta.Rascunho,
             CriadoEm = DateTime.UtcNow
         };
@@ -371,7 +371,7 @@ public class DashboardServiceTests
         var (service, _) = CreateService(accessorSub);
 
         var resultado = await service.ObterPreferenciasAsync();
-        resultado.Should().BeNull(); // No preferences exist yet, but authentication context succeeded
+        resultado.Should().BeNull();
     }
 
     [Fact]
@@ -390,13 +390,13 @@ public class DashboardServiceTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("not a json")]
-    [InlineData("{\"id\":\"kpi_resumo\"}")] // Not an array
-    [InlineData("[]")] // Empty array
-    [InlineData("[{\"id\":\"widget_desconhecido\",\"ordem\":1,\"visivel\":true}]")] // Unknown ID
-    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":1},{\"id\":\"kpi_resumo\",\"ordem\":2}]")] // Duplicate ID
-    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":0}]")] // Ordem < 1
-    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":99}]")] // Ordem > 50
-    [InlineData("[{\"id\":\"kpi_resumo\",\"largura\":\"quarter\"}]")] // Invalid largura
+    [InlineData("{\"id\":\"kpi_resumo\"}")]
+    [InlineData("[]")]
+    [InlineData("[{\"id\":\"widget_desconhecido\",\"ordem\":1,\"visivel\":true}]")]
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":1},{\"id\":\"kpi_resumo\",\"ordem\":2}]")]
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":0}]")]
+    [InlineData("[{\"id\":\"kpi_resumo\",\"ordem\":99}]")]
+    [InlineData("[{\"id\":\"kpi_resumo\",\"largura\":\"quarter\"}]")]
     public async Task SalvarPreferencias_With_Invalid_Layout_Should_Throw_ArgumentException(string invalidLayout)
     {
         var usuarioId = Guid.NewGuid();
@@ -423,3 +423,4 @@ public class DashboardServiceTests
         context.PreferenciasDashboard.Should().BeEmpty();
     }
 }
+

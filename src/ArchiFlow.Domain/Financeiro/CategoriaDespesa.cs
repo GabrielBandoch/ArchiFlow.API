@@ -10,3 +10,4 @@ public enum CategoriaDespesa
     Maquetes3D = 6,
     Outros = 7
 }
+

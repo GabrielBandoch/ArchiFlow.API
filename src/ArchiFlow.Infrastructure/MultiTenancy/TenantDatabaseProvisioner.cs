@@ -13,11 +13,6 @@ using Npgsql;
 
 namespace ArchiFlow.Infrastructure.MultiTenancy;
 
-/// <summary>
-/// Implementação do provisionador dinâmico de banco de dados por cliente.
-/// Garante que, ao acessar qualquer subdomínio/tenant (ex: duna, staging),
-/// o banco de dados PostgreSQL correspondente é criado, migrado e inicializado automaticamente.
-/// </summary>
 public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 {
     private readonly string _baseConnectionString;
@@ -45,7 +40,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
 
         var cleanTenant = SanitizeTenant(tenantId);
 
-        // Se já foi inicializado nesta sessão do servidor, retorna imediatamente (overhead de 0ms)
+
         if (_initializedTenants.ContainsKey(cleanTenant))
         {
             return;
@@ -72,8 +67,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Falha ao provisionar o banco de dados do tenant '{Tenant}'", cleanTenant);
-            throw;
+            throw new InvalidOperationException($"Falha ao provisionar o banco de dados do tenant '{cleanTenant}'", ex);
         }
         finally
         {
@@ -81,7 +75,15 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
     }
 
-    private string ResolveDatabaseName(string tenant)
+    private static void ValidarNomeBanco(string dbName)
+    {
+        if (string.IsNullOrWhiteSpace(dbName) || !System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-z0-9_]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(250)))
+        {
+            throw new ArgumentException($"Nome de banco de dados inválido: '{dbName}'", nameof(dbName));
+        }
+    }
+
+    private static string ResolveDatabaseName(string tenant)
     {
         var envDb = Environment.GetEnvironmentVariable("DB_NAME");
         var baseDb = !string.IsNullOrWhiteSpace(envDb) ? envDb.Trim().ToLowerInvariant() : "cotu";
@@ -94,6 +96,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         return $"{baseDb}_{tenant.ToLowerInvariant().Replace("-", "_")}";
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S2077", Justification = "PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist.")]
     private async Task EnsureDatabaseExistsOnServerAsync(string targetDbName)
     {
         if (string.IsNullOrWhiteSpace(_baseConnectionString))
@@ -101,7 +104,7 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
             return;
         }
 
-        // Conecta ao banco de manutenção administrativo (postgres ou banco base)
+
         var masterBuilder = new NpgsqlConnectionStringBuilder(_baseConnectionString)
         {
             Database = "postgres"
@@ -121,8 +124,11 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
             {
                 _logger.LogInformation("Banco de dados '{DbName}' não encontrado no PostgreSQL. Criando novo banco...", targetDbName);
 
+                ValidarNomeBanco(targetDbName);
                 await using var createCmd = conn.CreateCommand();
+#pragma warning disable S2077 
                 createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+#pragma warning restore S2077
                 await createCmd.ExecuteNonQueryAsync();
 
                 _logger.LogInformation("Banco de dados '{DbName}' criado com sucesso no PostgreSQL.", targetDbName);
@@ -130,12 +136,13 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         }
         catch (NpgsqlException ex) when (ex.Message.Contains("postgres"))
         {
-            // Caso o banco "postgres" não exista ou não tenha permissão, tenta conectar diretamente no banco base
-            _logger.LogWarning("Não foi possível conectar ao banco de manutenção 'postgres', tentando conexão no banco base.");
+
+            _logger.LogWarning(ex, "Não foi possível conectar ao banco de manutenção 'postgres', tentando conexão no banco base.");
             await EnsureDatabaseExistsFallbackAsync(targetDbName);
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S2077", Justification = "PostgreSQL CREATE DATABASE does not support parameters; targetDbName is validated against strict whitelist.")]
     private async Task EnsureDatabaseExistsFallbackAsync(string targetDbName)
     {
         await using var conn = new NpgsqlConnection(_baseConnectionString);
@@ -148,8 +155,11 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         var exists = await checkCmd.ExecuteScalarAsync();
         if (exists == null)
         {
+            ValidarNomeBanco(targetDbName);
             await using var createCmd = conn.CreateCommand();
+#pragma warning disable S2077 
             createCmd.CommandText = $"CREATE DATABASE \"{targetDbName}\" ENCODING 'UTF8';";
+#pragma warning restore S2077
             await createCmd.ExecuteNonQueryAsync();
         }
     }
@@ -178,3 +188,4 @@ public class TenantDatabaseProvisioner : ITenantDatabaseProvisioner
         return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized.ToLowerInvariant();
     }
 }
+

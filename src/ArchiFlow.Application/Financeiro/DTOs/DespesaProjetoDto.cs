@@ -14,5 +14,8 @@ public record DespesaProjetoDto(
     string CategoriaNome,
     string? Observacoes,
     string? ComprovanteUrl,
-    DateTime CriadoEm
+    DateTime CriadoEm,
+    bool Pago = false,
+    DateTime? DataPagamento = null
 );
+

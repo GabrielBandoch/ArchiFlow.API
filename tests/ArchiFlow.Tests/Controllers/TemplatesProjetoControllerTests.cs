@@ -106,6 +106,60 @@ public class TemplatesProjetoControllerTests
     }
 
     [Fact]
+    public async Task ObterPorCodigo_QuandoExiste_DeveRetornarOk()
+    {
+        var codigo = "residencial-completo";
+        var template = new TemplateProjetoDto(Guid.NewGuid(), codigo, "Residencial", "Desc", "home", true, new List<TemplateEtapaDto>());
+
+        _facadeMock.Setup(f => f.ObterTemplatePorCodigo(codigo)).ReturnsAsync(template);
+
+        var result = await _sut.ObterPorCodigo(codigo);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(template);
+    }
+
+    [Fact]
+    public async Task ObterPorCodigo_QuandoNaoExiste_DeveRetornarNotFound()
+    {
+        var codigo = "inexistente";
+        _facadeMock.Setup(f => f.ObterTemplatePorCodigo(codigo)).ReturnsAsync((TemplateProjetoDto?)null);
+
+        var result = await _sut.ObterPorCodigo(codigo);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task AtualizarPorCodigo_DeveChamarFacadeERetornarOk()
+    {
+        var codigo = "residencial-completo";
+        var command = new AtualizarTemplatePorCodigoCommand("", "Residencial Atualizado", "Desc", "home", new List<CriarTemplateEtapaItemCommand>());
+        var expectedCommand = command with { Codigo = codigo };
+        var updated = new TemplateProjetoDto(Guid.NewGuid(), codigo, "Residencial Atualizado", "Desc", "home", true, new List<TemplateEtapaDto>());
+
+        _facadeMock.Setup(f => f.AtualizarTemplatePorCodigo(expectedCommand)).ReturnsAsync(updated);
+
+        var result = await _sut.AtualizarPorCodigo(codigo, command);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().Be(updated);
+        _facadeMock.Verify(f => f.AtualizarTemplatePorCodigo(expectedCommand), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExcluirPorCodigo_DeveChamarFacadeERetornarNoContent()
+    {
+        var codigo = "residencial-completo";
+        _facadeMock.Setup(f => f.ExcluirTemplatePorCodigo(codigo)).Returns(Task.CompletedTask);
+
+        var result = await _sut.ExcluirPorCodigo(codigo);
+
+        result.Should().BeOfType<NoContentResult>();
+        _facadeMock.Verify(f => f.ExcluirTemplatePorCodigo(codigo), Times.Once);
+    }
+
+    [Fact]
     public async Task Excluir_DeveRetornarNoContent()
     {
         var id = Guid.NewGuid();
@@ -117,3 +171,4 @@ public class TemplatesProjetoControllerTests
         _facadeMock.Verify(f => f.ExcluirTemplate(id), Times.Once);
     }
 }
+

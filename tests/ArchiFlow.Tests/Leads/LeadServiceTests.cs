@@ -19,10 +19,10 @@ public class LeadServiceTests
 
     public LeadServiceTests()
     {
-        _ctx           = TestDbContextFactory.Create();
+        _ctx = TestDbContextFactory.Create();
         var repository = new LeadRepository(_ctx);
         var unitOfWork = new UnitOfWork(_ctx);
-        var mapper     = MappingFixture.Create();
+        var mapper = MappingFixture.Create();
 
         _sut = new LeadService(repository, unitOfWork, mapper);
     }
@@ -224,9 +224,10 @@ public class LeadServiceTests
 
     private static CriarLeadCommand CriarComando(string nome, string email, Guid? origemId = null) =>
         new(
-            Nome:     nome,
-            Email:    email,
+            Nome: nome,
+            Email: email,
             Telefone: "98765-4321",
             OrigemId: origemId
         );
 }
+

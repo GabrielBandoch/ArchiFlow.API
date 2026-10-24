@@ -18,3 +18,4 @@ public interface IRepresentanteClienteService
     Task AtivarContaAsync(AtivarContaRepresentanteCommand command);
     Task DispararConviteProjetoCriadoAsync(Guid clienteId, string? baseUrl = null);
 }
+

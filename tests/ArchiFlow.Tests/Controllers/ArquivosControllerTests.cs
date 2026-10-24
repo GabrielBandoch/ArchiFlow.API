@@ -30,7 +30,7 @@ public class ArquivosControllerTests
     [Fact]
     public async Task GetByProjeto_Should_Return_Ok_With_List_From_Facade()
     {
-        // Arrange
+
         var projetoId = Guid.NewGuid();
         var lista = new List<ArquivoDto>
         {
@@ -38,10 +38,10 @@ public class ArquivosControllerTests
         };
         _mockFacade.Setup(f => f.GetByProjetoId(projetoId)).ReturnsAsync(lista);
 
-        // Act
+
         var result = await _controller.GetByProjeto(projetoId);
 
-        // Assert
+
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(lista);
@@ -51,7 +51,7 @@ public class ArquivosControllerTests
     [Fact]
     public async Task Upload_Should_Return_Ok_When_Command_Is_Processed()
     {
-        // Arrange
+
         var fileMock = new Mock<IFormFile>();
         var projetoId = Guid.NewGuid();
         var command = new UploadArquivoCommand(projetoId, fileMock.Object, true);
@@ -60,10 +60,10 @@ public class ArquivosControllerTests
         _mockFacade.Setup(f => f.Upload(command))
             .ReturnsAsync(dto);
 
-        // Act
+
         var result = await _controller.Upload(command);
 
-        // Assert
+
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         okResult!.Value.Should().BeEquivalentTo(dto);
@@ -72,14 +72,15 @@ public class ArquivosControllerTests
     [Fact]
     public async Task Delete_Should_Return_NoContent()
     {
-        // Arrange
+
         var id = Guid.NewGuid();
 
-        // Act
+
         var result = await _controller.Delete(id);
 
-        // Assert
+
         result.Should().BeOfType<NoContentResult>();
         _mockFacade.Verify(f => f.Delete(id), Times.Once);
     }
 }
+

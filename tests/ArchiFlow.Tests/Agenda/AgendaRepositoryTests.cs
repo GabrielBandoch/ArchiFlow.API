@@ -37,7 +37,7 @@ public class AgendaRepositoryTests
         {
             Id = Guid.NewGuid(),
             EscritorioId = escritorioId,
-            UsuarioId = Guid.NewGuid(), // Outro usuario
+            UsuarioId = Guid.NewGuid(),
             ProjetoId = projetoId,
             Titulo = "Compromisso 2",
             DataHoraInicio = DateTime.UtcNow.Date.AddHours(14),
@@ -48,7 +48,7 @@ public class AgendaRepositoryTests
         var c3 = new Compromisso
         {
             Id = Guid.NewGuid(),
-            EscritorioId = Guid.NewGuid(), // Outro escritorio
+            EscritorioId = Guid.NewGuid(),
             Titulo = "Compromisso Outro Escritorio",
             DataHoraInicio = DateTime.UtcNow.Date.AddHours(10),
             DataHoraFim = DateTime.UtcNow.Date.AddHours(11),
@@ -61,15 +61,15 @@ public class AgendaRepositoryTests
         var inicio = DateTime.UtcNow.Date;
         var fim = DateTime.UtcNow.Date.AddDays(1);
 
-        // Sem filtros opcionais
+
         var todos = await repo.ObterPorPeriodoAsync(escritorioId, inicio, fim);
         todos.Should().HaveCount(2);
 
-        // Filtrado por usuario
+
         var porUsuario = await repo.ObterPorPeriodoAsync(escritorioId, inicio, fim, usuarioId: usuarioId);
         porUsuario.Should().ContainSingle().Which.Titulo.Should().Be("Compromisso 1");
 
-        // Filtrado por projeto
+
         var porProjeto = await repo.ObterPorPeriodoAsync(escritorioId, inicio, fim, projetoId: projetoId);
         porProjeto.Should().HaveCount(2);
     }
@@ -183,3 +183,4 @@ public class AgendaRepositoryTests
         resultado.First().Id.Should().Be(c.Id);
     }
 }
+

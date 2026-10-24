@@ -6,3 +6,4 @@ public record ResultadoValidacaoConviteDto(
     string? Email = null,
     string? Mensagem = null
 );
+

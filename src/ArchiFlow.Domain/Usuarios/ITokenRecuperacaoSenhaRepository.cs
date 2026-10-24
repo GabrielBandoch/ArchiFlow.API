@@ -8,3 +8,4 @@ public interface ITokenRecuperacaoSenhaRepository
     Task<TokenRecuperacaoSenha?> ObterPorTokenHashAsync(string tokenHash);
     Task InvalidarParaEmailAsync(string email);
 }
+

@@ -16,3 +16,4 @@ public record SimulacaoResultadoDto(
     List<ItemEtapaSimulacaoDto> Etapas,
     MemoriaCalculoDto MemoriaCalculo
 );
+

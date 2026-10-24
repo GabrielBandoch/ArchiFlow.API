@@ -105,3 +105,4 @@ public record DashboardMetricasDto(
     IReadOnlyList<LeadResumoDashboardDto> LeadsRecentes,
     IReadOnlyList<PropostaResumoDashboardDto> PropostasRecentes
 );
+

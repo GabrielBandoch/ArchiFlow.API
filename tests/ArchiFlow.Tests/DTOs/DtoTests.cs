@@ -12,7 +12,7 @@ public class DtoTests
     {
         var id = Guid.NewGuid();
         var projId = Guid.NewGuid();
-        
+
         var loginReq = new LoginRequestDto("email@test.com", "senha");
         loginReq.Email.Should().Be("email@test.com");
         loginReq.Senha.Should().Be("senha");
@@ -75,3 +75,4 @@ public class DtoTests
         altCmd.TarefaId.Should().Be(id);
     }
 }
+

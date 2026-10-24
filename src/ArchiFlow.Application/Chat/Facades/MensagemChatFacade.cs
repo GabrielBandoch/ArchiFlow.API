@@ -29,3 +29,4 @@ public class MensagemChatFacade : IMensagemChatFacade
     public Task MarcarComoLidas(Guid projetoId, Guid usuarioId) =>
         _mensagemService.MarcarComoLidas(projetoId, usuarioId);
 }
+

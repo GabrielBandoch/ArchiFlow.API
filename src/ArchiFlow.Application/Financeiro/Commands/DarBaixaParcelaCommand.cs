@@ -9,3 +9,4 @@ public record DarBaixaParcelaCommand(
     string? Observacoes,
     string? ComprovanteUrl
 );
+

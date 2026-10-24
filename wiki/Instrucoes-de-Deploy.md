@@ -27,14 +27,9 @@ Este documento serve como guia prático para implantar e executar a API do Archi
    ```bash
    dotnet restore
    ```
-3. Execute as Migrations para criar as tabelas e seeds no PostgreSQL:
-   ```bash
-   cd src/ArchiFlow.Migrations
-   dotnet run -- migrate
-   ```
-4. Inicie o servidor da API:
-   ```bash
-   cd ../ArchiFlow.API
+3. Inicie o servidor da API (as migrations e seeds são executadas automaticamente na inicialização):
+   `ash
+   cd src/ArchiFlow.API
    dotnet run
    ```
 5. Acesse o console interativo do Swagger em: `http://localhost:5000/swagger` ou verifique a saúde em `http://localhost:5000/health`.

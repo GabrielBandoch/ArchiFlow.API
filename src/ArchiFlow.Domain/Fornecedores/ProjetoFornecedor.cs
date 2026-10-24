@@ -13,3 +13,4 @@ public class ProjetoFornecedor
     public Fornecedor? Fornecedor { get; set; }
     public Projeto? Projeto { get; set; }
 }
+

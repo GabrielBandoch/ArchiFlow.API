@@ -23,3 +23,4 @@ public abstract class PadraoImovelStrategyBase : IPadraoImovelStrategy
     public virtual decimal CalcularFatorPadrao(decimal valorBase) =>
         Math.Round(valorBase * (Multiplicador - 1.0m), 2);
 }
+

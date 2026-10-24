@@ -69,3 +69,4 @@ public class AutenticacaoControllerTests
         badResult.Value.Should().BeEquivalentTo(new { message = "E-mail já cadastrado." });
     }
 }
+

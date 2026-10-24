@@ -75,3 +75,4 @@ public class ArquivoFacadeTests
         _serviceMock.Verify(s => s.Delete(id), Times.Once);
     }
 }
+

@@ -13,3 +13,4 @@ public interface IMensagemChatFacade
     Task<MensagemChatDto> EnviarMensagem(Guid projetoId, Guid remetenteId, string remetenteNome, string remetentePerfil, string conteudo);
     Task MarcarComoLidas(Guid projetoId, Guid usuarioId);
 }
+

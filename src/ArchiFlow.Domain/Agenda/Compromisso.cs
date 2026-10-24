@@ -59,3 +59,4 @@ public class Compromisso
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
 }
+

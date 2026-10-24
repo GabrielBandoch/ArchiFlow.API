@@ -52,3 +52,4 @@ public class PreferenciaDashboardRepositoryTests
         updated!.LayoutJson.Should().Be("{\"test\":2}");
     }
 }
+

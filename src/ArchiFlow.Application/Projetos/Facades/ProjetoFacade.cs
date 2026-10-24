@@ -14,23 +14,29 @@ public class ProjetoFacade : IProjetoFacade
 
     public ProjetoFacade(IProjetoService service) => _service = service;
 
-    public Task<IEnumerable<ProjetoDto>> GetAll()                               => _service.GetAll();
-    public Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId)          => _service.GetByClienteId(clienteId);
-    public Task<ProjetoDto?> GetById(Guid id)                                    => _service.GetById(id);
-    public Task<ProjetoDto> Create(CriarProjetoCommand command)                      => _service.Create(command);
-    public Task<ProjetoDto> Update(AtualizarProjetoCommand command)               => _service.Update(command);
-    public Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command)   => _service.UpdateStatus(command);
-    public Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command)              => _service.CreateEtapa(command);
+    public Task<IEnumerable<ProjetoDto>> GetAll() => _service.GetAll();
+    public Task<IEnumerable<ProjetoDto>> GetByClienteId(Guid clienteId) => _service.GetByClienteId(clienteId);
+    public Task<ProjetoDto?> GetById(Guid id) => _service.GetById(id);
+    public Task<ProjetoDto> Create(CriarProjetoCommand command) => _service.Create(command);
+    public Task<ProjetoDto> Update(AtualizarProjetoCommand command) => _service.Update(command);
+    public Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command) => _service.UpdateStatus(command);
+    public Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command) => _service.CreateEtapa(command);
     public Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command) => _service.UpdateStatusEtapa(command);
-    public Task Delete(Guid id)                                                     => _service.Delete(id);
+    public Task<EtapaProjetoDto> AtualizarDatasEtapa(AtualizarDatasEtapaCommand command) => _service.AtualizarDatasEtapa(command);
+    public Task Delete(Guid id) => _service.Delete(id);
 
     public Task<TarefaEtapaDto> AdicionarTarefa(AdicionarTarefaCommand command) => _service.AdicionarTarefa(command);
-    public Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId)                   => _service.AlternarTarefa(tarefaId);
-    public Task RemoverTarefa(Guid tarefaId)                                    => _service.RemoverTarefa(tarefaId);
+    public Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId) => _service.AlternarTarefa(tarefaId);
+    public Task<TarefaEtapaDto> AtualizarPrazoTarefa(AtualizarPrazoTarefaCommand command) => _service.AtualizarPrazoTarefa(command);
+    public Task RemoverTarefa(Guid tarefaId) => _service.RemoverTarefa(tarefaId);
 
-    public Task<IEnumerable<TemplateProjetoDto>> ObterTemplates()               => _service.ObterTemplates();
-    public Task<TemplateProjetoDto?> ObterTemplatePorId(Guid id)                => _service.ObterTemplatePorId(id);
+    public Task<IEnumerable<TemplateProjetoDto>> ObterTemplates() => _service.ObterTemplates();
+    public Task<TemplateProjetoDto?> ObterTemplatePorId(Guid id) => _service.ObterTemplatePorId(id);
+    public Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo) => _service.ObterTemplatePorCodigo(codigo);
     public Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command) => _service.CriarTemplate(command);
     public Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command) => _service.AtualizarTemplate(command);
-    public Task ExcluirTemplate(Guid id)                                        => _service.ExcluirTemplate(id);
+    public Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command) => _service.AtualizarTemplatePorCodigo(command);
+    public Task ExcluirTemplate(Guid id) => _service.ExcluirTemplate(id);
+    public Task ExcluirTemplatePorCodigo(string codigo) => _service.ExcluirTemplatePorCodigo(codigo);
 }
+

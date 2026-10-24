@@ -68,8 +68,8 @@ public class HonorarioStrategiesTests
     [InlineData(PadraoImovel.AltoPadrao, 1.30, 3000)]
     [InlineData(PadraoImovel.Luxo, 1.60, 6000)]
     public void PadraoImovelStrategies_Should_Calculate_Factor_Accurately(
-        PadraoImovel padrao, 
-        decimal multiplicadorEsperado, 
+        PadraoImovel padrao,
+        decimal multiplicadorEsperado,
         decimal valorFatorEsperado)
     {
         IPadraoImovelStrategy strategy = padrao switch
@@ -118,3 +118,4 @@ public class HonorarioStrategiesTests
         factory.ObterPadraoStrategy(PadraoImovel.Luxo).Should().BeOfType<LuxoPadraoStrategy>();
     }
 }
+

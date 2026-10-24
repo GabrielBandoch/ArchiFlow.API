@@ -10,7 +10,8 @@ public record RepresentanteClienteDto(
     string? Telefone,
     string? Cargo,
     bool Ativo,
-    string StatusConvite, // "Pendente", "Ativo", "Expirado"
+    string StatusConvite,
     DateTime CriadoEm,
     DateTime? AtualizadoEm
 );
+

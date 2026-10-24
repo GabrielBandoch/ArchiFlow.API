@@ -28,3 +28,4 @@ public class SalvarOpcaoConfiguracaoCommand
     public int Ordem { get; set; }
     public string? DadosExtrasJson { get; set; }
 }
+

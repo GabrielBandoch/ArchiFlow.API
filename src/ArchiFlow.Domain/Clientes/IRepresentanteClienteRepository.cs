@@ -14,3 +14,4 @@ public interface IRepresentanteClienteRepository
     Task AtualizarAsync(RepresentanteCliente representante);
     Task RemoverAsync(Guid id);
 }
+

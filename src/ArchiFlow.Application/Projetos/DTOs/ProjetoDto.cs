@@ -30,7 +30,8 @@ public record EtapaProjetoDto(
     string StatusLabel,
     int Ordem,
     DateTime? DataConclusao,
-    IEnumerable<TarefaEtapaDto>? Tarefas = null
+    IEnumerable<TarefaEtapaDto>? Tarefas = null,
+    DateTime? DataFimPrevista = null
 );
 
 public record TarefaEtapaDto(
@@ -38,5 +39,7 @@ public record TarefaEtapaDto(
     Guid EtapaId,
     string Titulo,
     bool Concluida,
-    DateTime? CriadoEm = null
+    DateTime? CriadoEm = null,
+    DateTime? DataLimite = null
 );
+

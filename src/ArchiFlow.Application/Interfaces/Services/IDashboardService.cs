@@ -10,3 +10,4 @@ public interface IDashboardService
     Task<PreferenciaDashboardDto?> ObterPreferenciasAsync();
     Task<PreferenciaDashboardDto> SalvarPreferenciasAsync(SalvarPreferenciaDashboardCommand command);
 }
+

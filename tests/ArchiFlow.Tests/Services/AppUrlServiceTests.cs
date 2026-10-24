@@ -66,3 +66,4 @@ public class AppUrlServiceTests
         result.Should().Be("http://localhost:4200");
     }
 }
+

@@ -84,10 +84,10 @@ public class EmpresaService : IEmpresaService
         if (string.IsNullOrWhiteSpace(corPrimaria))
             throw new ArgumentException("Cor primária é obrigatória.");
 
-        var empresa = await _empresaRepository.ObterAsync() ?? new DadosEmpresa 
-        { 
-            Id = Guid.NewGuid(), 
-            NomeEmpresa = "COTU Studio" 
+        var empresa = await _empresaRepository.ObterAsync() ?? new DadosEmpresa
+        {
+            Id = Guid.NewGuid(),
+            NomeEmpresa = "COTU Studio"
         };
 
         empresa.CorPrimaria = corPrimaria.Trim();
@@ -166,3 +166,4 @@ public class EmpresaService : IEmpresaService
             e.AtualizadoEm
         );
 }
+

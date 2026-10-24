@@ -26,3 +26,4 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
             .ToListAsync();
     }
 }
+

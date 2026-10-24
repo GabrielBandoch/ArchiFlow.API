@@ -8,3 +8,4 @@ public interface IConfiguracaoPropostaRepository : IRepository<ConfiguracaoPropo
 {
     Task<ConfiguracaoProposta?> ObterPorUsuarioIdAsync(Guid usuarioId);
 }
+

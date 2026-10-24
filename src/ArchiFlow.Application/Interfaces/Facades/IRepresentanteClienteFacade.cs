@@ -17,3 +17,4 @@ public interface IRepresentanteClienteFacade
     Task<ResultadoValidacaoConviteDto> ValidarTokenConviteAsync(string token);
     Task AtivarContaAsync(AtivarContaRepresentanteCommand command);
 }
+

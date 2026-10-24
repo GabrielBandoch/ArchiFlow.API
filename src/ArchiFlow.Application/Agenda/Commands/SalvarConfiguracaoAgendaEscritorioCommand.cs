@@ -21,3 +21,4 @@ public class SalvarConfiguracaoAgendaEscritorioCommand
 
     public bool SincronizacaoAutomaticaAtiva { get; set; } = true;
 }
+

@@ -84,7 +84,7 @@ public class CalculadoraHonorariosServiceTests
             100m,
             TipoProjeto.Residencial,
             PadraoImovel.AltoPadrao,
-            new List<string> { "Estudo Preliminar & Moodboard", "Anteprojeto & Modelagem 3D" }, // 45% do escopo
+            new List<string> { "Estudo Preliminar & Moodboard", "Anteprojeto & Modelagem 3D" },
             50m,
             100m
         );
@@ -156,3 +156,4 @@ public class CalculadoraHonorariosServiceTests
         resultado.Etapas.Should().HaveCount(5);
     }
 }
+

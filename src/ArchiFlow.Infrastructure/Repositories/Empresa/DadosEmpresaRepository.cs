@@ -56,3 +56,4 @@ public class DadosEmpresaRepository : IDadosEmpresaRepository
         await _context.SaveChangesAsync();
     }
 }
+

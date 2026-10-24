@@ -13,10 +13,10 @@ public class CompromissoRepository : Repository<Compromisso>, ICompromissoReposi
     public CompromissoRepository(ArchiFlowDbContext context) : base(context) { }
 
     public async Task<IEnumerable<Compromisso>> ObterPorPeriodoAsync(
-        Guid escritorioId, 
-        DateTime inicio, 
-        DateTime fim, 
-        Guid? usuarioId = null, 
+        Guid escritorioId,
+        DateTime inicio,
+        DateTime fim,
+        Guid? usuarioId = null,
         Guid? projetoId = null)
     {
         var inicioUtc = AsUtc(inicio);
@@ -42,8 +42,8 @@ public class CompromissoRepository : Repository<Compromisso>, ICompromissoReposi
     }
 
     public async Task<IEnumerable<Compromisso>> ObterProximosAsync(
-        Guid escritorioId, 
-        int quantidade = 10, 
+        Guid escritorioId,
+        int quantidade = 10,
         Guid? usuarioId = null)
     {
         var agora = DateTime.UtcNow.AddMinutes(-15);
@@ -62,3 +62,4 @@ public class CompromissoRepository : Repository<Compromisso>, ICompromissoReposi
             .ToListAsync();
     }
 }
+

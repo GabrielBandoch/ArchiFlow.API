@@ -324,3 +324,4 @@ public class RepresentanteClienteServiceTests
         result!.StatusConvite.Should().Be("Pendente");
     }
 }
+

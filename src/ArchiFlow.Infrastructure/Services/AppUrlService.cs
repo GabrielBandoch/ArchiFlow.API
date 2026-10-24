@@ -50,3 +50,4 @@ public class AppUrlService : IAppUrlService
         return _defaultUrl;
     }
 }
+

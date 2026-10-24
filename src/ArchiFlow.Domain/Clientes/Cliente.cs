@@ -13,3 +13,4 @@ public class Cliente
     public string? Endereco { get; set; }
     public string? FotoUrl { get; set; }
 }
+

@@ -11,3 +11,4 @@ public record ArquivoDto(
     bool VisivelCliente,
     DateTime CriadoEm
 );
+

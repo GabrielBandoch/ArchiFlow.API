@@ -19,3 +19,4 @@ public record ConversaoClienteResponseDto(
     ClienteDto Cliente,
     string SenhaTemporaria
 );
+

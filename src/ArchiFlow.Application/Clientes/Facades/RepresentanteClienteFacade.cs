@@ -41,3 +41,4 @@ public class RepresentanteClienteFacade : IRepresentanteClienteFacade
     public Task AtivarContaAsync(AtivarContaRepresentanteCommand command) =>
         _service.AtivarContaAsync(command);
 }
+

@@ -287,3 +287,4 @@ public class RoutingFeature : IRoutingFeature
     public RouteData RouteData { get; set; } = new RouteData();
 }
 #pragma warning restore CS8767
+

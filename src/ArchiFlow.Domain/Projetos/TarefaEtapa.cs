@@ -7,5 +7,7 @@ public class TarefaEtapa
     public string Titulo { get; set; } = string.Empty;
     public bool Concluida { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    public DateTime? DataLimite { get; set; }
     public virtual EtapaProjeto? Etapa { get; set; }
 }
+

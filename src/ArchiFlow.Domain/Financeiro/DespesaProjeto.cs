@@ -13,8 +13,11 @@ public class DespesaProjeto
     public CategoriaDespesa Categoria { get; set; } = CategoriaDespesa.Outros;
     public string? Observacoes { get; set; }
     public string? ComprovanteUrl { get; set; }
+    public bool Pago { get; set; } = false;
+    public DateTime? DataPagamento { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
 
     public Projeto? Projeto { get; set; }
 }
+

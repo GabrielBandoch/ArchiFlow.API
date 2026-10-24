@@ -457,3 +457,4 @@ public class TenantResolutionMiddlewareTests
         tenantConn.Should().Contain("Database=cotu");
     }
 }
+

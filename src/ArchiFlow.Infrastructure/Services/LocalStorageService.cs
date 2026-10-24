@@ -28,7 +28,7 @@ public class LocalStorageService : IStorageService
     {
         var tenantId = SanitizePathPart(_tenantContext?.TenantId ?? "default");
         var safeCategory = string.IsNullOrWhiteSpace(category) ? "geral" : SanitizePathPart(category);
-        
+
         var relativeFolder = Path.Combine("uploads", "tenants", tenantId, safeCategory);
         if (!string.IsNullOrWhiteSpace(subPath))
         {
@@ -158,3 +158,4 @@ public class LocalStorageService : IStorageService
         return string.Join("_", part.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 }
+

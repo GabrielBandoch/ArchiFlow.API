@@ -106,6 +106,11 @@ public class FinanceiroController : ControllerBase
     public async Task<IActionResult> AtualizarDespesa(Guid id, [FromBody] AtualizarDespesaCommand command) =>
         Ok(await _facade.AtualizarDespesaAsync(id, command));
 
+    [HttpPatch("despesas/{id:guid}/pagamento")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> AlternarPagamentoDespesa(Guid id, [FromBody] AlternarPagamentoDespesaCommand? command) =>
+        Ok(await _facade.AlternarPagamentoDespesaAsync(id, command ?? new AlternarPagamentoDespesaCommand()));
+
     [HttpDelete("despesas/{id:guid}")]
     [Authorize(Policy = "AcessoArquiteto")]
     public async Task<IActionResult> ExcluirDespesa(Guid id)
@@ -132,3 +137,4 @@ public class FinanceiroController : ControllerBase
         return NoContent();
     }
 }
+

@@ -12,3 +12,4 @@ public class Arquivo
     public bool VisivelCliente { get; set; } = false;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
+

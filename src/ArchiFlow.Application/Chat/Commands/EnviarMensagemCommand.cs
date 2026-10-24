@@ -6,3 +6,4 @@ public record EnviarMensagemCommand(
     Guid ProjetoId,
     string Conteudo
 );
+

@@ -95,3 +95,4 @@ public class RecuperacaoSenhaControllerTests
         badResult.Value.Should().BeEquivalentTo(new { message = "Token expirado" });
     }
 }
+

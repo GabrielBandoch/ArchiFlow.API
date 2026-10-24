@@ -56,3 +56,4 @@ public class DespesaProjetoRepository : Repository<DespesaProjeto>, IDespesaProj
             .ToListAsync();
     }
 }
+

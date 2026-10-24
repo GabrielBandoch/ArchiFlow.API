@@ -19,3 +19,4 @@ public class ArquivoFacade : IArquivoFacade
     public Task<ArquivoDto> Upload(UploadArquivoCommand command) => _service.Upload(command);
     public Task Delete(Guid id) => _service.Delete(id);
 }
+

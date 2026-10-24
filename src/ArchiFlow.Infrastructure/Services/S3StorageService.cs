@@ -18,17 +18,17 @@ public class S3StorageService : IStorageService
     private readonly ILogger<S3StorageService>? _logger;
 
     public S3StorageService(
-        IConfiguration configuration, 
-        IAmazonS3 s3Client, 
+        IConfiguration configuration,
+        IAmazonS3 s3Client,
         ITenantContext? tenantContext = null,
         ILogger<S3StorageService>? logger = null)
     {
         _s3Client = s3Client;
         _tenantContext = tenantContext;
         _logger = logger;
-        _bucketName = configuration["AWS_S3_BUCKET"] 
+        _bucketName = configuration["AWS_S3_BUCKET"]
             ?? Environment.GetEnvironmentVariable("AWS_S3_BUCKET")
-            ?? configuration["AWS:BucketName"] 
+            ?? configuration["AWS:BucketName"]
             ?? "cotu-storage";
     }
 
@@ -158,3 +158,4 @@ public class S3StorageService : IStorageService
         return string.Join("_", part.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 }
+

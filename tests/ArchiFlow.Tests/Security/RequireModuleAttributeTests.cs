@@ -144,3 +144,4 @@ public class RequireModuleAttributeTests
         result!.StatusCode.Should().Be(403);
     }
 }
+

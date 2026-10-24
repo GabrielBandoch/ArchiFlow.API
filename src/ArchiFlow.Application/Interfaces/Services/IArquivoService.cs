@@ -13,3 +13,4 @@ public interface IArquivoService
     Task<ArquivoDto> Upload(UploadArquivoCommand command);
     Task Delete(Guid id);
 }
+

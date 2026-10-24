@@ -90,3 +90,4 @@ public class VincularProjetoCommand
     [MaxLength(150)]
     public string FuncaoNoProjeto { get; set; } = "Fornecedor / Parceiro Especializado";
 }
+

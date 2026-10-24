@@ -5,6 +5,7 @@ using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ArchiFlow.API.Controllers;
@@ -37,6 +38,14 @@ public class TemplatesProjetoController : ControllerBase
         return template is null ? NotFound() : Ok(template);
     }
 
+    [HttpGet("{codigo}")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    public async Task<IActionResult> ObterPorCodigo(string codigo)
+    {
+        var template = await _facade.ObterTemplatePorCodigo(codigo);
+        return template is null ? NotFound() : Ok(template);
+    }
+
     [HttpPost]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
     public async Task<IActionResult> Criar([FromBody] CriarTemplateProjetoCommand command)
@@ -56,6 +65,14 @@ public class TemplatesProjetoController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{codigo}")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    public async Task<IActionResult> AtualizarPorCodigo(string codigo, [FromBody] AtualizarTemplatePorCodigoCommand command)
+    {
+        var result = await _facade.AtualizarTemplatePorCodigo(command with { Codigo = codigo });
+        return Ok(result);
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
     public async Task<IActionResult> Excluir(Guid id)
@@ -63,4 +80,13 @@ public class TemplatesProjetoController : ControllerBase
         await _facade.ExcluirTemplate(id);
         return NoContent();
     }
+
+    [HttpDelete("{codigo}")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    public async Task<IActionResult> ExcluirPorCodigo(string codigo)
+    {
+        await _facade.ExcluirTemplatePorCodigo(codigo);
+        return NoContent();
+    }
 }
+

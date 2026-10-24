@@ -9,3 +9,4 @@ public interface IHonorarioStrategyFactory
     ICalculoHonorarioStrategy ObterStrategy(TipoProjeto tipo);
     IPadraoImovelStrategy ObterPadraoStrategy(PadraoImovel padrao);
 }
+

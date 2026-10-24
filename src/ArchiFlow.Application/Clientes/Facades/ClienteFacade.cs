@@ -20,3 +20,4 @@ public class ClienteFacade : IClienteFacade
     public Task<ClienteDto> Update(AtualizarClienteCommand command) => _service.Update(command);
     public Task<ClienteDto> UpdatePortalAccess(AtualizarPortalAccessCommand command) => _service.UpdatePortalAccess(command);
 }
+

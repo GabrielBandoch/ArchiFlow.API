@@ -15,3 +15,4 @@ public class ResidencialCalculoStrategy : CalculoHonorarioStrategyBase
         return Math.Max(30, Math.Round(metragem * 1.0m * fatorEscopo, 0));
     }
 }
+

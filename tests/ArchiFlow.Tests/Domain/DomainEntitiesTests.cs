@@ -166,3 +166,4 @@ public class DomainEntitiesTests
         arq.CriadoEm.Should().Be(data);
     }
 }
+

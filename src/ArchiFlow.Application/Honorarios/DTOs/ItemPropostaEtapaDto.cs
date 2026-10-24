@@ -13,3 +13,4 @@ public record ItemPropostaEtapaDto(
     decimal HorasEstimadas,
     int Ordem
 );
+

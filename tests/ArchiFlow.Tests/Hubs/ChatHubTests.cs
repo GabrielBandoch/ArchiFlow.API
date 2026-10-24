@@ -354,3 +354,4 @@ public class ChatHubTests
         tenantMock.Verify(t => t.SetTenant("studio_alfa", It.IsAny<string>()), Times.Once);
     }
 }
+

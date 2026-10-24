@@ -59,3 +59,4 @@ public class AgendaFacade : IAgendaFacade
     public Task DesconectarGoogleOAuthAsync() =>
         _agendaService.DesconectarGoogleOAuthAsync();
 }
+

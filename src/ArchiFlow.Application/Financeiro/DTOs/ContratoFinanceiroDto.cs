@@ -5,7 +5,7 @@ namespace ArchiFlow.Application.Financeiro.DTOs;
 
 public record ContratoFinanceiroDto(
     Guid Id,
-    Guid ProjetoId,
+    Guid? ProjetoId,
     string ProjetoNome,
     decimal ValorTotal,
     string? CondicoesPagamento,
@@ -13,3 +13,4 @@ public record ContratoFinanceiroDto(
     DateTime CriadoEm,
     List<ParcelaFinanceiraDto> Parcelas
 );
+

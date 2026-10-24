@@ -5,7 +5,7 @@ namespace ArchiFlow.Application.Financeiro.DTOs;
 
 public record AlertaFinanceiroDto(
     Guid ParcelaId,
-    Guid ProjetoId,
+    Guid? ProjetoId,
     string Titulo,
     string Subtitulo,
     decimal Valor,
@@ -14,3 +14,4 @@ public record AlertaFinanceiroDto(
     int DiasDiferenca,
     bool EmAtraso
 );
+

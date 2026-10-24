@@ -65,3 +65,4 @@ public class ProjetoOwnerHandler : AuthorizationHandler<ProjetoOwnerRequirement>
         return Guid.TryParse(claimProjetoId, out var userProjetoId) && userProjetoId == routeId;
     }
 }
+

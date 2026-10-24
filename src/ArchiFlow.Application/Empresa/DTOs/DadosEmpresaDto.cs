@@ -21,3 +21,4 @@ public record DadosEmpresaDto(
     string CorPrimaria,
     DateTime AtualizadoEm
 );
+

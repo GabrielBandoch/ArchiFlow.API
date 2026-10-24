@@ -9,3 +9,4 @@ public class OrigemLead
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
+

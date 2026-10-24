@@ -16,3 +16,4 @@ public class ItemPropostaEtapa
 
     public PropostaHonorario? Proposta { get; set; }
 }
+

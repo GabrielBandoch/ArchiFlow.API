@@ -461,8 +461,32 @@ public class FinanceiroServiceTests
         parcela.Status.Should().Be(StatusParcela.Pendente);
     }
 
+    [Fact]
+    public async Task RegistrarParcelaAsync_SemProjeto_DeveCriarParcelaAvulsaComSucesso()
+    {
+        var (service, _, _) = CreateService();
+
+        var command = new CriarParcelaCommand(
+            null,
+            null,
+            1,
+            1,
+            "Consultoria Avulsa",
+            2500m,
+            DateTime.UtcNow.AddDays(10),
+            "Sem projeto vinculado"
+        );
+
+        var parcela = await service.RegistrarParcelaAsync(command);
+
+        parcela.Should().NotBeNull();
+        parcela.ProjetoId.Should().BeNull();
+        parcela.Descricao.Should().Be("Consultoria Avulsa");
+        parcela.Valor.Should().Be(2500m);
+        parcela.Status.Should().Be(StatusParcela.Pendente);
+    }
+
     [Theory]
-    [InlineData("00000000-0000-0000-0000-000000000000", "Parcela", 100, 1, 1)] // Empty ProjetoId
     [InlineData("11111111-1111-1111-1111-111111111111", "", 100, 1, 1)]        // Empty Descricao
     [InlineData("11111111-1111-1111-1111-111111111111", "   ", 100, 1, 1)]     // Whitespace Descricao
     [InlineData("11111111-1111-1111-1111-111111111111", "Parcela", 0, 1, 1)]    // Valor <= 0
@@ -872,6 +896,60 @@ public class FinanceiroServiceTests
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
+    [Fact]
+    public async Task CriarDespesaAsync_ComStatusPago_DeveRegistrarDataPagamento()
+    {
+        var (service, _, _) = CreateService();
+        var dataDespesa = DateTime.UtcNow.AddDays(-2);
+
+        var command = new CriarDespesaCommand(
+            null,
+            "Compra de Papelaria",
+            120m,
+            dataDespesa,
+            CategoriaDespesa.Outros,
+            null,
+            null,
+            Pago: true
+        );
+
+        var res = await service.CriarDespesaAsync(command);
+
+        res.Should().NotBeNull();
+        res.Pago.Should().BeTrue();
+        res.DataPagamento.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AlternarPagamentoDespesaAsync_DeveAlternarStatusEDataPagamento()
+    {
+        var (service, _, _) = CreateService();
+
+        var commandCriar = new CriarDespesaCommand(
+            null,
+            "Licença de Plugin",
+            450m,
+            DateTime.UtcNow,
+            CategoriaDespesa.SoftwareLicencas,
+            null,
+            null,
+            Pago: false
+        );
+        var despesa = await service.CriarDespesaAsync(commandCriar);
+        despesa.Pago.Should().BeFalse();
+        despesa.DataPagamento.Should().BeNull();
+
+        // Alternar para Pago
+        var alternada = await service.AlternarPagamentoDespesaAsync(despesa.Id, new AlternarPagamentoDespesaCommand(true));
+        alternada.Pago.Should().BeTrue();
+        alternada.DataPagamento.Should().NotBeNull();
+
+        // Alternar para Pendente
+        var alternadaPendente = await service.AlternarPagamentoDespesaAsync(despesa.Id, new AlternarPagamentoDespesaCommand(false));
+        alternadaPendente.Pago.Should().BeFalse();
+        alternadaPendente.DataPagamento.Should().BeNull();
+    }
+
     #endregion
 
     #region Upload Seguro de Comprovante e Exclusão
@@ -1012,4 +1090,45 @@ public class FinanceiroServiceTests
     }
 
     #endregion
+
+    [Fact]
+    public async Task CriarContratoAsync_SemProjetoId_DeveCriarContratoComSucesso()
+    {
+        var (service, _, _) = CreateService();
+        var command = new CriarContratoCommand(null, 10000m, 2, DateTime.UtcNow.AddDays(10), 30, "Condicoes", "Obs");
+
+        var contrato = await service.CriarContratoAsync(command);
+
+        contrato.Should().NotBeNull();
+        contrato.ProjetoId.Should().BeNull();
+        contrato.ValorTotal.Should().Be(10000m);
+        contrato.Parcelas.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task RegistrarParcelaAsync_SemProjetoId_DeveRegistrarParcelaComSucesso()
+    {
+        var (service, _, _) = CreateService();
+        var command = new CriarParcelaCommand(null, null, 1, 1, "Parcela Avulsa", 1500m, DateTime.UtcNow.AddDays(15), "Obs");
+
+        var parcela = await service.RegistrarParcelaAsync(command);
+
+        parcela.Should().NotBeNull();
+        parcela.ProjetoId.Should().BeNull();
+        parcela.Valor.Should().Be(1500m);
+    }
+
+    [Fact]
+    public async Task CriarDespesaAsync_SemProjetoId_DeveCriarDespesaComSucesso()
+    {
+        var (service, _, _) = CreateService();
+        var command = new CriarDespesaCommand(null, "Despesa Escritorio", 250m, DateTime.UtcNow, CategoriaDespesa.Outros, "Obs", null);
+
+        var despesa = await service.CriarDespesaAsync(command);
+
+        despesa.Should().NotBeNull();
+        despesa.ProjetoId.Should().BeNull();
+        despesa.Descricao.Should().Be("Despesa Escritorio");
+        despesa.Valor.Should().Be(250m);
+    }
 }

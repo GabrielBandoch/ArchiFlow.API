@@ -12,3 +12,4 @@ public record RedefinirSenhaCommand(
 
     string? ConfirmacaoNovaSenha = null
 );
+

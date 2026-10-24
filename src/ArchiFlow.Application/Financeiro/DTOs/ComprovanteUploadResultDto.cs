@@ -4,3 +4,4 @@ public record ComprovanteUploadResultDto(
     string Url,
     string Nome
 );
+

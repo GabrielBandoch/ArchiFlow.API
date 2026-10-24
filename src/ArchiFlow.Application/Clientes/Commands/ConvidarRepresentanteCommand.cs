@@ -20,3 +20,4 @@ public record ConvidarRepresentanteCommand(
 
     bool EnviarEmailConvite = true
 );
+

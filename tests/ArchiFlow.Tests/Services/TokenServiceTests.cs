@@ -135,3 +135,4 @@ public class TokenServiceTests
         Environment.SetEnvironmentVariable("JWT_EXPIRATION_MINUTES", "60");
     }
 }
+

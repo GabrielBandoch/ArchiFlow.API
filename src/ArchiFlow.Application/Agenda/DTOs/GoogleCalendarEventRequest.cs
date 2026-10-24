@@ -18,3 +18,4 @@ public class GoogleCalendarSyncResult
     public string? GoogleEventId { get; set; }
     public string? LinkGoogleMeet { get; set; }
 }
+

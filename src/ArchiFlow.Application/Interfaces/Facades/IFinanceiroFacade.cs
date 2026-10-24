@@ -22,8 +22,10 @@ public interface IFinanceiroFacade
     Task<DespesaProjetoDto?> ObterDespesaPorIdAsync(Guid id);
     Task<DespesaProjetoDto> CriarDespesaAsync(CriarDespesaCommand command);
     Task<DespesaProjetoDto> AtualizarDespesaAsync(Guid id, AtualizarDespesaCommand command);
+    Task<DespesaProjetoDto> AlternarPagamentoDespesaAsync(Guid id, AlternarPagamentoDespesaCommand command);
     Task ExcluirDespesaAsync(Guid id);
     Task<IEnumerable<AlertaFinanceiroDto>> ObterAlertasAsync();
     Task<ComprovanteUploadResultDto> UploadComprovanteAsync(UploadComprovanteCommand command);
     Task ExcluirComprovanteAsync(string fileUrl);
 }
+

@@ -41,3 +41,4 @@ public class ProjetoFornecedorDto
     public string FuncaoNoProjeto { get; set; } = string.Empty;
     public DateTime DataVinculo { get; set; }
 }
+

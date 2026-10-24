@@ -16,15 +16,21 @@ public interface IProjetoService
     Task<ProjetoDto> UpdateStatus(AtualizarStatusProjetoCommand command);
     Task<EtapaProjetoDto> CreateEtapa(CriarEtapaCommand command);
     Task<EtapaProjetoDto> UpdateStatusEtapa(AtualizarStatusEtapaCommand command);
+    Task<EtapaProjetoDto> AtualizarDatasEtapa(AtualizarDatasEtapaCommand command);
     Task Delete(Guid id);
 
     Task<TarefaEtapaDto> AdicionarTarefa(AdicionarTarefaCommand command);
     Task<TarefaEtapaDto> AlternarTarefa(Guid tarefaId);
+    Task<TarefaEtapaDto> AtualizarPrazoTarefa(AtualizarPrazoTarefaCommand command);
     Task RemoverTarefa(Guid tarefaId);
 
     Task<IEnumerable<TemplateProjetoDto>> ObterTemplates();
     Task<TemplateProjetoDto?> ObterTemplatePorId(Guid id);
+    Task<TemplateProjetoDto?> ObterTemplatePorCodigo(string codigo);
     Task<TemplateProjetoDto> CriarTemplate(CriarTemplateProjetoCommand command);
     Task<TemplateProjetoDto> AtualizarTemplate(AtualizarTemplateProjetoCommand command);
+    Task<TemplateProjetoDto> AtualizarTemplatePorCodigo(AtualizarTemplatePorCodigoCommand command);
     Task ExcluirTemplate(Guid id);
+    Task ExcluirTemplatePorCodigo(string codigo);
 }
+

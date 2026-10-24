@@ -272,3 +272,4 @@ public class MensagemChatServiceTests
         _mockUow.Verify(u => u.Commit(It.IsAny<System.Threading.CancellationToken>()), Times.Once);
     }
 }
+

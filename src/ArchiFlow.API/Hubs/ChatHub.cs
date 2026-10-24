@@ -59,12 +59,9 @@ public class ChatHub : Hub
         }
 
         Microsoft.AspNetCore.Http.HttpContext? httpContext = null;
-        try
+        if (Context?.Features != null)
         {
             httpContext = Context.GetHttpContext();
-        }
-        catch (NullReferenceException)
-        {
         }
 
         var host = httpContext?.Request?.Host.Host ?? "localhost";
@@ -218,3 +215,4 @@ public class ChatHub : Hub
         return role ?? "Arquiteto";
     }
 }
+

@@ -16,7 +16,7 @@ namespace ArchiFlow.Application.Financeiro.Services;
 
 public class FinanceiroService : IFinanceiroService
 {
-    private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
+    private const long MaxFileSize = 20 * 1024 * 1024;
 
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -114,7 +114,7 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ContratoFinanceiroDto> CriarContratoAsync(CriarContratoCommand command)
     {
-        if (command.ProjetoId == Guid.Empty)
+        if (command.ProjetoId.HasValue && command.ProjetoId.Value == Guid.Empty)
             throw new ArgumentException("ProjetoId é obrigatório.");
 
         if (command.ValorTotal <= 0)
@@ -132,18 +132,27 @@ public class FinanceiroService : IFinanceiroService
         if (command.DataPrimeiroVencimento == default)
             throw new ArgumentException("Data do primeiro vencimento é obrigatória.");
 
-        var projeto = await _projetoRepository.GetById(command.ProjetoId);
-        if (projeto is null)
-            throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
+        Guid? projetoId = command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty
+            ? command.ProjetoId.Value
+            : null;
+
+        Projeto? projeto = null;
+        if (projetoId.HasValue)
+        {
+            projeto = await _projetoRepository.GetById(projetoId.Value);
+            if (projeto is null)
+                throw new KeyNotFoundException($"Projeto com Id {projetoId.Value} não encontrado.");
+        }
 
         var contrato = new ContratoFinanceiro
         {
             Id = Guid.NewGuid(),
-            ProjetoId = command.ProjetoId,
+            ProjetoId = projetoId,
             ValorTotal = command.ValorTotal,
             CondicoesPagamento = command.CondicoesPagamento,
             Observacoes = command.Observacoes,
-            CriadoEm = DateTime.UtcNow
+            CriadoEm = DateTime.UtcNow,
+            Projeto = projeto
         };
 
         await _contratoRepository.Create(contrato);
@@ -151,6 +160,7 @@ public class FinanceiroService : IFinanceiroService
         var parcelas = GerarParcelasContrato(contrato.Id, command);
         foreach (var parcela in parcelas)
         {
+            parcela.Projeto = projeto;
             await _parcelaRepository.Create(parcela);
         }
 
@@ -158,7 +168,7 @@ public class FinanceiroService : IFinanceiroService
 
         await _unitOfWork.Commit();
 
-        return MapearContratoDto(contrato, projeto.Nome ?? string.Empty);
+        return MapearContratoDto(contrato, projeto?.Nome ?? string.Empty);
     }
 
     public async Task<ContratoFinanceiroDto?> ObterContratoPorProjetoIdAsync(Guid projetoId)
@@ -172,9 +182,6 @@ public class FinanceiroService : IFinanceiroService
 
     public async Task<ParcelaFinanceiraDto> RegistrarParcelaAsync(CriarParcelaCommand command)
     {
-        if (command.ProjetoId == Guid.Empty)
-            throw new ArgumentException("ProjetoId é obrigatório.");
-
         if (string.IsNullOrWhiteSpace(command.Descricao))
             throw new ArgumentException("A descrição da parcela é obrigatória.");
 
@@ -193,14 +200,22 @@ public class FinanceiroService : IFinanceiroService
         if (command.DataVencimento == default)
             throw new ArgumentException("Data de vencimento é obrigatória.");
 
-        var projeto = await _projetoRepository.GetById(command.ProjetoId);
-        if (projeto is null)
-            throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
+        Guid? projetoId = command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty
+            ? command.ProjetoId.Value
+            : null;
+
+        Projeto? projeto = null;
+        if (projetoId.HasValue)
+        {
+            projeto = await _projetoRepository.GetById(projetoId.Value);
+            if (projeto is null)
+                throw new KeyNotFoundException($"Projeto com Id {projetoId.Value} não encontrado.");
+        }
 
         var parcela = new ParcelaFinanceira
         {
             Id = Guid.NewGuid(),
-            ProjetoId = command.ProjetoId,
+            ProjetoId = projetoId,
             ContratoFinanceiroId = command.ContratoFinanceiroId,
             NumeroParcela = command.NumeroParcela,
             TotalParcelas = command.TotalParcelas,
@@ -209,15 +224,14 @@ public class FinanceiroService : IFinanceiroService
             DataVencimento = EnsureUtc(command.DataVencimento),
             Status = EnsureUtc(command.DataVencimento).Date < DateTime.UtcNow.Date ? StatusParcela.Atrasado : StatusParcela.Pendente,
             Observacoes = command.Observacoes,
-            CriadoEm = DateTime.UtcNow
+            CriadoEm = DateTime.UtcNow,
+            Projeto = projeto
         };
-
-        parcela.Projeto = projeto;
 
         await _parcelaRepository.Create(parcela);
         await _unitOfWork.Commit();
 
-        _logger.LogInformation("Parcela {ParcelaId} criada para o projeto {ProjetoId}", parcela.Id, command.ProjetoId);
+        _logger.LogInformation("Parcela {ParcelaId} criada para o projeto {ProjetoId}", parcela.Id, projetoId);
         return MapearParaDto(parcela);
     }
 
@@ -333,6 +347,15 @@ public class FinanceiroService : IFinanceiroService
                 throw new KeyNotFoundException($"Projeto com Id {command.ProjetoId} não encontrado.");
         }
 
+        var pago = command.Pago;
+        DateTime? dataPagamento = null;
+        if (pago)
+        {
+            dataPagamento = command.DataPagamento.HasValue
+                ? EnsureUtc(command.DataPagamento.Value)
+                : DateTime.UtcNow;
+        }
+
         var despesa = new DespesaProjeto
         {
             Id = Guid.NewGuid(),
@@ -344,7 +367,9 @@ public class FinanceiroService : IFinanceiroService
             Observacoes = command.Observacoes,
             ComprovanteUrl = command.ComprovanteUrl,
             CriadoEm = DateTime.UtcNow,
-            Projeto = projeto
+            Projeto = projeto,
+            Pago = pago,
+            DataPagamento = dataPagamento
         };
 
         await _despesaRepository.Create(despesa);
@@ -374,6 +399,48 @@ public class FinanceiroService : IFinanceiroService
         despesa.Categoria = command.Categoria;
         despesa.Observacoes = command.Observacoes;
         despesa.ComprovanteUrl = command.ComprovanteUrl;
+        despesa.AtualizadoEm = DateTime.UtcNow;
+
+        if (command.Pago.HasValue)
+        {
+            despesa.Pago = command.Pago.Value;
+            if (despesa.Pago)
+            {
+                despesa.DataPagamento = command.DataPagamento.HasValue
+                    ? EnsureUtc(command.DataPagamento.Value)
+                    : (despesa.DataPagamento ?? DateTime.UtcNow);
+            }
+            else
+            {
+                despesa.DataPagamento = null;
+            }
+        }
+
+        await _despesaRepository.Update(despesa);
+        await _unitOfWork.Commit();
+
+        return MapearDespesaDto(despesa);
+    }
+
+    public async Task<DespesaProjetoDto> AlternarPagamentoDespesaAsync(Guid id, AlternarPagamentoDespesaCommand command)
+    {
+        var despesa = await _despesaRepository.GetById(id);
+        if (despesa is null)
+            throw new KeyNotFoundException($"Despesa com Id {id} não encontrada.");
+
+        var novoPago = command.Pago.HasValue ? command.Pago.Value : !despesa.Pago;
+        despesa.Pago = novoPago;
+        if (novoPago)
+        {
+            despesa.DataPagamento = command.DataPagamento.HasValue
+                ? EnsureUtc(command.DataPagamento.Value)
+                : (despesa.DataPagamento ?? DateTime.UtcNow);
+        }
+        else
+        {
+            despesa.DataPagamento = null;
+        }
+
         despesa.AtualizadoEm = DateTime.UtcNow;
 
         await _despesaRepository.Update(despesa);
@@ -571,6 +638,7 @@ public class FinanceiroService : IFinanceiroService
         var valorPorParcela = Math.Round(command.ValorTotal / numeroParcelas, 2);
         var diferencaCentavos = command.ValorTotal - (valorPorParcela * numeroParcelas);
         var dataAtual = command.DataPrimeiroVencimento;
+        var projetoId = (command.ProjetoId.HasValue && command.ProjetoId.Value != Guid.Empty) ? command.ProjetoId.Value : (Guid?)null;
 
         for (var i = 1; i <= numeroParcelas; i++)
         {
@@ -579,7 +647,7 @@ public class FinanceiroService : IFinanceiroService
             parcelas.Add(new ParcelaFinanceira
             {
                 Id = Guid.NewGuid(),
-                ProjetoId = command.ProjetoId,
+                ProjetoId = projetoId,
                 ContratoFinanceiroId = contratoId,
                 NumeroParcela = i,
                 TotalParcelas = numeroParcelas,
@@ -649,7 +717,9 @@ public class FinanceiroService : IFinanceiroService
             d.Categoria.ToString(),
             d.Observacoes,
             d.ComprovanteUrl,
-            d.CriadoEm
+            d.CriadoEm,
+            d.Pago,
+            d.DataPagamento
         );
     }
 
@@ -663,3 +733,4 @@ public class FinanceiroService : IFinanceiroService
 
     #endregion
 }
+

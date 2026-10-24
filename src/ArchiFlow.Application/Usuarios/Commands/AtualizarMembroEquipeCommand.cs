@@ -22,3 +22,4 @@ public record AtualizarMembroEquipeCommand(
 
     List<string>? ModulosPermitidos = null
 );
+

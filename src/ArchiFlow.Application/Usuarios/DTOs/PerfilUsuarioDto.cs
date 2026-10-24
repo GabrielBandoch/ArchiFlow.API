@@ -15,3 +15,4 @@ public record PerfilUsuarioDto(
     List<string> ModulosPermitidos,
     DateTime CriadoEm
 );
+

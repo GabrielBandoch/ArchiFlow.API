@@ -117,3 +117,4 @@ public class TemplateProjetoRepositoryTests
         checkAfterRemove!.Etapas.Should().BeEmpty();
     }
 }
+

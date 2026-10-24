@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ArchiFlow.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public partial class AddAuthAndClientes : Migration
     {
-        /// <inheritdoc />
+
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -122,7 +122,7 @@ namespace ArchiFlow.Infrastructure.Migrations
                 unique: true);
         }
 
-        /// <inheritdoc />
+
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
@@ -139,3 +139,4 @@ namespace ArchiFlow.Infrastructure.Migrations
         }
     }
 }
+

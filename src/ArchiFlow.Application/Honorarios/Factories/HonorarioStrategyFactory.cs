@@ -20,26 +20,27 @@ public class HonorarioStrategyFactory : IHonorarioStrategyFactory
         _tipologiaStrategies = tipologiaStrategies.ToDictionary(s => s.Tipo);
         _padraoStrategies = padraoStrategies.ToDictionary(s => s.Padrao);
 
-        _defaultTipologia = _tipologiaStrategies.TryGetValue(TipoProjeto.Residencial, out var t) 
-            ? t 
+        _defaultTipologia = _tipologiaStrategies.TryGetValue(TipoProjeto.Residencial, out var t)
+            ? t
             : new ResidencialCalculoStrategy();
 
-        _defaultPadrao = _padraoStrategies.TryGetValue(PadraoImovel.Medio, out var p) 
-            ? p 
+        _defaultPadrao = _padraoStrategies.TryGetValue(PadraoImovel.Medio, out var p)
+            ? p
             : new MedioPadraoStrategy();
     }
 
     public ICalculoHonorarioStrategy ObterStrategy(TipoProjeto tipo)
     {
-        return _tipologiaStrategies.TryGetValue(tipo, out var strategy) 
-            ? strategy 
+        return _tipologiaStrategies.TryGetValue(tipo, out var strategy)
+            ? strategy
             : _defaultTipologia;
     }
 
     public IPadraoImovelStrategy ObterPadraoStrategy(PadraoImovel padrao)
     {
-        return _padraoStrategies.TryGetValue(padrao, out var strategy) 
-            ? strategy 
+        return _padraoStrategies.TryGetValue(padrao, out var strategy)
+            ? strategy
             : _defaultPadrao;
     }
 }
+

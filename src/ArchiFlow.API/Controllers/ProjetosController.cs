@@ -82,7 +82,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> Update(Guid id, [FromBody] AtualizarProjetoCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.Update(command));
     }
@@ -92,7 +92,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] AtualizarStatusProjetoCommand command)
     {
-        if (id != command.Id) 
+        if (id != command.Id)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatus(command));
     }
@@ -102,7 +102,7 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> CreateEtapa(Guid id, [FromBody] CriarEtapaCommand command)
     {
-        if (id != command.ProjetoId) 
+        if (id != command.ProjetoId)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.CreateEtapa(command));
     }
@@ -112,9 +112,19 @@ public class ProjetosController : ControllerBase
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> UpdateStatusEtapa(Guid etapaId, [FromBody] AtualizarStatusEtapaCommand command)
     {
-        if (etapaId != command.EtapaId) 
+        if (etapaId != command.EtapaId)
             return BadRequest(IdInconsistenteMsg);
         return Ok(await _facade.UpdateStatusEtapa(command));
+    }
+
+    [HttpPatch("etapas/{etapaId:guid}/datas")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    [RequireModule(ModulosApp.Projetos)]
+    public async Task<IActionResult> AtualizarDatasEtapa(Guid etapaId, [FromBody] AtualizarDatasEtapaCommand command)
+    {
+        if (etapaId != command.EtapaId)
+            return BadRequest(IdInconsistenteMsg);
+        return Ok(await _facade.AtualizarDatasEtapa(command));
     }
 
     [HttpPost("etapas/{etapaId:guid}/tarefas")]
@@ -135,6 +145,16 @@ public class ProjetosController : ControllerBase
         return Ok(await _facade.AlternarTarefa(tarefaId));
     }
 
+    [HttpPatch("etapas/tarefas/{tarefaId:guid}/prazo")]
+    [Authorize(Policy = "AcessoArquiteto")]
+    [RequireModule(ModulosApp.Projetos)]
+    public async Task<IActionResult> AtualizarPrazoTarefa(Guid tarefaId, [FromBody] AtualizarPrazoTarefaCommand command)
+    {
+        if (tarefaId != command.TarefaId)
+            return BadRequest(IdInconsistenteMsg);
+        return Ok(await _facade.AtualizarPrazoTarefa(command));
+    }
+
     [HttpDelete("etapas/tarefas/{tarefaId:guid}")]
     [Authorize(Policy = "AcessoArquiteto")]
     [RequireModule(ModulosApp.Projetos)]
@@ -145,7 +165,7 @@ public class ProjetosController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "ApenasAdmin")]
+    [Authorize(Policy = "ApenasGerenteOuAdmin")]
     [RequireModule(ModulosApp.Projetos)]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -186,3 +206,4 @@ public class ProjetosController : ControllerBase
     private string ObterBaseUrl() =>
         _appUrlService.ObterUrlBaseConfiavel(Request?.Headers.Origin.FirstOrDefault());
 }
+

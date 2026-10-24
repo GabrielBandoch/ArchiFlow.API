@@ -5,3 +5,4 @@ namespace ArchiFlow.Application.Clientes.Commands;
 public record AlterarStatusRepresentanteCommand(
     [property: JsonRequired] bool Ativo
 );
+

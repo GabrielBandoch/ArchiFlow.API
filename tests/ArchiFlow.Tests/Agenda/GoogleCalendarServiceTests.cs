@@ -362,7 +362,7 @@ public class GoogleCalendarServiceTests
                     Content = new StringContent("{\"refresh_token\":\"rt-12345\",\"access_token\":\"at-67890\"}", System.Text.Encoding.UTF8, "application/json")
                 };
             }
-            // Userinfo fails
+
             return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
         });
 
@@ -383,3 +383,4 @@ public class GoogleCalendarServiceTests
             => Task.FromResult(_handler(request));
     }
 }
+

@@ -61,7 +61,7 @@ public class ArquivoRepositoryTests
         var result = (await repo.GetByProjetoId(projetoId1)).ToList();
 
         result.Should().HaveCount(2);
-        result.First().Nome.Should().Be("planta2.pdf"); // mais recente primeiro
+        result.First().Nome.Should().Be("planta2.pdf");
         result.Last().Nome.Should().Be("planta1.pdf");
         result.Should().NotContain(a => a.ProjetoId == projetoId2);
     }
@@ -106,3 +106,4 @@ public class ArquivoRepositoryTests
         result.First().Nome.Should().Be("visivel.pdf");
     }
 }
+

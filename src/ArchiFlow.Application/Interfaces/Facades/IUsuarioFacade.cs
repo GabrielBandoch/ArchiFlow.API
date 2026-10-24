@@ -23,3 +23,4 @@ public interface IUsuarioFacade
     Task<string> AtualizarFotoPerfilAsync(Guid usuarioId, Stream stream, string fileName, string contentType);
     Task RemoverFotoPerfilAsync(Guid usuarioId);
 }
+

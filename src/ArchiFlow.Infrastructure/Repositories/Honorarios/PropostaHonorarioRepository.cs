@@ -73,3 +73,4 @@ public class PropostaHonorarioRepository : Repository<PropostaHonorario>, IPropo
         return $"{prefixo}{proximoNumero:D4}";
     }
 }
+

@@ -12,3 +12,4 @@ public record SimulacaoParametrosDto(
     decimal? ValorHoraBase,
     decimal? ValorMetroQuadradoBase
 );
+

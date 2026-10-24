@@ -7,7 +7,7 @@ namespace ArchiFlow.Domain.Financeiro;
 public class ContratoFinanceiro
 {
     public Guid Id { get; set; }
-    public Guid ProjetoId { get; set; }
+    public Guid? ProjetoId { get; set; }
     public decimal ValorTotal { get; set; }
     public string? CondicoesPagamento { get; set; }
     public string? Observacoes { get; set; }
@@ -17,3 +17,4 @@ public class ContratoFinanceiro
     public Projeto? Projeto { get; set; }
     public ICollection<ParcelaFinanceira> Parcelas { get; set; } = new List<ParcelaFinanceira>();
 }
+

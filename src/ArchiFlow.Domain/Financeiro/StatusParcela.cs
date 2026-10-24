@@ -7,3 +7,4 @@ public enum StatusParcela
     Atrasado = 2,
     Cancelado = 3
 }
+

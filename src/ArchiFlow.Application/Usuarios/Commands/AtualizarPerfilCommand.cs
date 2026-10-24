@@ -13,3 +13,4 @@ public record AtualizarPerfilCommand(
     [StringLength(30, ErrorMessage = "Telefone não pode ultrapassar 30 caracteres.")]
     string? Telefone
 );
+

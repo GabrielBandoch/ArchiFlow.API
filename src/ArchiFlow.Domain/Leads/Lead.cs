@@ -16,3 +16,4 @@ public class Lead
     public DateTime? AtualizadoEm { get; set; }
     public ICollection<HistoricoContatoLead> HistoricoContatos { get; set; } = new List<HistoricoContatoLead>();
 }
+

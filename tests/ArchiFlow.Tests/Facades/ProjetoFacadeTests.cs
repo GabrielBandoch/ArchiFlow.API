@@ -17,7 +17,7 @@ public class ProjetoFacadeTests
     public ProjetoFacadeTests()
     {
         _serviceMock = new Mock<IProjetoService>();
-        _sut         = new ProjetoFacade(_serviceMock.Object);
+        _sut = new ProjetoFacade(_serviceMock.Object);
     }
 
     [Fact]
@@ -199,6 +199,43 @@ public class ProjetoFacadeTests
     }
 
     [Fact]
+    public async Task ObterTemplatePorCodigo_DeveChamarService()
+    {
+        var codigo = "residencial";
+        var dto = new TemplateProjetoDto(Guid.NewGuid(), codigo, "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.ObterTemplatePorCodigo(codigo)).ReturnsAsync(dto);
+
+        var result = await _sut.ObterTemplatePorCodigo(codigo);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.ObterTemplatePorCodigo(codigo), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarTemplatePorCodigo_DeveChamarService()
+    {
+        var command = new AtualizarTemplatePorCodigoCommand("res", "Res", "Desc", "home", new List<CriarTemplateEtapaItemCommand>());
+        var dto = new TemplateProjetoDto(Guid.NewGuid(), "res", "Res", "Desc", "home", true, new List<TemplateEtapaDto>());
+        _serviceMock.Setup(s => s.AtualizarTemplatePorCodigo(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AtualizarTemplatePorCodigo(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AtualizarTemplatePorCodigo(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExcluirTemplatePorCodigo_DeveChamarService()
+    {
+        var codigo = "res";
+        _serviceMock.Setup(s => s.ExcluirTemplatePorCodigo(codigo)).Returns(Task.CompletedTask);
+
+        await _sut.ExcluirTemplatePorCodigo(codigo);
+
+        _serviceMock.Verify(s => s.ExcluirTemplatePorCodigo(codigo), Times.Once);
+    }
+
+    [Fact]
     public async Task ExcluirTemplate_DeveChamarService()
     {
         var id = Guid.NewGuid();
@@ -219,4 +256,31 @@ public class ProjetoFacadeTests
 
         _serviceMock.Verify(s => s.Delete(id), Times.Once);
     }
+
+    [Fact]
+    public async Task AtualizarDatasEtapa_DeveChamarService()
+    {
+        var command = new AtualizarDatasEtapaCommand(Guid.NewGuid(), DateTime.UtcNow.AddDays(7));
+        var dto = new EtapaProjetoDto(command.EtapaId, Guid.NewGuid(), "Nome", "Desc", StatusEtapa.EmAndamento, "EmAndamento", 1, null, null, command.DataFimPrevista);
+        _serviceMock.Setup(s => s.AtualizarDatasEtapa(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AtualizarDatasEtapa(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AtualizarDatasEtapa(command), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarPrazoTarefa_DeveChamarService()
+    {
+        var command = new AtualizarPrazoTarefaCommand(Guid.NewGuid(), DateTime.UtcNow.AddDays(5));
+        var dto = new TarefaEtapaDto(command.TarefaId, Guid.NewGuid(), "Planta", false, null, command.DataLimite);
+        _serviceMock.Setup(s => s.AtualizarPrazoTarefa(command)).ReturnsAsync(dto);
+
+        var result = await _sut.AtualizarPrazoTarefa(command);
+
+        result.Should().BeSameAs(dto);
+        _serviceMock.Verify(s => s.AtualizarPrazoTarefa(command), Times.Once);
+    }
 }
+

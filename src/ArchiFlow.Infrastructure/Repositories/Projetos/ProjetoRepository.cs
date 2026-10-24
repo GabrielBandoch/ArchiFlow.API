@@ -86,3 +86,4 @@ public class ProjetoRepository : Repository<Projeto>, IProjetoRepository
         return Task.CompletedTask;
     }
 }
+

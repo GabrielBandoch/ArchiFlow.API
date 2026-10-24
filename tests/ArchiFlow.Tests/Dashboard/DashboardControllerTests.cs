@@ -75,3 +75,4 @@ public class DashboardControllerTests
         okResult.Value.Should().Be(expectedDto);
     }
 }
+

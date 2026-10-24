@@ -291,7 +291,7 @@ public class PropostaHonorarioServiceTests
     public async Task ObterConfiguracaoAsync_When_User_Has_No_Claim_Should_Throw_UnauthorizedAccessException()
     {
         var httpContext = new DefaultHttpContext();
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity()); // empty identity
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
         _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(httpContext);
 
         var act = () => _service.ObterConfiguracaoAsync();
@@ -366,3 +366,4 @@ public class PropostaHonorarioServiceTests
         _mockConfigRepo.Verify(r => r.ObterPorUsuarioIdAsync(expectedUserId), Times.Once);
     }
 }
+

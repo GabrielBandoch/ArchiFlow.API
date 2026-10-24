@@ -12,7 +12,7 @@ echo "=========================================================="
 # 1. Verificar Docker
 if ! command -v docker &> /dev/null; then
     echo "[!] Docker não encontrado. Instalando Docker oficial..."
-    curl -fsSL https://get.docker.com -o get-docker.sh
+    curl --proto '=https' --tlsv1.2 -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
     systemctl enable --now docker
     rm -f get-docker.sh
@@ -76,7 +76,7 @@ echo "=========================================================="
 echo "    DEPLOY FINALIZADO COM SUCESSO!                        "
 echo "=========================================================="
 
-if [ -f .env ]; then
+if [[ -f .env ]]; then
     DOMAIN_NAME=$(grep '^DOMAIN_NAME=' .env | cut -d '=' -f2- | tr -d '\r\n')
     echo "Acesse seus ambientes com SSL automático:"
     echo " -> Landing:  https://${DOMAIN_NAME} (e https://www.${DOMAIN_NAME})"

@@ -6,3 +6,4 @@ public interface ICalculadoraHonorariosService
 {
     SimulacaoResultadoDto Calcular(SimulacaoParametrosDto parametros);
 }
+

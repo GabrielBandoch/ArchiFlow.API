@@ -15,3 +15,4 @@ public class CorporativoCalculoStrategy : CalculoHonorarioStrategyBase
         return Math.Max(30, Math.Round(metragem * 0.9m * fatorEscopo, 0));
     }
 }
+

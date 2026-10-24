@@ -76,10 +76,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddAutoMapper(typeof(ArchiFlowMappingProfile));
 
-        // Multi-Tenancy
+
         services.AddScoped<ITenantContext, TenantContext>();
 
-        // Repositories
+
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
         services.AddScoped<ITemplateProjetoRepository, TemplateProjetoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
@@ -102,7 +102,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOpcaoConfiguracaoRepository, OpcaoConfiguracaoRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Services & Facades
+
         services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IProjetoService, ProjetoService>();
@@ -122,10 +122,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppUrlService, AppUrlService>();
         services.AddScoped<IArquivoService, ArchiFlow.Application.Arquivos.Services.ArquivoService>();
         services.AddScoped<IArquivoFacade, ArchiFlow.Application.Arquivos.Facades.ArquivoFacade>();
-        // Financeiro Services & Facades
+
         services.AddScoped<IFinanceiroService, ArchiFlow.Application.Financeiro.Services.FinanceiroService>();
         services.AddScoped<IFinanceiroFacade, ArchiFlow.Application.Financeiro.Facades.FinanceiroFacade>();
-        // Honorários - Strategy, Factory & Builder Patterns (GoF)
+
         services.AddScoped<ICalculoHonorarioStrategy, ResidencialCalculoStrategy>();
         services.AddScoped<ICalculoHonorarioStrategy, ComercialCalculoStrategy>();
         services.AddScoped<ICalculoHonorarioStrategy, CorporativoCalculoStrategy>();
@@ -144,16 +144,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUsuarioService, ArchiFlow.Application.Usuarios.Services.UsuarioService>();
         services.AddScoped<IUsuarioFacade, ArchiFlow.Application.Usuarios.Facades.UsuarioFacade>();
 
-        // Chat Repositories, Services & Facades
+
         services.AddScoped<ArchiFlow.Domain.Chat.IMensagemChatRepository, ArchiFlow.Infrastructure.Repositories.Chat.MensagemChatRepository>();
         services.AddScoped<IMensagemChatService, ArchiFlow.Application.Chat.Services.MensagemChatService>();
         services.AddScoped<IMensagemChatFacade, ArchiFlow.Application.Chat.Facades.MensagemChatFacade>();
 
-        // Dashboard Services & Facades
+
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDashboardFacade, DashboardFacade>();
 
-        // Agenda Services & Facades
+
         services.AddScoped<IUserContextService, UserContextService>();
         services.AddScoped<IAgendaValidationService, ArchiFlow.Application.Agenda.Services.AgendaValidationService>();
         services.AddSingleton<IOAuthStateService, OAuthStateService>();
@@ -191,10 +191,10 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IStorageService, LocalStorageService>();
         }
 
-        // SignalR
+
         services.AddSignalR();
 
-        // Security / Authorization
+
         services.AddHttpContextAccessor();
         services.AddScoped<IAuthorizationHandler, ProjetoOwnerHandler>();
 
@@ -202,9 +202,9 @@ public static class ServiceCollectionExtensions
     }
 
     public static IServiceCollection ConfigureSecurity(
-        this IServiceCollection services, 
-        string jwtSecret, 
-        string jwtIssuer, 
+        this IServiceCollection services,
+        string jwtSecret,
+        string jwtIssuer,
         string jwtAudience)
     {
         services.AddAuthentication(options =>
@@ -294,3 +294,4 @@ public static class ServiceCollectionExtensions
         return services;
     }
 }
+

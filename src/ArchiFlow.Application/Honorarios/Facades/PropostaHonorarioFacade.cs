@@ -76,3 +76,4 @@ public class PropostaHonorarioFacade : IPropostaHonorarioFacade
         return await _service.SalvarConfiguracaoAsync(command);
     }
 }
+

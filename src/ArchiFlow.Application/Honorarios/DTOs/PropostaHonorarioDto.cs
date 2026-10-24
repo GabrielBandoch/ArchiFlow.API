@@ -34,3 +34,4 @@ public record PropostaHonorarioDto(
     DateTime? AtualizadoEm,
     List<ItemPropostaEtapaDto> ItensEtapa
 );
+

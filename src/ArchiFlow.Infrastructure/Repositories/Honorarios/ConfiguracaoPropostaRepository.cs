@@ -16,3 +16,4 @@ public class ConfiguracaoPropostaRepository : Repository<ConfiguracaoProposta>, 
             .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId);
     }
 }
+

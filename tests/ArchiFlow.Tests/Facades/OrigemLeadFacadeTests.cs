@@ -19,7 +19,7 @@ public class OrigemLeadFacadeTests
     public OrigemLeadFacadeTests()
     {
         _serviceMock = new Mock<IOrigemLeadService>();
-        _sut         = new OrigemLeadFacade(_serviceMock.Object);
+        _sut = new OrigemLeadFacade(_serviceMock.Object);
     }
 
     [Fact]
@@ -111,3 +111,4 @@ public class OrigemLeadFacadeTests
         _serviceMock.Verify(s => s.Reativar(id), Times.Once);
     }
 }
+

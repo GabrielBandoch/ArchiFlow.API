@@ -15,3 +15,4 @@ public class InterioresCalculoStrategy : CalculoHonorarioStrategyBase
         return Math.Max(25, Math.Round(metragem * 0.88m * fatorEscopo, 0));
     }
 }
+

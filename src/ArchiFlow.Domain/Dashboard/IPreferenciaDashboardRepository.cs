@@ -1,4 +1,4 @@
-﻿using ArchiFlow.Domain.Shared;
+using ArchiFlow.Domain.Shared;
 using System;
 using System.Threading.Tasks;
 
@@ -8,3 +8,4 @@ public interface IPreferenciaDashboardRepository : IRepository<PreferenciaDashbo
 {
     Task<PreferenciaDashboard?> ObterPorUsuarioIdAsync(Guid usuarioId);
 }
+

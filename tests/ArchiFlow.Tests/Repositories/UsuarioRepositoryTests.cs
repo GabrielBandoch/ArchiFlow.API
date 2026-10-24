@@ -116,3 +116,4 @@ public class UsuarioRepositoryTests
         result.Should().NotContain(u => u.Email == "outro@studio.com");
     }
 }
+

@@ -8,3 +8,4 @@ public interface IContratoFinanceiroRepository : IRepository<ContratoFinanceiro>
 {
     Task<ContratoFinanceiro?> ObterPorProjetoIdAsync(Guid projetoId);
 }
+

@@ -15,3 +15,4 @@ public static class MappingFixture
         return config.CreateMapper();
     }
 }
+

@@ -7,3 +7,4 @@ public enum StatusProposta
     Aprovada = 2,
     Recusada = 3
 }
+

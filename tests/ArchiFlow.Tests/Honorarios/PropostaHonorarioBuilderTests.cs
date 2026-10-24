@@ -80,3 +80,4 @@ public class PropostaHonorarioBuilderTests
         act.Should().Throw<ArgumentException>().WithMessage("*valor final*");
     }
 }
+

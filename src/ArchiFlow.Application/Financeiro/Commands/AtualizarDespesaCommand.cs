@@ -9,5 +9,8 @@ public record AtualizarDespesaCommand(
     DateTime DataDespesa,
     CategoriaDespesa Categoria,
     string? Observacoes,
-    string? ComprovanteUrl
+    string? ComprovanteUrl,
+    bool? Pago = null,
+    DateTime? DataPagamento = null
 );
+

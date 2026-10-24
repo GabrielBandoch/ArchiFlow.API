@@ -55,3 +55,4 @@ public class ConfiguracoesControllerTests
         ok.Value.Should().Be(dto);
     }
 }
+
