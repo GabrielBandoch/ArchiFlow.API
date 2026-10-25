@@ -349,7 +349,11 @@ public class DashboardService : IDashboardService
         "grafico_propostas_mensal",
         "tabela_projetos_recentes",
         "lista_leads_recentes",
-        "lista_propostas_recentes"
+        "lista_propostas_recentes",
+        "pendencias_hoje",
+        "financeiro_semana",
+        "projetos_por_fase",
+        "crm_leads"
     };
 
     public async Task<PreferenciaDashboardDto?> ObterPreferenciasAsync()
