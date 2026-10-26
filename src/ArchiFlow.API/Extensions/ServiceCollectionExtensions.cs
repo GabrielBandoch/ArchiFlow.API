@@ -1,8 +1,5 @@
-using ArchiFlow.API.HealthChecks;
+﻿using ArchiFlow.API.HealthChecks;
 using ArchiFlow.API.Security;
-using ArchiFlow.Application.Honorarios.Builders;
-using ArchiFlow.Application.Honorarios.Factories;
-using ArchiFlow.Application.Honorarios.Strategies;
 using ArchiFlow.Application.Mappings;
 using ArchiFlow.Application.Interfaces.Facades;
 using ArchiFlow.Application.Interfaces.Services;
@@ -90,8 +87,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IOrigemLeadRepository, OrigemLeadRepository>();
         services.AddScoped<IArquivoRepository, ArquivoRepository>();
-        services.AddScoped<ArchiFlow.Domain.Honorarios.IPropostaHonorarioRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.PropostaHonorarioRepository>();
-        services.AddScoped<ArchiFlow.Domain.Honorarios.IConfiguracaoPropostaRepository, ArchiFlow.Infrastructure.Repositories.Honorarios.ConfiguracaoPropostaRepository>();
         services.AddScoped<ArchiFlow.Domain.Dashboard.IPreferenciaDashboardRepository, ArchiFlow.Infrastructure.Repositories.Dashboard.PreferenciaDashboardRepository>();
         services.AddScoped<ArchiFlow.Domain.Financeiro.IParcelaFinanceiraRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ParcelaFinanceiraRepository>();
         services.AddScoped<ArchiFlow.Domain.Financeiro.IContratoFinanceiroRepository, ArchiFlow.Infrastructure.Repositories.Financeiro.ContratoFinanceiroRepository>();
@@ -125,20 +120,6 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IFinanceiroService, ArchiFlow.Application.Financeiro.Services.FinanceiroService>();
         services.AddScoped<IFinanceiroFacade, ArchiFlow.Application.Financeiro.Facades.FinanceiroFacade>();
-
-        services.AddScoped<ICalculoHonorarioStrategy, ResidencialCalculoStrategy>();
-        services.AddScoped<ICalculoHonorarioStrategy, ComercialCalculoStrategy>();
-        services.AddScoped<ICalculoHonorarioStrategy, CorporativoCalculoStrategy>();
-        services.AddScoped<ICalculoHonorarioStrategy, InterioresCalculoStrategy>();
-        services.AddScoped<IPadraoImovelStrategy, EconomicoPadraoStrategy>();
-        services.AddScoped<IPadraoImovelStrategy, MedioPadraoStrategy>();
-        services.AddScoped<IPadraoImovelStrategy, AltoPadraoStrategy>();
-        services.AddScoped<IPadraoImovelStrategy, LuxoPadraoStrategy>();
-        services.AddScoped<IHonorarioStrategyFactory, HonorarioStrategyFactory>();
-        services.AddTransient<PropostaHonorarioBuilder>();
-        services.AddScoped<ICalculadoraHonorariosService, ArchiFlow.Application.Honorarios.Services.CalculadoraHonorariosService>();
-        services.AddScoped<IPropostaHonorarioService, ArchiFlow.Application.Honorarios.Services.PropostaHonorarioService>();
-        services.AddScoped<IPropostaHonorarioFacade, ArchiFlow.Application.Honorarios.Facades.PropostaHonorarioFacade>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUsuarioService, ArchiFlow.Application.Usuarios.Services.UsuarioService>();

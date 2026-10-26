@@ -9,7 +9,6 @@ public static class ModulosApp
     public const string Projetos = "projetos";
     public const string Agenda = "agenda";
     public const string Financeiro = "financeiro";
-    public const string Simulador = "simulador";
     public const string Configuracoes = "configuracoes";
 
     public static readonly string[] Todos =
@@ -21,8 +20,6 @@ public static class ModulosApp
         Projetos,
         Agenda,
         Financeiro,
-        Simulador,
         Configuracoes
     ];
 }
-

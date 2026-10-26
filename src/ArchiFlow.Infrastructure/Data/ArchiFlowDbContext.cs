@@ -3,7 +3,6 @@ using ArchiFlow.Domain.Usuarios;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Chat;
-using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Dashboard;
 using ArchiFlow.Domain.Financeiro;
 using ArchiFlow.Domain.Fornecedores;
@@ -38,13 +37,10 @@ public class ArchiFlowDbContext : DbContext
     public DbSet<OrigemLead> OrigensLead => Set<OrigemLead>();
     public DbSet<Arquivo> Arquivos => Set<Arquivo>();
     public DbSet<MensagemChat> MensagensChat => Set<MensagemChat>();
-    public DbSet<PropostaHonorario> PropostasHonorarios => Set<PropostaHonorario>();
-    public DbSet<ItemPropostaEtapa> ItensPropostasEtapas => Set<ItemPropostaEtapa>();
     public DbSet<PreferenciaDashboard> PreferenciasDashboard => Set<PreferenciaDashboard>();
     public DbSet<ContratoFinanceiro> ContratosFinanceiros => Set<ContratoFinanceiro>();
     public DbSet<ParcelaFinanceira> ParcelasFinanceiras => Set<ParcelaFinanceira>();
     public DbSet<DespesaProjeto> DespesasProjetos => Set<DespesaProjeto>();
-    public DbSet<ConfiguracaoProposta> ConfiguracoesProposta => Set<ConfiguracaoProposta>();
     public DbSet<ArchiFlow.Domain.Agenda.Compromisso> Compromissos => Set<ArchiFlow.Domain.Agenda.Compromisso>();
     public DbSet<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio> ConfiguracoesAgendaEscritorio => Set<ArchiFlow.Domain.Agenda.ConfiguracaoAgendaEscritorio>();
     public DbSet<Fornecedor> Fornecedores => Set<Fornecedor>();
@@ -273,65 +269,9 @@ public class ArchiFlowDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<PropostaHonorario>(entity =>
-        {
-            entity.ToTable("Propostas_Honorarios");
-            entity.HasKey(p => p.Id);
-            entity.Property(p => p.Id).HasColumnName("PH_Id");
-            entity.Property(p => p.Titulo).HasColumnName("PH_Titulo").IsRequired().HasMaxLength(200);
-            entity.Property(p => p.Codigo).HasColumnName("PH_Codigo").IsRequired().HasMaxLength(50);
-            entity.HasIndex(p => p.Codigo).IsUnique();
-            entity.Property(p => p.ClienteId).HasColumnName("PH_Cliente_Id");
-            entity.Property(p => p.ClienteNome).HasColumnName("PH_Cliente_Nome").HasMaxLength(200);
-            entity.Property(p => p.LeadId).HasColumnName("PH_Lead_Id");
-            entity.Property(p => p.LeadNome).HasColumnName("PH_Lead_Nome").HasMaxLength(200);
-            entity.Property(p => p.TipoProjeto).HasColumnName("PH_Tipo_Projeto");
-            entity.Property(p => p.PadraoImovel).HasColumnName("PH_Padrao_Imovel");
-            entity.Property(p => p.MetragemQuadrada).HasColumnName("PH_Metragem_Quadrada").HasPrecision(18, 2);
-            entity.Property(p => p.ValorHoraBase).HasColumnName("PH_Valor_Hora_Base").HasPrecision(18, 2);
-            entity.Property(p => p.ValorMetroQuadradoBase).HasColumnName("PH_Valor_M2_Base").HasPrecision(18, 2);
-            entity.Property(p => p.HorasEstimadasTotal).HasColumnName("PH_Horas_Estimadas_Total").HasPrecision(18, 2);
-            entity.Property(p => p.ValorBase).HasColumnName("PH_Valor_Base").HasPrecision(18, 2);
-            entity.Property(p => p.ValorFatorPadrao).HasColumnName("PH_Valor_Fator_Padrao").HasPrecision(18, 2);
-            entity.Property(p => p.ValorFatorTipologia).HasColumnName("PH_Valor_Fator_Tipologia").HasPrecision(18, 2);
-            entity.Property(p => p.ValorEscopo).HasColumnName("PH_Valor_Escopo").HasPrecision(18, 2);
-            entity.Property(p => p.ValorTotalSugerido).HasColumnName("PH_Valor_Total_Sugerido").HasPrecision(18, 2);
-            entity.Property(p => p.ValorFinalAjustado).HasColumnName("PH_Valor_Final_Ajustado").HasPrecision(18, 2);
-            entity.Property(p => p.Status).HasColumnName("PH_Status");
-            entity.Property(p => p.Observacoes).HasColumnName("PH_Observacoes");
-            entity.Property(p => p.CriadoEm).HasColumnName("PH_Criado_Em");
-            entity.Property(p => p.AtualizadoEm).HasColumnName("PH_Atualizado_Em");
+        
 
-            entity.HasOne(p => p.Cliente)
-                  .WithMany()
-                  .HasForeignKey(p => p.ClienteId)
-                  .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasOne(p => p.Lead)
-                  .WithMany()
-                  .HasForeignKey(p => p.LeadId)
-                  .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasMany(p => p.ItensEtapa)
-                  .WithOne(i => i.Proposta)
-                  .HasForeignKey(i => i.PropostaId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<ItemPropostaEtapa>(entity =>
-        {
-            entity.ToTable("Itens_Propostas_Etapas");
-            entity.HasKey(i => i.Id);
-            entity.Property(i => i.Id).HasColumnName("IPE_Id");
-            entity.Property(i => i.PropostaId).HasColumnName("IPE_Proposta_Id");
-            entity.Property(i => i.NomeEtapa).HasColumnName("IPE_Nome_Etapa").IsRequired().HasMaxLength(200);
-            entity.Property(i => i.Descricao).HasColumnName("IPE_Descricao");
-            entity.Property(i => i.Incluso).HasColumnName("IPE_Incluso");
-            entity.Property(i => i.Percentual).HasColumnName("IPE_Percentual").HasPrecision(18, 2);
-            entity.Property(i => i.Valor).HasColumnName("IPE_Valor").HasPrecision(18, 2);
-            entity.Property(i => i.HorasEstimadas).HasColumnName("IPE_Horas_Estimadas").HasPrecision(18, 2);
-            entity.Property(i => i.Ordem).HasColumnName("IPE_Ordem");
-        });
+        
 
         modelBuilder.Entity<PreferenciaDashboard>(entity =>
         {
@@ -428,39 +368,7 @@ public class ArchiFlowDbContext : DbContext
                   .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<ConfiguracaoProposta>(entity =>
-        {
-            entity.ToTable("Configuracoes_Proposta");
-            entity.HasKey(c => c.Id);
-            entity.Property(c => c.Id).HasColumnName("CFP_Id");
-            entity.Property(c => c.UsuarioId).HasColumnName("CFP_Usuario_Id");
-            entity.Property(c => c.NomeEscritorio).HasColumnName("CFP_Nome_Escritorio").HasMaxLength(200);
-            entity.Property(c => c.Slogan).HasColumnName("CFP_Slogan").HasMaxLength(300);
-            entity.Property(c => c.RegistroProfissional).HasColumnName("CFP_Registro_Profissional").HasMaxLength(150);
-            entity.Property(c => c.Email).HasColumnName("CFP_Email").HasMaxLength(150);
-            entity.Property(c => c.Telefone).HasColumnName("CFP_Telefone").HasMaxLength(50);
-            entity.Property(c => c.Endereco).HasColumnName("CFP_Endereco").HasMaxLength(300);
-            entity.Property(c => c.LogoUrl).HasColumnName("CFP_Logo_Url");
-            entity.Property(c => c.CorPrimaria).HasColumnName("CFP_Cor_Primaria").HasMaxLength(20);
-            entity.Property(c => c.ExibirCabecalho).HasColumnName("CFP_Exibir_Cabecalho");
-            entity.Property(c => c.ExibirResumo).HasColumnName("CFP_Exibir_Resumo");
-            entity.Property(c => c.ExibirTabelaEtapas).HasColumnName("CFP_Exibir_Tabela_Etapas");
-            entity.Property(c => c.ExibirMemoriaCalculo).HasColumnName("CFP_Exibir_Memoria_Calculo");
-            entity.Property(c => c.ExibirCondicoesPagamento).HasColumnName("CFP_Exibir_Condicoes_Pagamento");
-            entity.Property(c => c.ExibirTermosGerais).HasColumnName("CFP_Exibir_Termos_Gerais");
-            entity.Property(c => c.ExibirAssinaturas).HasColumnName("CFP_Exibir_Assinaturas");
-            entity.Property(c => c.TextoApresentacao).HasColumnName("CFP_Texto_Apresentacao");
-            entity.Property(c => c.ValidadeDias).HasColumnName("CFP_Validade_Dias");
-            entity.Property(c => c.CondicoesPagamentoPadrao).HasColumnName("CFP_Condicoes_Pagamento_Padrao");
-            entity.Property(c => c.ChavePix).HasColumnName("CFP_Chave_Pix").HasMaxLength(100);
-            entity.Property(c => c.DadosBancarios).HasColumnName("CFP_Dados_Bancarios").HasMaxLength(300);
-            entity.Property(c => c.TermosGerais).HasColumnName("CFP_Termos_Gerais");
-            entity.Property(c => c.TemplateMensagemWhatsapp).HasColumnName("CFP_Template_Mensagem_Whatsapp");
-            entity.Property(c => c.Configurado).HasColumnName("CFP_Configurado");
-            entity.Property(c => c.AtualizadoEm).HasColumnName("CFP_Atualizado_Em");
-
-            entity.HasIndex(c => c.UsuarioId);
-        });
+        
 
         modelBuilder.Entity<ArchiFlow.Domain.Agenda.Compromisso>(entity =>
         {

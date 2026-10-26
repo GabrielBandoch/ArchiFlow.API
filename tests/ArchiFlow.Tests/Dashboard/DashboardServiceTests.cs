@@ -1,7 +1,6 @@
 using ArchiFlow.Application.Dashboard.DTOs;
 using ArchiFlow.Application.Dashboard.Services;
 using ArchiFlow.Domain.Clientes;
-using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Leads.Enum;
 using ArchiFlow.Domain.Projetos;
@@ -10,7 +9,6 @@ using ArchiFlow.Infrastructure.Data;
 using ArchiFlow.Infrastructure.Repositories;
 using ArchiFlow.Infrastructure.Repositories.Clientes;
 using ArchiFlow.Infrastructure.Repositories.Dashboard;
-using ArchiFlow.Infrastructure.Repositories.Honorarios;
 using ArchiFlow.Infrastructure.Repositories.Leads;
 using ArchiFlow.Infrastructure.Repositories.Projetos;
 using ArchiFlow.Tests.Common;
@@ -32,10 +30,9 @@ public class DashboardServiceTests
         var projetoRepo = new ProjetoRepository(context);
         var clienteRepo = new ClienteRepository(context);
         var leadRepo = new LeadRepository(context);
-        var propostaRepo = new PropostaHonorarioRepository(context);
         var preferenciaRepo = new PreferenciaDashboardRepository(context);
         var unitOfWork = new UnitOfWork(context);
-        var service = new DashboardService(projetoRepo, clienteRepo, leadRepo, propostaRepo, preferenciaRepo, unitOfWork, httpContextAccessor);
+        var service = new DashboardService(projetoRepo, clienteRepo, leadRepo, preferenciaRepo, unitOfWork, httpContextAccessor);
 
         return (service, context);
     }
@@ -54,15 +51,11 @@ public class DashboardServiceTests
         resultado.Kpis.TotalLeadsConvertidos.Should().Be(0);
         resultado.Kpis.TaxaConversaoLeads.Should().Be(0m);
         resultado.Kpis.TotalClientes.Should().Be(0);
-        resultado.Kpis.TotalPropostas.Should().Be(0);
-        resultado.Kpis.ValorTotalPropostas.Should().Be(0m);
         resultado.ProjetosPorStatus.Should().HaveCount(7);
         resultado.ProjetosPorTipo.Should().HaveCount(4);
         resultado.LeadsPorStatus.Should().HaveCount(6);
-        resultado.PropostasMensais.Should().HaveCount(6);
         resultado.ProjetosRecentes.Should().BeEmpty();
         resultado.LeadsRecentes.Should().BeEmpty();
-        resultado.PropostasRecentes.Should().BeEmpty();
     }
 
     [Fact]
@@ -74,7 +67,7 @@ public class DashboardServiceTests
         {
             Id = Guid.NewGuid(),
             Nome = "Cliente Alpha",
-            Email = "alpha@teste.com",
+            Email = "alpha@cliente.com",
             Ativo = true
         };
         await context.Clientes.AddAsync(cliente);
@@ -83,8 +76,7 @@ public class DashboardServiceTests
         {
             Id = Guid.NewGuid(),
             Descricao = "Instagram",
-            Ativo = true,
-            CriadoEm = DateTime.UtcNow
+            Ativo = true
         };
         await context.OrigensLead.AddAsync(origem);
 
@@ -93,17 +85,18 @@ public class DashboardServiceTests
             Id = Guid.NewGuid(),
             Nome = "Lead 1",
             Email = "lead1@teste.com",
-            Status = StatusLead.Novo,
+            Status = StatusLead.Convertido,
             OrigemId = origem.Id,
             Origem = origem,
             CriadoEm = DateTime.UtcNow
         };
+
         var lead2 = new Lead
         {
             Id = Guid.NewGuid(),
             Nome = "Lead 2",
             Email = "lead2@teste.com",
-            Status = StatusLead.Convertido,
+            Status = StatusLead.EmContato,
             OrigemId = origem.Id,
             Origem = origem,
             CriadoEm = DateTime.UtcNow
@@ -127,23 +120,6 @@ public class DashboardServiceTests
         };
         await context.Projetos.AddAsync(projeto);
 
-        var proposta = new PropostaHonorario
-        {
-            Id = Guid.NewGuid(),
-            Titulo = "Proposta Alpha",
-            Codigo = "PROP-2026-001",
-            ClienteId = cliente.Id,
-            ClienteNome = cliente.Nome,
-            TipoProjeto = TipoProjeto.Residencial,
-            PadraoImovel = PadraoImovel.AltoPadrao,
-            MetragemQuadrada = 250m,
-            ValorTotalSugerido = 18000m,
-            ValorFinalAjustado = 17500m,
-            Status = StatusProposta.Enviada,
-            CriadoEm = DateTime.UtcNow
-        };
-        await context.PropostasHonorarios.AddAsync(proposta);
-
         await context.SaveChangesAsync();
 
         var resultado = await service.ObterMetricasAsync();
@@ -155,9 +131,6 @@ public class DashboardServiceTests
         resultado.Kpis.TotalLeadsConvertidos.Should().Be(1);
         resultado.Kpis.TaxaConversaoLeads.Should().Be(50.0m);
         resultado.Kpis.TotalClientes.Should().Be(1);
-        resultado.Kpis.TotalPropostas.Should().Be(1);
-        resultado.Kpis.ValorTotalPropostas.Should().Be(17500m);
-        resultado.Kpis.ValorMedioProposta.Should().Be(17500m);
 
         resultado.ProjetosRecentes.Should().HaveCount(1);
         resultado.ProjetosRecentes[0].Nome.Should().Be("Projeto Residencial Luxo");
@@ -165,49 +138,6 @@ public class DashboardServiceTests
         resultado.ProjetosRecentes[0].ProgressoPercentual.Should().Be(50m);
 
         resultado.LeadsRecentes.Should().HaveCount(2);
-        resultado.PropostasRecentes.Should().HaveCount(1);
-        resultado.PropostasRecentes[0].ClienteOuLeadNome.Should().Be("Cliente Alpha");
-    }
-
-    [Fact]
-    public async Task ObterMetricasAsync_With_Different_Proposta_Destinatarios_Should_Map_Correctly()
-    {
-        var (service, context) = CreateService();
-
-        var propostaComLead = new PropostaHonorario
-        {
-            Id = Guid.NewGuid(),
-            Titulo = "Proposta Para Lead",
-            Codigo = "PROP-LEAD-001",
-            LeadNome = "Lead Fulano",
-            MetragemQuadrada = 100m,
-            ValorTotalSugerido = 10000m,
-            ValorFinalAjustado = 0m,
-            Status = StatusProposta.Rascunho,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        var propostaSemDestinatario = new PropostaHonorario
-        {
-            Id = Guid.NewGuid(),
-            Titulo = "Proposta Avulsa",
-            Codigo = "PROP-AVULSA-001",
-            MetragemQuadrada = 80m,
-            ValorTotalSugerido = 8000m,
-            ValorFinalAjustado = 0m,
-            Status = StatusProposta.Aprovada,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        await context.PropostasHonorarios.AddRangeAsync(propostaComLead, propostaSemDestinatario);
-        await context.SaveChangesAsync();
-
-        var resultado = await service.ObterMetricasAsync();
-
-        resultado.PropostasRecentes.Should().HaveCount(2);
-        resultado.PropostasRecentes.Should().Contain(p => p.ClienteOuLeadNome == "Lead Fulano");
-        resultado.PropostasRecentes.Should().Contain(p => p.ClienteOuLeadNome == "Sem destinatário");
-        resultado.Kpis.ValorTotalPropostas.Should().Be(18000m);
     }
 
     [Fact]
@@ -232,44 +162,6 @@ public class DashboardServiceTests
 
         resultado.LeadsPorOrigem.Should().Contain(o => o.Origem == "Direto");
         resultado.LeadsRecentes[0].OrigemNome.Should().Be("Direto");
-    }
-
-    [Fact]
-    public async Task ObterMetricasAsync_ReceitaPotencial_Should_Prioritize_ValorFinalAjustado_Over_ValorTotalSugerido()
-    {
-        var (service, context) = CreateService();
-
-        var propostaAjustada = new PropostaHonorario
-        {
-            Id = Guid.NewGuid(),
-            Titulo = "Proposta Ajustada",
-            Codigo = "PROP-AJUSTADA",
-            MetragemQuadrada = 100m,
-            ValorTotalSugerido = 10000m,
-            ValorFinalAjustado = 9000m,
-            Status = StatusProposta.Enviada,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        var propostaNaoAjustada = new PropostaHonorario
-        {
-            Id = Guid.NewGuid(),
-            Titulo = "Proposta Padrao",
-            Codigo = "PROP-PADRAO",
-            MetragemQuadrada = 100m,
-            ValorTotalSugerido = 5000m,
-            ValorFinalAjustado = 0m,
-            Status = StatusProposta.Rascunho,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        await context.PropostasHonorarios.AddRangeAsync(propostaAjustada, propostaNaoAjustada);
-        await context.SaveChangesAsync();
-
-        var resultado = await service.ObterMetricasAsync();
-
-        resultado.Kpis.ValorTotalPropostas.Should().Be(14000m);
-        resultado.Kpis.ValorMedioProposta.Should().Be(7000m);
     }
 
     [Fact]
@@ -423,4 +315,3 @@ public class DashboardServiceTests
         context.PreferenciasDashboard.Should().BeEmpty();
     }
 }
-

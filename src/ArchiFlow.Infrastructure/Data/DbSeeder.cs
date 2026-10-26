@@ -92,47 +92,7 @@ public static class DbSeeder
 
                 CREATE INDEX IF NOT EXISTS ""IX_Mensagens_Chat_Projeto_Id"" ON ""Mensagens_Chat"" (""MSG_Projeto_Id"");
 
-                CREATE TABLE IF NOT EXISTS ""Propostas_Honorarios"" (
-                    ""PH_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""PH_Titulo"" character varying(200) NOT NULL,
-                    ""PH_Codigo"" character varying(50) NOT NULL,
-                    ""PH_Cliente_Id"" uuid,
-                    ""PH_Cliente_Nome"" character varying(200),
-                    ""PH_Lead_Id"" uuid,
-                    ""PH_Lead_Nome"" character varying(200),
-                    ""PH_Tipo_Projeto"" integer NOT NULL,
-                    ""PH_Padrao_Imovel"" integer NOT NULL,
-                    ""PH_Metragem_Quadrada"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Hora_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_M2_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Horas_Estimadas_Total"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Base"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Fator_Padrao"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Fator_Tipologia"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Escopo"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Total_Sugerido"" numeric(18,2) NOT NULL,
-                    ""PH_Valor_Final_Ajustado"" numeric(18,2) NOT NULL,
-                    ""PH_Status"" integer NOT NULL,
-                    ""PH_Observacoes"" text,
-                    ""PH_Criado_Em"" timestamp with time zone NOT NULL,
-                    ""PH_Atualizado_Em"" timestamp with time zone
-                );
-
-                CREATE TABLE IF NOT EXISTS ""Itens_Propostas_Etapas"" (
-                    ""IPE_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""IPE_Proposta_Id"" uuid NOT NULL,
-                    ""IPE_Nome_Etapa"" character varying(200) NOT NULL,
-                    ""IPE_Descricao"" text,
-                    ""IPE_Incluso"" boolean NOT NULL,
-                    ""IPE_Percentual"" numeric(18,2) NOT NULL,
-                    ""IPE_Valor"" numeric(18,2) NOT NULL,
-                    ""IPE_Horas_Estimadas"" numeric(18,2) NOT NULL,
-                    ""IPE_Ordem"" integer NOT NULL,
-                    CONSTRAINT ""FK_Itens_Propostas_Etapas_Propostas"" FOREIGN KEY (""IPE_Proposta_Id"") REFERENCES ""Propostas_Honorarios"" (""PH_Id"") ON DELETE CASCADE
-                );
-
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Propostas_Honorarios_PH_Codigo"" ON ""Propostas_Honorarios"" (""PH_Codigo"");
-
+                
                 CREATE TABLE IF NOT EXISTS ""Preferencias_Dashboard"" (
                     ""PDB_Id"" uuid NOT NULL PRIMARY KEY,
                     ""PDB_Usuario_Id"" uuid NOT NULL,
@@ -186,37 +146,7 @@ public static class DbSeeder
                     CONSTRAINT ""FK_Despesas_Projetos"" FOREIGN KEY (""DSP_Projeto_Id"") REFERENCES ""Projetos"" (""PJT_Id"") ON DELETE CASCADE
                 );
 
-                CREATE TABLE IF NOT EXISTS ""Configuracoes_Proposta"" (
-                    ""CFP_Id"" uuid NOT NULL PRIMARY KEY,
-                    ""CFP_Usuario_Id"" uuid NOT NULL,
-                    ""CFP_Nome_Escritorio"" character varying(200) NOT NULL DEFAULT '',
-                    ""CFP_Slogan"" character varying(300) NOT NULL DEFAULT '',
-                    ""CFP_Registro_Profissional"" character varying(150) NOT NULL DEFAULT '',
-                    ""CFP_Email"" character varying(150) NOT NULL DEFAULT '',
-                    ""CFP_Telefone"" character varying(50) NOT NULL DEFAULT '',
-                    ""CFP_Endereco"" character varying(300) NOT NULL DEFAULT '',
-                    ""CFP_Logo_Url"" text,
-                    ""CFP_Cor_Primaria"" character varying(20) NOT NULL DEFAULT '#765538',
-                    ""CFP_Exibir_Cabecalho"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Resumo"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Tabela_Etapas"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Memoria_Calculo"" boolean NOT NULL DEFAULT false,
-                    ""CFP_Exibir_Condicoes_Pagamento"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Termos_Gerais"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Exibir_Assinaturas"" boolean NOT NULL DEFAULT true,
-                    ""CFP_Texto_Apresentacao"" text NOT NULL DEFAULT '',
-                    ""CFP_Validade_Dias"" integer NOT NULL DEFAULT 15,
-                    ""CFP_Condicoes_Pagamento_Padrao"" text NOT NULL DEFAULT '',
-                    ""CFP_Chave_Pix"" character varying(100),
-                    ""CFP_Dados_Bancarios"" character varying(300),
-                    ""CFP_Termos_Gerais"" text NOT NULL DEFAULT '',
-                    ""CFP_Template_Mensagem_Whatsapp"" text NOT NULL DEFAULT '',
-                    ""CFP_Configurado"" boolean NOT NULL DEFAULT false,
-                    ""CFP_Atualizado_Em"" timestamp with time zone
-                );
-
-                CREATE INDEX IF NOT EXISTS ""IX_Configuracoes_Proposta_CFP_Usuario_Id"" ON ""Configuracoes_Proposta"" (""CFP_Usuario_Id"");
-
+                
                 CREATE TABLE IF NOT EXISTS ""Compromissos_Agenda"" (
                     ""CMP_Id"" uuid NOT NULL PRIMARY KEY,
                     ""CMP_Escritorio_Id"" uuid NOT NULL,

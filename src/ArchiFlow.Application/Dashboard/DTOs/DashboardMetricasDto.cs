@@ -9,10 +9,7 @@ public record DashboardKpisDto(
     int TotalLeadsAtivos,
     int TotalLeadsConvertidos,
     decimal TaxaConversaoLeads,
-    int TotalClientes,
-    int TotalPropostas,
-    decimal ValorTotalPropostas,
-    decimal ValorMedioProposta
+    int TotalClientes
 );
 
 public record ProjetosPorStatusDto(
@@ -42,13 +39,6 @@ public record LeadsPorOrigemDto(
     decimal Percentual
 );
 
-public record PropostasMensalDto(
-    string MesAno,
-    string RotuloMes,
-    int Quantidade,
-    decimal ValorTotal
-);
-
 public record ProjetoResumoDashboardDto(
     Guid Id,
     string Nome,
@@ -73,17 +63,6 @@ public record LeadResumoDashboardDto(
     DateTime CriadoEm
 );
 
-public record PropostaResumoDashboardDto(
-    Guid Id,
-    string Titulo,
-    string Codigo,
-    string? ClienteOuLeadNome,
-    decimal MetragemQuadrada,
-    decimal ValorFinal,
-    string Status,
-    DateTime CriadoEm
-);
-
 public record PreferenciaDashboardDto(
     Guid UsuarioId,
     string LayoutJson,
@@ -100,9 +79,6 @@ public record DashboardMetricasDto(
     IReadOnlyList<ProjetosPorTipoDto> ProjetosPorTipo,
     IReadOnlyList<LeadsPorStatusDto> LeadsPorStatus,
     IReadOnlyList<LeadsPorOrigemDto> LeadsPorOrigem,
-    IReadOnlyList<PropostasMensalDto> PropostasMensais,
     IReadOnlyList<ProjetoResumoDashboardDto> ProjetosRecentes,
-    IReadOnlyList<LeadResumoDashboardDto> LeadsRecentes,
-    IReadOnlyList<PropostaResumoDashboardDto> PropostasRecentes
+    IReadOnlyList<LeadResumoDashboardDto> LeadsRecentes
 );
-

@@ -12,12 +12,11 @@ public class DashboardDtoTests
     [Fact]
     public void DashboardMetricasDto_And_Related_Dtos_Should_Instantiate_Correctly()
     {
-        var kpis = new DashboardKpisDto(5, 2, 8, 4, 50m, 10, 6, 90000m, 15000m);
+        var kpis = new DashboardKpisDto(5, 2, 8, 4, 50m, 10);
         var statusList = new List<ProjetosPorStatusDto> { new("Briefing", "Briefing", 2, 20m) };
         var tipoList = new List<ProjetosPorTipoDto> { new("Residencial", "Residencial", 3, 30m) };
         var leadStatusList = new List<LeadsPorStatusDto> { new("Novo", "Novo Lead", 4, 40m) };
         var leadOrigemList = new List<LeadsPorOrigemDto> { new("Instagram", 5, 50m) };
-        var propostasMensalList = new List<PropostasMensalDto> { new("2026-01", "Jan/26", 2, 30000m) };
         var agora = DateTime.UtcNow;
         var projetosRecentes = new List<ProjetoResumoDashboardDto>
         {
@@ -27,10 +26,6 @@ public class DashboardDtoTests
         {
             new(Guid.NewGuid(), "Lead", "lead@email.com", "123456", "Novo", "Site", agora)
         };
-        var propostasRecentes = new List<PropostaResumoDashboardDto>
-        {
-            new(Guid.NewGuid(), "Prop", "COD-1", "Destinatario", 120m, 20000m, "Enviada", agora)
-        };
 
         var metricas = new DashboardMetricasDto(
             kpis,
@@ -38,10 +33,8 @@ public class DashboardDtoTests
             tipoList,
             leadStatusList,
             leadOrigemList,
-            propostasMensalList,
             projetosRecentes,
-            leadsRecentes,
-            propostasRecentes
+            leadsRecentes
         );
 
         metricas.Kpis.TotalProjetosAtivos.Should().Be(5);
@@ -49,10 +42,8 @@ public class DashboardDtoTests
         metricas.ProjetosPorTipo.Should().HaveCount(1);
         metricas.LeadsPorStatus.Should().HaveCount(1);
         metricas.LeadsPorOrigem.Should().HaveCount(1);
-        metricas.PropostasMensais.Should().HaveCount(1);
         metricas.ProjetosRecentes.Should().HaveCount(1);
         metricas.LeadsRecentes.Should().HaveCount(1);
-        metricas.PropostasRecentes.Should().HaveCount(1);
     }
 
     [Fact]
@@ -71,13 +62,12 @@ public class DashboardDtoTests
         pref.LayoutJson.Should().Be("{\"widgets\":[]}");
         pref.AtualizadoEm.Should().Be(agora);
 
-        var command = new SalvarPreferenciaDashboardCommand("{\"widgets\":[]}");
-        command.LayoutJson.Should().Be("{\"widgets\":[]}");
+        var cmd = new SalvarPreferenciaDashboardCommand("[{\"id\":\"pendencias_hoje\"}]");
+        cmd.LayoutJson.Should().Be("[{\"id\":\"pendencias_hoje\"}]");
 
-        var dto = new PreferenciaDashboardDto(usuarioId, "{\"widgets\":[]}", agora);
+        var dto = new PreferenciaDashboardDto(usuarioId, cmd.LayoutJson, agora);
         dto.UsuarioId.Should().Be(usuarioId);
-        dto.LayoutJson.Should().Be("{\"widgets\":[]}");
+        dto.LayoutJson.Should().Be(cmd.LayoutJson);
         dto.AtualizadoEm.Should().Be(agora);
     }
 }
-
