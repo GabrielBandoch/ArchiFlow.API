@@ -65,5 +65,21 @@ public class AppUrlServiceTests
 
         result.Should().Be("http://localhost:4200");
     }
+
+    [Fact]
+    public void ObterUrlBaseConfiavel_QuandoOriginEhSubdominioDinamicoDeDominioPermitido_DeveRetornarOrigin()
+    {
+        var inMemorySettings = new Dictionary<string, string?>
+        {
+            { "AllowedOrigins", "https://cotu.com.br" },
+            { "AppUrl", "https://cotu.com.br" }
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+        var sut = new AppUrlService(config);
+
+        var result = sut.ObterUrlBaseConfiavel("https://novo-cliente.cotu.com.br");
+
+        result.Should().Be("https://novo-cliente.cotu.com.br");
+    }
 }
 

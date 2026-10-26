@@ -84,6 +84,6 @@ if [[ -f .env ]]; then
     echo " -> Landing:  https://${DOMAIN_NAME} (e https://www.${DOMAIN_NAME})"
     echo " -> App SaaS: https://app.${DOMAIN_NAME}"
     echo " -> Staging:  https://staging.${DOMAIN_NAME}"
-    echo " -> Duna:     https://duna.${DOMAIN_NAME}"
+    echo " -> Tenants:  https://<cliente>.${DOMAIN_NAME} (ex: https://duna.${DOMAIN_NAME})"
 fi
 echo "$SEPARATOR"

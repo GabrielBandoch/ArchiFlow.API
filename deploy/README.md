@@ -13,9 +13,9 @@ Crie os seguintes registros do tipo **A**, apontando para o **IP público da sua
 | :--- | :--- | :--- | :--- | :--- |
 | **A** | `@` | `SEU_IP_VPS` | 14400 | Domínio principal (`seudominio.com`) |
 | **A** | `staging` | `SEU_IP_VPS` | 14400 | Ambiente de Homologação / Staging |
-| **A** | `duna` | `SEU_IP_VPS` | 14400 | Instância isolada do cliente Duna |
 | **A** | `api` | `SEU_IP_VPS` | 14400 | Acesso direto à API e Swagger |
-| **A** | `*` *(Opcional)* | `SEU_IP_VPS` | 14400 | Wildcard: qualquer novo tenant futuro |
+| **A** | `app` | `SEU_IP_VPS` | 14400 | Portal administrativo da Cotu |
+| **A** | `*` | `SEU_IP_VPS` | 14400 | Wildcard: atende todos os clientes/tenants dinamicamente (ex: `duna`, `cliente1`, etc.) |
 
 ---
 
@@ -91,14 +91,14 @@ Assim que o deploy finalizar, seus ambientes estarão imediatamente disponíveis
 
 ---
 
-## 4. Como funciona o Multi-Tenancy (1 Banco por Cliente)
+## 4. Como funciona o Multi-Tenancy Dinâmico (1 Banco por Cliente)
 
-1. **Resolução de Tenant**: O Caddy recebe a requisição em `duna.seu-dominio.com` e a encaminha para a API com o cabeçalho `Host: duna.seu-dominio.com`.
-2. **Isolamento de Conexão**: O `TenantResolutionMiddleware` detecta o subdomínio `duna` e direciona todas as queries do Entity Framework para a base `cotu_duna`.
-3. **Provisionamento Dinâmico**: O serviço `ITenantDatabaseProvisioner` garante que os bancos sejam criados e migrados automaticamente.
-4. **Novos Clientes Futuros**: Para adicionar um novo cliente (ex: `escritorio-alfa`):
-   - Basta apontar o subdomínio `alfa.seu-dominio.com` para a VPS.
-   - No primeiro acesso, a API criará o banco `cotu_alfa`, aplicará todas as migrações e tabelas sem necessidade de reiniciar o servidor.
+1. **Roteamento Dinâmico com Caddy e On-Demand TLS**: O Caddy atende qualquer subdomínio via `*.seudominio.com` e emite certificados SSL automaticamente na primeira requisição usando On-Demand TLS (validado pelo healthcheck da API).
+2. **Resolução de Tenant**: O Caddy encaminha a requisição para a API com o cabeçalho `Host: cliente.seu-dominio.com`.
+3. **Isolamento de Conexão e Auto-Provisionamento**: O `TenantResolutionMiddleware` detecta o subdomínio e:
+   - Direciona todas as queries do Entity Framework para a base isolada do cliente (ex: `cotu_duna`, `cotu_cliente1`).
+   - Na primeira requisição do cliente, o `ITenantDatabaseProvisioner` cria automaticamente o novo banco e aplica todas as migrações e seeds, sem necessidade de intervenção manual ou reinicialização.
+4. **CORS e URLs Seguras**: A API aceita requisições e emite links seguros automaticamente para qualquer subdomínio do domínio principal configurado.
 
 ---
 

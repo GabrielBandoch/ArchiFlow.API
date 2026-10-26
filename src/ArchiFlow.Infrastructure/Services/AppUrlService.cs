@@ -41,13 +41,29 @@ public class AppUrlService : IAppUrlService
             Uri.TryCreate(requestedOrigin.Trim(), UriKind.Absolute, out var uri))
         {
             var normalizedOrigin = $"{uri.Scheme}{Uri.SchemeDelimiter}{uri.Authority}".TrimEnd('/');
-            if (_allowedOrigins.Contains(normalizedOrigin))
+            if (_allowedOrigins.Contains(normalizedOrigin) || IsOriginSubdomainOfAllowed(uri))
             {
                 return normalizedOrigin;
             }
         }
 
         return _defaultUrl;
+    }
+
+    private bool IsOriginSubdomainOfAllowed(Uri uri)
+    {
+        foreach (var allowed in _allowedOrigins)
+        {
+            if (Uri.TryCreate(allowed, UriKind.Absolute, out var allowedUri))
+            {
+                var rootHost = allowedUri.Host.TrimStart('.');
+                if (uri.Host.EndsWith("." + rootHost, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 

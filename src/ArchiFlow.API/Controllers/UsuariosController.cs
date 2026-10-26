@@ -49,9 +49,9 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPost("me/foto")]
-    public async Task<IActionResult> UploadFotoPerfil([FromForm] IFormFile? file, [FromForm] IFormFile? arquivo)
+    public async Task<IActionResult> UploadFotoPerfil([FromForm] IFormFile? file)
     {
-        var targetFile = file ?? arquivo;
+        var targetFile = file ?? (Request.HasFormContentType ? (Request.Form.Files["arquivo"] ?? Request.Form.Files.FirstOrDefault()) : null);
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized();

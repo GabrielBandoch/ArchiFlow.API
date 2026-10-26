@@ -47,21 +47,41 @@ builder.Services.AddControllers()
         opts.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
-var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?.Split(',') ?? Array.Empty<string>();
+var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CotuPolicy", p =>
-        p.WithOrigins(allowedOrigins)
-         .AllowAnyMethod()
-         .AllowAnyHeader()
-         .AllowCredentials());
+    void ConfigurePolicy(Microsoft.AspNetCore.Cors.Infrastructure.CorsPolicyBuilder p)
+    {
+        p.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrWhiteSpace(origin)) return false;
+            if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                    return true;
 
-    options.AddPolicy("ArchiFlowPolicy", p =>
-        p.WithOrigins(allowedOrigins)
-         .AllowAnyMethod()
-         .AllowAnyHeader()
-         .AllowCredentials());
+                foreach (var allowed in allowedOrigins)
+                {
+                    if (Uri.TryCreate(allowed, UriKind.Absolute, out var allowedUri))
+                    {
+                        var rootHost = allowedUri.Host.TrimStart('.');
+                        if (uri.Host.EndsWith("." + rootHost, StringComparison.OrdinalIgnoreCase) || uri.Host.Equals(rootHost, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        })
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
+    }
+
+    options.AddPolicy("CotuPolicy", ConfigurePolicy);
+    options.AddPolicy("ArchiFlowPolicy", ConfigurePolicy);
 });
 
 var app = builder.Build();

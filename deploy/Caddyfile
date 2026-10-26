@@ -1,97 +1,104 @@
 {
-    # Email para emissão e renovação automática de certificados SSL gratuitos via Let's Encrypt
-    email {$ACME_EMAIL:contato@cotu.com.br}
-    admin off
+	# Email para emissão e renovação automática de certificados SSL gratuitos via Let's Encrypt
+	email {$ACME_EMAIL:contato@cotu.com.br}
+	admin off
+	on_demand_tls {
+		ask http://cotu-api:8080/health
+	}
 }
 
 # --- 1. AMBIENTE DE HOMOLOGAÇÃO / STAGING (staging.dominio) ---
 staging.{$DOMAIN_NAME} {
-    handle /api/* {
-        reverse_proxy cotu-api-staging:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	handle /api/* {
+		reverse_proxy cotu-api-staging:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
 
-    handle /hubs/* {
-        reverse_proxy cotu-api-staging:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	handle /hubs/* {
+		reverse_proxy cotu-api-staging:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
 
-    handle {
-        reverse_proxy cotu-web-staging:80
-    }
+	handle {
+		reverse_proxy cotu-web-staging:80
+	}
 }
 
-# --- 2. TENANT / CLIENTE DUNA (duna.dominio) ---
-duna.{$DOMAIN_NAME} {
-    handle /api/* {
-        reverse_proxy cotu-api:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+# --- 2. TENANTS DINÂMICOS / CLIENTES (*.dominio) ---
+*.{$DOMAIN_NAME} {
+	tls {
+		on_demand
+	}
 
-    handle /hubs/* {
-        reverse_proxy cotu-api:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	handle /api/* {
+		reverse_proxy cotu-api:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
 
-    handle {
-        reverse_proxy cotu-web:80
-    }
+	handle /hubs/* {
+		reverse_proxy cotu-api:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle {
+		reverse_proxy cotu-web:80
+	}
 }
 
 # --- 3. SUBDOMÍNIO DIRETO DA API / SWAGGER (api.dominio) ---
 api.{$DOMAIN_NAME} {
-    reverse_proxy cotu-api:8080 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+	reverse_proxy cotu-api:8080 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
 }
 
 # --- 4. PORTAL / SISTEMA COTU (app.dominio) ---
 app.{$DOMAIN_NAME} {
-    handle /api/* {
-        reverse_proxy cotu-api-app:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	handle /api/* {
+		reverse_proxy cotu-api-app:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
 
-    handle /hubs/* {
-        reverse_proxy cotu-api-app:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	handle /hubs/* {
+		reverse_proxy cotu-api-app:8080 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
 
-    handle {
-        reverse_proxy cotu-admin:80
-    }
+	handle {
+		reverse_proxy cotu-admin:80
+	}
 }
 
 # --- 5. LANDING PAGE INSTITUCIONAL (cotu.com.br e www.cotu.com.br) ---
 {$DOMAIN_NAME}, www.{$DOMAIN_NAME} {
-    handle {
-        reverse_proxy cotu-landing:80
-    }
+	handle {
+		reverse_proxy cotu-landing:80
+	}
 }
