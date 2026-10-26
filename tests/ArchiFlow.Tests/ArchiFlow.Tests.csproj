@@ -4,21 +4,23 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)../../test.runsettings</RunSettingsFilePath>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk"                          Version="17.8.0" />
-    <PackageReference Include="xunit"                                           Version="2.6.2" />
-    <PackageReference Include="xunit.runner.visualstudio"                       Version="2.5.4" />
-    <PackageReference Include="coverlet.collector"                              Version="6.0.0" />
-    <PackageReference Include="Moq"                                             Version="4.20.70" />
-    <PackageReference Include="AutoMapper"                                      Version="13.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="ReportGenerator" Version="5.6.0" />
+    <PackageReference Include="xunit" Version="2.6.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory"          Version="8.0.0" />
-    <PackageReference Include="FluentAssertions"                                Version="6.12.0" />
-    <PackageReference Include="Bogus"                                           Version="35.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Bogus" Version="35.3.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ArchiFlow.Domain\ArchiFlow.Domain.csproj" />
@@ -26,4 +28,18 @@
     <ProjectReference Include="..\..\src\ArchiFlow.Application\ArchiFlow.Application.csproj" />
     <ProjectReference Include="..\..\src\ArchiFlow.API\ArchiFlow.API.csproj" />
   </ItemGroup>
+  <Target Name="CleanOldTestResults" BeforeTargets="VSTest">
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\TestResults" />
+  </Target>
+  <Target Name="GenerateHtmlCoverageReport" AfterTargets="VSTest">
+    <ItemGroup>
+      <CoverageFiles Include="$(MSBuildProjectDirectory)\TestResults\**\coverage.cobertura.xml" />
+      <CoverageFiles Include="$(MSBuildProjectDirectory)\..\..\coverage\**\coverage.cobertura.xml" />
+    </ItemGroup>
+    <ReportGenerator ReportFiles="@(CoverageFiles)"
+                     TargetDirectory="$(MSBuildProjectDirectory)\..\..\coverage"
+                     ReportTypes="Html"
+                     ContinueOnError="true"
+                     Condition="'@(CoverageFiles)' != ''" />
+  </Target>
 </Project>

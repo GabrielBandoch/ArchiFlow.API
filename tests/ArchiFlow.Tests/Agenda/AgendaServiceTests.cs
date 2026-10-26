@@ -538,6 +538,8 @@ public class AgendaServiceTests
     [Fact]
     public async Task ConectarGoogleOAuthAsync_QuandoConfiguracaoNaoExiste_DeveCriarNovaConfiguracao()
     {
+        var prevClientId = Environment.GetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID");
+        var prevClientSecret = Environment.GetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET");
         Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID", "mock-env-client-id");
         Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET", "mock-env-client-secret");
 
@@ -547,7 +549,7 @@ public class AgendaServiceTests
                 .Returns(true);
 
             _configuracaoRepoMock.Setup(r => r.ObterPorEscritorioIdAsync(_escritorioId)).ReturnsAsync((ConfiguracaoAgendaEscritorio?)null);
-            _googleCalendarMock.Setup(g => g.TrocarCodigoPorRefreshTokenAsync("code", "mock-env-client-id", "mock-env-client-secret", "http://redir"))
+            _googleCalendarMock.Setup(g => g.TrocarCodigoPorRefreshTokenAsync("code", It.IsAny<string>(), It.IsAny<string>(), "http://redir"))
                 .ReturnsAsync(("new-refresh-token", "empresa-nova@gmail.com"));
 
             var cmd = new ConectarGoogleOAuthCommand { Code = "code", RedirectUri = "http://redir", State = "valid-state-novo" };
@@ -560,8 +562,8 @@ public class AgendaServiceTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID", null);
-            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET", null);
+            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_ID", prevClientId);
+            Environment.SetEnvironmentVariable("GOOGLE_CALENDAR_CLIENT_SECRET", prevClientSecret);
         }
     }
 
