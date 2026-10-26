@@ -2,7 +2,6 @@ using ArchiFlow.Application.Dashboard.DTOs;
 using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Clientes;
 using ArchiFlow.Domain.Dashboard;
-using ArchiFlow.Domain.Honorarios;
 using ArchiFlow.Domain.Leads;
 using ArchiFlow.Domain.Leads.Enum;
 using ArchiFlow.Domain.Projetos;
@@ -50,18 +49,9 @@ public class DashboardService : IDashboardService
         { StatusLead.Perdido, "Oportunidade Perdida" }
     };
 
-    private static readonly Dictionary<StatusProposta, string> StatusPropostaNomes = new()
-    {
-        { StatusProposta.Rascunho, "Rascunho" },
-        { StatusProposta.Enviada, "Enviada" },
-        { StatusProposta.Aprovada, "Aprovada" },
-        { StatusProposta.Recusada, "Recusada" }
-    };
-
     private readonly IProjetoRepository _projetoRepo;
     private readonly IClienteRepository _clienteRepo;
     private readonly ILeadRepository _leadRepo;
-    private readonly IPropostaHonorarioRepository _propostaRepo;
     private readonly IPreferenciaDashboardRepository _preferenciaRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHttpContextAccessor? _httpContextAccessor;
@@ -70,7 +60,6 @@ public class DashboardService : IDashboardService
         IProjetoRepository projetoRepo,
         IClienteRepository clienteRepo,
         ILeadRepository leadRepo,
-        IPropostaHonorarioRepository propostaRepo,
         IPreferenciaDashboardRepository preferenciaRepo,
         IUnitOfWork unitOfWork,
         IHttpContextAccessor? httpContextAccessor = null)
@@ -78,7 +67,6 @@ public class DashboardService : IDashboardService
         _projetoRepo = projetoRepo;
         _clienteRepo = clienteRepo;
         _leadRepo = leadRepo;
-        _propostaRepo = propostaRepo;
         _preferenciaRepo = preferenciaRepo;
         _unitOfWork = unitOfWork;
         _httpContextAccessor = httpContextAccessor;
@@ -95,20 +83,15 @@ public class DashboardService : IDashboardService
         var leadsEnumerable = await _leadRepo.GetAllParaDashboardAsync();
         var leads = leadsEnumerable.OrderByDescending(l => l.CriadoEm).ToList();
 
-        var propostasEnumerable = await _propostaRepo.GetAll();
-        var propostas = propostasEnumerable.OrderByDescending(p => p.CriadoEm).ToList();
-
-        var kpis = CalcularKpis(projetos, clientes, leads, propostas);
+        var kpis = CalcularKpis(projetos, clientes, leads);
         var projetosPorStatus = CalcularProjetosPorStatus(projetos);
         var projetosPorTipo = CalcularProjetosPorTipo(projetos);
         var leadsPorStatus = CalcularLeadsPorStatus(leads);
         var leadsPorOrigem = CalcularLeadsPorOrigem(leads);
-        var propostasMensais = CalcularPropostasMensais(propostas);
 
         var clientesDict = clientes.ToDictionary(c => c.Id, c => c.Nome);
         var projetosRecentes = MapearProjetosRecentes(projetos, clientesDict);
         var leadsRecentes = MapearLeadsRecentes(leads);
-        var propostasRecentes = MapearPropostasRecentes(propostas);
 
         return new DashboardMetricasDto(
             kpis,
@@ -116,24 +99,15 @@ public class DashboardService : IDashboardService
             projetosPorTipo,
             leadsPorStatus,
             leadsPorOrigem,
-            propostasMensais,
             projetosRecentes,
-            leadsRecentes,
-            propostasRecentes
+            leadsRecentes
         );
     }
-
-
-
-
-
-
 
     private static DashboardKpisDto CalcularKpis(
         List<Projeto> projetos,
         List<Cliente> clientes,
-        List<Lead> leads,
-        List<PropostaHonorario> propostas)
+        List<Lead> leads)
     {
         var totalProjetosAtivos = projetos.Count(p => p.Status != StatusProjeto.Concluido && p.Status != StatusProjeto.Cancelado);
         var totalProjetosConcluidos = projetos.Count(p => p.Status == StatusProjeto.Concluido);
@@ -147,22 +121,13 @@ public class DashboardService : IDashboardService
 
         var totalClientes = clientes.Count(c => c.Ativo);
 
-        var totalPropostas = propostas.Count;
-        var valorTotalPropostas = propostas.Sum(p => p.ValorFinalAjustado > 0 ? p.ValorFinalAjustado : p.ValorTotalSugerido);
-        var valorMedioProposta = totalPropostas > 0
-            ? Math.Round(valorTotalPropostas / totalPropostas, 2)
-            : 0m;
-
         return new DashboardKpisDto(
             totalProjetosAtivos,
             totalProjetosConcluidos,
             totalLeadsAtivos,
             totalLeadsConvertidos,
             taxaConversao,
-            totalClientes,
-            totalPropostas,
-            valorTotalPropostas,
-            valorMedioProposta
+            totalClientes
         );
     }
 
@@ -230,28 +195,6 @@ public class DashboardService : IDashboardService
         return lista;
     }
 
-    private static List<PropostasMensalDto> CalcularPropostasMensais(List<PropostaHonorario> propostas)
-    {
-        var hoje = DateTime.UtcNow;
-        var ptBr = new CultureInfo("pt-BR");
-        var ultimos6Meses = Enumerable.Range(0, 6)
-            .Select(i => hoje.AddMonths(-5 + i))
-            .ToList();
-
-        return ultimos6Meses.Select(dataRef =>
-        {
-            var mesAnoKey = dataRef.ToString("yyyy-MM");
-            var rotulo = dataRef.ToString("MMM/yy", ptBr);
-            rotulo = char.ToUpper(rotulo[0]) + rotulo.Substring(1);
-
-            var propostasDoMes = propostas.Where(p => p.CriadoEm.Year == dataRef.Year && p.CriadoEm.Month == dataRef.Month).ToList();
-            var qtd = propostasDoMes.Count;
-            var val = propostasDoMes.Sum(p => p.ValorFinalAjustado > 0 ? p.ValorFinalAjustado : p.ValorTotalSugerido);
-
-            return new PropostasMensalDto(mesAnoKey, rotulo, qtd, val);
-        }).ToList();
-    }
-
     private static List<ProjetoResumoDashboardDto> MapearProjetosRecentes(
         List<Projeto> projetos,
         Dictionary<Guid, string> clientesDict)
@@ -306,38 +249,6 @@ public class DashboardService : IDashboardService
             .ToList();
     }
 
-    private static List<PropostaResumoDashboardDto> MapearPropostasRecentes(List<PropostaHonorario> propostas)
-    {
-        return propostas
-            .Take(5)
-            .Select(p => new PropostaResumoDashboardDto(
-                p.Id,
-                p.Titulo,
-                p.Codigo,
-                ObterDestinatarioProposta(p),
-                p.MetragemQuadrada,
-                p.ValorFinalAjustado > 0 ? p.ValorFinalAjustado : p.ValorTotalSugerido,
-                StatusPropostaNomes.TryGetValue(p.Status, out var st) ? st : p.Status.ToString(),
-                p.CriadoEm
-            ))
-            .ToList();
-    }
-
-    private static string ObterDestinatarioProposta(PropostaHonorario proposta)
-    {
-        if (!string.IsNullOrWhiteSpace(proposta.ClienteNome))
-        {
-            return proposta.ClienteNome;
-        }
-
-        if (!string.IsNullOrWhiteSpace(proposta.LeadNome))
-        {
-            return proposta.LeadNome;
-        }
-
-        return "Sem destinatário";
-    }
-
     private static readonly HashSet<string> KnownWidgetIds = new(StringComparer.OrdinalIgnoreCase)
     {
         "kpi_resumo",
@@ -346,10 +257,8 @@ public class DashboardService : IDashboardService
         "grafico_projetos_tipo",
         "grafico_funil_leads",
         "grafico_origens_lead",
-        "grafico_propostas_mensal",
         "tabela_projetos_recentes",
         "lista_leads_recentes",
-        "lista_propostas_recentes",
         "pendencias_hoje",
         "financeiro_semana",
         "projetos_por_fase",

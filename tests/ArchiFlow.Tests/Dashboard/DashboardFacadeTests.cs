@@ -25,15 +25,13 @@ public class DashboardFacadeTests
     public async Task ObterMetricasAsync_Should_Call_Service()
     {
         var expectedDto = new DashboardMetricasDto(
-            new DashboardKpisDto(1, 0, 1, 0, 0, 1, 1, 1000, 1000),
+            new DashboardKpisDto(1, 0, 1, 0, 0, 1),
             new List<ProjetosPorStatusDto>(),
             new List<ProjetosPorTipoDto>(),
             new List<LeadsPorStatusDto>(),
             new List<LeadsPorOrigemDto>(),
-            new List<PropostasMensalDto>(),
             new List<ProjetoResumoDashboardDto>(),
-            new List<LeadResumoDashboardDto>(),
-            new List<PropostaResumoDashboardDto>()
+            new List<LeadResumoDashboardDto>()
         );
 
         _serviceMock.Setup(s => s.ObterMetricasAsync())
@@ -74,4 +72,3 @@ public class DashboardFacadeTests
         _serviceMock.Verify(s => s.SalvarPreferenciasAsync(command), Times.Once);
     }
 }
-
