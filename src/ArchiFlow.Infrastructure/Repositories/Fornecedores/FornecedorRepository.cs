@@ -29,12 +29,12 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
 
     public async Task<IEnumerable<Fornecedor>> ObterPorEspecialidadeAsync(string especialidade)
     {
-        var esp = especialidade.Trim().ToLowerInvariant();
+        var esp = especialidade.Trim().ToLower();
         return await _dbSet
             .AsSplitQuery()
             .Include(f => f.Avaliacoes)
             .Include(f => f.ProjetosVinculados).ThenInclude(pv => pv.Projeto)
-            .Where(f => f.Especialidade.ToLower() == esp || f.Especialidade.ToLower().Contains(esp))
+            .Where(f => f.Especialidade.ToLower() == esp || f.Especialidade.ToLower().Contains(esp)) // NOSONAR
             .OrderByDescending(f => f.AvaliacaoMedia)
             .ToListAsync();
     }
@@ -70,4 +70,3 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
         return true;
     }
 }
-

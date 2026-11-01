@@ -8,7 +8,7 @@ namespace ArchiFlow.Application.Interfaces.Facades;
 
 public interface IAgendaFacade
 {
-    Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime inicio, DateTime fim, Guid? usuarioId = null, Guid? projetoId = null);
+    Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime? inicio = null, DateTime? fim = null, Guid? usuarioId = null, Guid? projetoId = null);
     Task<IEnumerable<CompromissoDto>> ObterProximosAsync(int quantidade = 10, Guid? usuarioId = null);
     Task<CompromissoDto?> ObterPorIdAsync(Guid id);
     Task<CompromissoDto> CriarCompromissoAsync(CriarCompromissoCommand command);
@@ -19,8 +19,7 @@ public interface IAgendaFacade
     Task<ConfiguracaoAgendaEscritorioDto?> ObterConfiguracaoAgendaEscritorioAsync();
     Task<ConfiguracaoAgendaEscritorioDto> SalvarConfiguracaoAgendaEscritorioAsync(SalvarConfiguracaoAgendaEscritorioCommand command);
     Task<string> ObterLinkCompartilhadoGoogleAgendaAsync();
-    Task<string> ObterUrlGoogleOAuthAsync(string redirectUri);
+    Task<GoogleOAuthUrlDto> ObterUrlGoogleOAuthAsync(string redirectUri);
     Task<ConfiguracaoAgendaEscritorioDto> ConectarGoogleOAuthAsync(ConectarGoogleOAuthCommand command);
     Task DesconectarGoogleOAuthAsync();
 }
-

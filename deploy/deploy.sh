@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+SEPARATOR="=========================================================="
+
 # ==============================================================================
 # SCRIPT DE DEPLOY E ATUALIZAÇÃO AUTOMÁTICA - COTU PLATFORM (HOSTINGER UBUNTU)
 # ==============================================================================
 
-echo "=========================================================="
+echo "$SEPARATOR"
 echo "      COTU PLATFORM - DEPLOY & ATUALIZAÇÃO (UBUNTU)       "
-echo "=========================================================="
+echo "$SEPARATOR"
 
 # 1. Verificar Docker
 if ! command -v docker &> /dev/null; then
@@ -72,9 +74,9 @@ sleep 5
 
 docker compose -f docker-compose.prod.yml ps
 
-echo "=========================================================="
+echo "$SEPARATOR"
 echo "    DEPLOY FINALIZADO COM SUCESSO!                        "
-echo "=========================================================="
+echo "$SEPARATOR"
 
 if [[ -f .env ]]; then
     DOMAIN_NAME=$(grep '^DOMAIN_NAME=' .env | cut -d '=' -f2- | tr -d '\r\n')
@@ -83,6 +85,5 @@ if [[ -f .env ]]; then
     echo " -> App SaaS: https://app.${DOMAIN_NAME}"
     echo " -> Staging:  https://staging.${DOMAIN_NAME}"
     echo " -> Duna:     https://duna.${DOMAIN_NAME}"
-    echo " -> API Docs: https://api.${DOMAIN_NAME}/swagger"
 fi
-echo "=========================================================="
+echo "$SEPARATOR"

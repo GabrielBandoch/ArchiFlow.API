@@ -1,7 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using ArchiFlow.Application.Fornecedores.Commands;
 using ArchiFlow.Application.Fornecedores.DTOs;
 
-namespace ArchiFlow.Application.Fornecedores.Services;
+namespace ArchiFlow.Application.Interfaces.Services;
 
 public interface IFornecedorService
 {
@@ -15,4 +18,3 @@ public interface IFornecedorService
     Task<bool> DesvincularProjetoAsync(Guid vinculoId);
     Task<IEnumerable<ProjetoFornecedorDto>> ObterFornecedoresDoProjetoAsync(Guid projetoId);
 }
-

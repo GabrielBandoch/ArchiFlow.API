@@ -137,7 +137,7 @@ public class UsuarioService : IUsuarioService
         }
     }
 
-    private static string? DeterminarModulosIniciais(string role, IReadOnlyCollection<string>? modulosPermitidos)
+    private static string? DeterminarModulosIniciais(string role, List<string>? modulosPermitidos)
     {
         if (modulosPermitidos != null && modulosPermitidos.Count > 0)
         {

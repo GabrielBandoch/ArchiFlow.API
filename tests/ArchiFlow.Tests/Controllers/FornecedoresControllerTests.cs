@@ -1,7 +1,7 @@
-using ArchiFlow.API.Controllers;
+﻿using ArchiFlow.API.Controllers;
 using ArchiFlow.Application.Fornecedores.Commands;
 using ArchiFlow.Application.Fornecedores.DTOs;
-using ArchiFlow.Application.Fornecedores.Services;
+using ArchiFlow.Application.Interfaces.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;

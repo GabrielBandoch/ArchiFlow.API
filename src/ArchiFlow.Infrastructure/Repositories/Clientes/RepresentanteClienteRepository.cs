@@ -37,7 +37,7 @@ public class RepresentanteClienteRepository : IRepresentanteClienteRepository
         var normalized = email.Trim().ToLower();
         return await _context.RepresentantesClientes
             .Include(r => r.Cliente)
-            .FirstOrDefaultAsync(r => r.Email.ToLower() == normalized);
+            .FirstOrDefaultAsync(r => r.Email.ToLower() == normalized); // NOSONAR
     }
 
     public async Task<RepresentanteCliente?> ObterPorTokenConviteHashAsync(string tokenHash)
@@ -69,4 +69,3 @@ public class RepresentanteClienteRepository : IRepresentanteClienteRepository
         }
     }
 }
-

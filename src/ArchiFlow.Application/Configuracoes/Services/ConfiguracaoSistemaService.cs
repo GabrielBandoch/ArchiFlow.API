@@ -1,14 +1,8 @@
+﻿using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Application.Configuracoes.DTOs;
 using ArchiFlow.Domain.Shared;
 
 namespace ArchiFlow.Application.Configuracoes.Services;
-
-public interface IConfiguracaoSistemaService
-{
-    Task<IEnumerable<OpcaoConfiguracaoDto>> ObterPorCategoriaAsync(string categoria);
-    Task<IDictionary<string, IEnumerable<OpcaoConfiguracaoDto>>> ObterTodasAgrupadasAsync();
-    Task<OpcaoConfiguracaoDto> SalvarOpcaoAsync(SalvarOpcaoConfiguracaoCommand command);
-}
 
 public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
 {

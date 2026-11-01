@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,13 +43,16 @@ public class AgendaService : IAgendaService
         _oauthStateService = oauthStateService;
     }
 
-    public async Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime inicio, DateTime fim, Guid? usuarioId = null, Guid? projetoId = null)
+    public async Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime? inicio = null, DateTime? fim = null, Guid? usuarioId = null, Guid? projetoId = null)
     {
-        if (inicio > fim)
+        var dataInicio = inicio ?? DateTime.UtcNow.Date;
+        var dataFim = fim ?? dataInicio.AddDays(30);
+
+        if (dataInicio > dataFim)
             throw new ArgumentException("A data inicial não pode ser superior à data final.");
 
         var (_, escritorioId) = await _userContextService.ObterUsuarioContextoAsync();
-        var compromissos = await _compromissoRepository.ObterPorPeriodoAsync(escritorioId, inicio, fim, usuarioId, projetoId);
+        var compromissos = await _compromissoRepository.ObterPorPeriodoAsync(escritorioId, dataInicio, dataFim, usuarioId, projetoId);
 
         return await MapearListaAsync(compromissos, escritorioId);
     }
@@ -293,7 +296,7 @@ public class AgendaService : IAgendaService
         return MapearConfiguracao(config);
     }
 
-    public async Task<string> ObterUrlGoogleOAuthAsync(string redirectUri)
+    public async Task<GoogleOAuthUrlDto> ObterUrlGoogleOAuthAsync(string redirectUri)
     {
         var (usuario, escritorioId) = await _userContextService.ObterUsuarioContextoAsync();
         var config = await _configuracaoAgendaRepository.ObterPorEscritorioIdAsync(escritorioId);
@@ -302,7 +305,8 @@ public class AgendaService : IAgendaService
             throw new InvalidOperationException("A integração OAuth não foi configurada no servidor (defina GOOGLE_CALENDAR_CLIENT_ID no arquivo .env).");
 
         var state = _oauthStateService.GerarState(usuario.Id, escritorioId);
-        return _googleCalendarService.GerarUrlAutorizacaoOAuth(clientId, redirectUri, state);
+        var url = _googleCalendarService.GerarUrlAutorizacaoOAuth(clientId, redirectUri, state);
+        return new GoogleOAuthUrlDto(url, state);
     }
 
     public async Task<ConfiguracaoAgendaEscritorioDto> ConectarGoogleOAuthAsync(ConectarGoogleOAuthCommand command)

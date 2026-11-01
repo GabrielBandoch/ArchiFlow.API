@@ -295,7 +295,7 @@ public class DashboardServiceTests
         resultado.Kpis.TotalLeadsConvertidos.Should().Be(1);
     }
 
-    private static IHttpContextAccessor CreateHttpContextAccessor(string? claimType = null, string? claimValue = null)
+    private static HttpContextAccessor CreateHttpContextAccessor(string? claimType = null, string? claimValue = null)
     {
         var httpContext = new DefaultHttpContext();
         if (!string.IsNullOrEmpty(claimType) && !string.IsNullOrEmpty(claimValue))
