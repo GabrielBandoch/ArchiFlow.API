@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -137,18 +137,14 @@ public class AgendaController : ControllerBase
     }
 
     [HttpGet("oauth/url")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GoogleOAuthUrlDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ObterUrlOAuth([FromQuery] string redirectUri)
     {
         if (string.IsNullOrWhiteSpace(redirectUri))
             return BadRequest(new { message = "A URL de redirecionamento é obrigatória." });
 
-        var url = await _agendaFacade.ObterUrlGoogleOAuthAsync(redirectUri);
-        var uri = new Uri(url);
-        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        var state = queryParams["state"];
-        return Ok(new { url, state });
+        return Ok(await _agendaFacade.ObterUrlGoogleOAuthAsync(redirectUri));
     }
 
     [HttpPost("oauth/conectar")]

@@ -17,7 +17,7 @@ public class AgendaFacade : IAgendaFacade
         _agendaService = agendaService;
     }
 
-    public Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime inicio, DateTime fim, Guid? usuarioId = null, Guid? projetoId = null) =>
+    public Task<IEnumerable<CompromissoDto>> ObterPorPeriodoAsync(DateTime? inicio = null, DateTime? fim = null, Guid? usuarioId = null, Guid? projetoId = null) =>
         _agendaService.ObterPorPeriodoAsync(inicio, fim, usuarioId, projetoId);
 
     public Task<IEnumerable<CompromissoDto>> ObterProximosAsync(int quantidade = 10, Guid? usuarioId = null) =>
@@ -50,7 +50,7 @@ public class AgendaFacade : IAgendaFacade
     public Task<string> ObterLinkCompartilhadoGoogleAgendaAsync() =>
         _agendaService.ObterLinkCompartilhadoGoogleAgendaAsync();
 
-    public Task<string> ObterUrlGoogleOAuthAsync(string redirectUri) =>
+    public Task<GoogleOAuthUrlDto> ObterUrlGoogleOAuthAsync(string redirectUri) =>
         _agendaService.ObterUrlGoogleOAuthAsync(redirectUri);
 
     public Task<ConfiguracaoAgendaEscritorioDto> ConectarGoogleOAuthAsync(ConectarGoogleOAuthCommand command) =>
@@ -59,4 +59,3 @@ public class AgendaFacade : IAgendaFacade
     public Task DesconectarGoogleOAuthAsync() =>
         _agendaService.DesconectarGoogleOAuthAsync();
 }
-

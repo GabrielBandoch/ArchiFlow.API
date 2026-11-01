@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -491,7 +491,8 @@ public class AgendaServiceTests
 
         var url = await _service.ObterUrlGoogleOAuthAsync("http://localhost:4200");
 
-        url.Should().Contain("state=crypto-random-state-999");
+        url.Url.Should().Contain("state=crypto-random-state-999");
+        url.State.Should().Be("crypto-random-state-999");
         _oauthStateMock.Verify(s => s.GerarState(_usuarioLogadoId, _escritorioId), Times.Once);
     }
 

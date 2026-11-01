@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ArchiFlow.API.Controllers;
@@ -30,7 +30,7 @@ public class AgendaControllerTests
         {
             new(Guid.NewGuid(), Guid.NewGuid(), null, null, null, null, null, null, "Visita", null, "VisitaObra", "Agendado", DateTime.UtcNow, DateTime.UtcNow.AddHours(1), null, null, null, "http", DateTime.UtcNow, null)
         };
-        _facadeMock.Setup(f => f.ObterPorPeriodoAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, null))
+        _facadeMock.Setup(f => f.ObterPorPeriodoAsync(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, null))
             .ReturnsAsync(lista);
 
         var result = await _controller.ObterPorPeriodo(null, null, null, null);
@@ -227,7 +227,7 @@ public class AgendaControllerTests
     public async Task ObterUrlOAuth_ComRedirectUriValido_DeveRetornarOkComUrlEState()
     {
         var fakeUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=123&state=secure-state-123";
-        _facadeMock.Setup(f => f.ObterUrlGoogleOAuthAsync("https://app.archiflow.com/callback")).ReturnsAsync(fakeUrl);
+        _facadeMock.Setup(f => f.ObterUrlGoogleOAuthAsync("https://app.archiflow.com/callback")).ReturnsAsync(new GoogleOAuthUrlDto(fakeUrl, "secure-state-123"));
 
         var result = await _controller.ObterUrlOAuth("https://app.archiflow.com/callback");
 

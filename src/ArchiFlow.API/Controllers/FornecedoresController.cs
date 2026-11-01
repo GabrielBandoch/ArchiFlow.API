@@ -1,6 +1,6 @@
-using ArchiFlow.API.Security;
+﻿using ArchiFlow.API.Security;
 using ArchiFlow.Application.Fornecedores.Commands;
-using ArchiFlow.Application.Fornecedores.Services;
+using ArchiFlow.Application.Interfaces.Services;
 using ArchiFlow.Domain.Usuarios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

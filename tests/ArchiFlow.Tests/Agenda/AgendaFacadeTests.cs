@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ArchiFlow.Application.Agenda.Commands;
@@ -78,9 +78,10 @@ public class AgendaFacadeTests
         var rLink = await _facade.ObterLinkCompartilhadoGoogleAgendaAsync();
         rLink.Should().Be("https://cal.link");
 
-        _serviceMock.Setup(s => s.ObterUrlGoogleOAuthAsync("http://redir")).ReturnsAsync("https://oauth.url");
+        _serviceMock.Setup(s => s.ObterUrlGoogleOAuthAsync("http://redir")).ReturnsAsync(new GoogleOAuthUrlDto("https://oauth.url", "state123"));
         var rOAuthUrl = await _facade.ObterUrlGoogleOAuthAsync("http://redir");
-        rOAuthUrl.Should().Be("https://oauth.url");
+        rOAuthUrl.Url.Should().Be("https://oauth.url");
+        rOAuthUrl.State.Should().Be("state123");
 
         var cmdOAuth = new ConectarGoogleOAuthCommand { Code = "code123", RedirectUri = "http://redir" };
         _serviceMock.Setup(s => s.ConectarGoogleOAuthAsync(cmdOAuth)).ReturnsAsync(configDto);

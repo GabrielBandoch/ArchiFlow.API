@@ -1,8 +1,5 @@
 namespace ArchiFlow.Domain.Shared;
 
-
-
-
 public interface ITenantContext
 {
     string TenantId { get; }
@@ -12,4 +9,3 @@ public interface ITenantContext
     string BuildConnectionString(string baseConnectionString);
     void SetTenant(string tenantId, string host);
 }
-
