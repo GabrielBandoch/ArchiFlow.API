@@ -10,9 +10,9 @@ public class OpcaoConfiguracaoRepository : Repository<OpcaoConfiguracao>, IOpcao
 
     public async Task<IEnumerable<OpcaoConfiguracao>> ObterPorCategoriaAsync(string categoria)
     {
-        var cat = categoria.Trim().ToLowerInvariant();
+        var cat = categoria.Trim();
         return await _dbSet
-            .Where(o => o.Ativo && o.Categoria.ToLower() == cat)
+            .Where(o => o.Ativo && string.Equals(o.Categoria, cat, StringComparison.OrdinalIgnoreCase))
             .OrderBy(o => o.Ordem)
             .ToListAsync();
     }

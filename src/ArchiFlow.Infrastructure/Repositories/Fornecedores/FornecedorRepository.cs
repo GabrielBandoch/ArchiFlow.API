@@ -29,12 +29,12 @@ public class FornecedorRepository : Repository<Fornecedor>, IFornecedorRepositor
 
     public async Task<IEnumerable<Fornecedor>> ObterPorEspecialidadeAsync(string especialidade)
     {
-        var esp = especialidade.Trim().ToLowerInvariant();
+        var esp = especialidade.Trim();
         return await _dbSet
             .AsSplitQuery()
             .Include(f => f.Avaliacoes)
             .Include(f => f.ProjetosVinculados).ThenInclude(pv => pv.Projeto)
-            .Where(f => f.Especialidade.ToLower() == esp || f.Especialidade.ToLower().Contains(esp))
+            .Where(f => string.Equals(f.Especialidade, esp, StringComparison.OrdinalIgnoreCase) || f.Especialidade.Contains(esp, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(f => f.AvaliacaoMedia)
             .ToListAsync();
     }

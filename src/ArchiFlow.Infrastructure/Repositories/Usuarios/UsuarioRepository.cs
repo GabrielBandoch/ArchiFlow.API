@@ -14,8 +14,8 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
 
     public async Task<Usuario?> GetByEmail(string email)
     {
-        var normalizedEmail = email.Trim().ToLower();
-        return await _dbSet.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+        var normalizedEmail = email.Trim();
+        return await _dbSet.FirstOrDefaultAsync(u => string.Equals(u.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<IEnumerable<Usuario>> ObterPorEscritorioIdAsync(Guid escritorioId)

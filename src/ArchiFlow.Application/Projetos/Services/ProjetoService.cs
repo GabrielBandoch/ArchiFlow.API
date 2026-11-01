@@ -301,7 +301,7 @@ public class ProjetoService : IProjetoService
         };
 
         await _templateRepository.Create(template);
-        if (template.Etapas.Any())
+        if (template.Etapas.Count > 0)
         {
             _templateRepository.AddEtapas(template.Etapas);
         }
