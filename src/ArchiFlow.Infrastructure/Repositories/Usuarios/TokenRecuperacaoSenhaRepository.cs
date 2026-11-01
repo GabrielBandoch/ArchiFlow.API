@@ -30,8 +30,9 @@ public class TokenRecuperacaoSenhaRepository : ITokenRecuperacaoSenhaRepository
 
     public async Task InvalidarParaEmailAsync(string email)
     {
+        var normalizedEmail = email.Trim().ToLower();
         var tokens = await _context.TokensRecuperacaoSenha
-            .Where(t => string.Equals(t.Email, email.Trim(), StringComparison.OrdinalIgnoreCase) && t.UsadoEm == null)
+            .Where(t => t.Email.ToLower() == normalizedEmail && t.UsadoEm == null) // NOSONAR
             .ToListAsync();
 
         foreach (var t in tokens)
@@ -45,4 +46,3 @@ public class TokenRecuperacaoSenhaRepository : ITokenRecuperacaoSenhaRepository
         }
     }
 }
-

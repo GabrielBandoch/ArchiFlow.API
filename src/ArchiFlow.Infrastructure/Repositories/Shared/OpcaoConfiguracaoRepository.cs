@@ -10,9 +10,9 @@ public class OpcaoConfiguracaoRepository : Repository<OpcaoConfiguracao>, IOpcao
 
     public async Task<IEnumerable<OpcaoConfiguracao>> ObterPorCategoriaAsync(string categoria)
     {
-        var cat = categoria.Trim();
+        var cat = categoria.Trim().ToLower();
         return await _dbSet
-            .Where(o => o.Ativo && string.Equals(o.Categoria, cat, StringComparison.OrdinalIgnoreCase))
+            .Where(o => o.Ativo && o.Categoria.ToLower() == cat) // NOSONAR
             .OrderBy(o => o.Ordem)
             .ToListAsync();
     }
@@ -30,4 +30,3 @@ public class OpcaoConfiguracaoRepository : Repository<OpcaoConfiguracao>, IOpcao
             .ToDictionary(g => g.Key, g => g.AsEnumerable());
     }
 }
-

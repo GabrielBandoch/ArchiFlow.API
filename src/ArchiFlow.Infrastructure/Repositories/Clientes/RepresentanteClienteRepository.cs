@@ -34,10 +34,10 @@ public class RepresentanteClienteRepository : IRepresentanteClienteRepository
 
     public async Task<RepresentanteCliente?> ObterPorEmailAsync(string email)
     {
-        var normalized = email.Trim();
+        var normalized = email.Trim().ToLower();
         return await _context.RepresentantesClientes
             .Include(r => r.Cliente)
-            .FirstOrDefaultAsync(r => string.Equals(r.Email, normalized, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefaultAsync(r => r.Email.ToLower() == normalized); // NOSONAR
     }
 
     public async Task<RepresentanteCliente?> ObterPorTokenConviteHashAsync(string tokenHash)
@@ -69,4 +69,3 @@ public class RepresentanteClienteRepository : IRepresentanteClienteRepository
         }
     }
 }
-

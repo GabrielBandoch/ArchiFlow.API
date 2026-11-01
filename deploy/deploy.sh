@@ -85,6 +85,5 @@ if [[ -f .env ]]; then
     echo " -> App SaaS: https://app.${DOMAIN_NAME}"
     echo " -> Staging:  https://staging.${DOMAIN_NAME}"
     echo " -> Duna:     https://duna.${DOMAIN_NAME}"
-    echo " -> API Docs: https://api.${DOMAIN_NAME}/swagger"
 fi
 echo "$SEPARATOR"
