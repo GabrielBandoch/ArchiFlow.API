@@ -1,10 +1,15 @@
-name: Backend CI
+name: Backend CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-and-test:
@@ -108,3 +113,44 @@ jobs:
           name: coverage-report
           path: ./coverage
           retention-days: 7
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Executar Deploy em Produção
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "=== [1/5] Atualizando código do repositório Backend ==="
+            cd /opt/cotu/ArchiFlow.API
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== [2/5] Construindo imagem Docker da API ==="
+            cd /opt/cotu/ArchiFlow.API/deploy
+            docker compose -f docker-compose.prod.yml build api api-staging
+
+            echo "=== [3/5] Reiniciando containers api e api-staging ==="
+            docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api api-staging
+
+            echo "=== [4/5] Aguardando inicialização da API ==="
+            sleep 10
+
+            echo "=== [5/5] Testando health check ==="
+            curl -f -k https://api.cotu.com.br/health || curl -f http://localhost:8080/health
+
+            echo "=== Limpando imagens órfãs ==="
+            docker image prune -f
+
+            echo "=== Status dos containers ==="
+            docker compose -f docker-compose.prod.yml ps api api-staging
+            echo "Deploy do Backend concluído com sucesso!"
