@@ -28,6 +28,24 @@ public class EmpresaConfiguracoesControllerTests
         new(Guid.NewGuid(), null, nome, null, null, null, null, null, null, null, null, null, null, null, null, cor, DateTime.UtcNow);
 
     [Fact]
+    public async Task ObterIdentidadeEmpresa_DeveRetornarOkComDadosBasicos()
+    {
+        var dto = CriarDto("Atelier Teste", "#765538");
+        _empresaFacadeMock.Setup(f => f.ObterDadosEmpresaAsync()).ReturnsAsync(dto);
+
+        var result = await _sut.ObterIdentidadeEmpresa();
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(new
+        {
+            NomeEmpresa = "Atelier Teste",
+            LogoUrl = (string?)null,
+            CorPrimaria = "#765538",
+            Slogan = (string?)null
+        });
+    }
+
+    [Fact]
     public async Task ObterDadosEmpresa_DeveRetornarOkComDados()
     {
         var dto = CriarDto("Empresa Teste");

@@ -14,7 +14,6 @@ namespace ArchiFlow.API.Controllers;
 [ApiController]
 [Route("api/configuracoes")]
 [Authorize]
-[RequireModule(ModulosApp.Configuracoes)]
 public class EmpresaConfiguracoesController : ControllerBase
 {
     private static readonly string[] AllowedLogoTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
@@ -25,18 +24,34 @@ public class EmpresaConfiguracoesController : ControllerBase
         _empresaFacade = empresaFacade;
     }
 
+    [HttpGet("empresa/identidade")]
+    public async Task<IActionResult> ObterIdentidadeEmpresa()
+    {
+        var dados = await _empresaFacade.ObterDadosEmpresaAsync();
+        return Ok(new
+        {
+            dados.NomeEmpresa,
+            dados.LogoUrl,
+            dados.CorPrimaria,
+            dados.Slogan
+        });
+    }
+
     [HttpGet("empresa")]
     [Authorize(Policy = "AcessoArquiteto")]
+    [RequireModule(ModulosApp.Configuracoes)]
     public async Task<IActionResult> ObterDadosEmpresa() =>
         Ok(await _empresaFacade.ObterDadosEmpresaAsync());
 
     [HttpPut("empresa")]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    [RequireModule(ModulosApp.Configuracoes)]
     public async Task<IActionResult> SalvarDadosEmpresa([FromBody] SalvarDadosEmpresaCommand command) =>
         Ok(await _empresaFacade.SalvarDadosEmpresaAsync(command));
 
     [HttpPatch("empresa/cor")]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    [RequireModule(ModulosApp.Configuracoes)]
     public async Task<IActionResult> AtualizarCorPrimaria([FromBody] AtualizarCorPrimariaCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.CorPrimaria))
@@ -48,6 +63,7 @@ public class EmpresaConfiguracoesController : ControllerBase
 
     [HttpPost("empresa/logo")]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    [RequireModule(ModulosApp.Configuracoes)]
     public async Task<IActionResult> UploadLogo([FromForm] IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -66,6 +82,7 @@ public class EmpresaConfiguracoesController : ControllerBase
 
     [HttpDelete("empresa/logo")]
     [Authorize(Policy = "ApenasGerenteOuAdmin")]
+    [RequireModule(ModulosApp.Configuracoes)]
     public async Task<IActionResult> RemoverLogo()
     {
         await _empresaFacade.RemoverLogotipoAsync();

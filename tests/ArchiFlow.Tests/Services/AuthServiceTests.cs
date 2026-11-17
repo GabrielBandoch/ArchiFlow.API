@@ -337,6 +337,7 @@ public class AuthServiceTests
 
         _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync((Usuario?)null);
         repRepoMock.Setup(r => r.ObterPorEmailAsync(email)).ReturnsAsync(rep);
+        _clientRepoMock.Setup(r => r.GetById(rep.ClienteId)).ReturnsAsync(new Cliente { Id = rep.ClienteId, Ativo = true });
         _projRepoMock.Setup(r => r.GetByClienteId(rep.ClienteId)).ReturnsAsync(new List<Projeto> { projeto });
         _tokenServiceMock.Setup(t => t.GenerateToken(rep, projeto.Id)).Returns("rep-token");
 
@@ -347,6 +348,79 @@ public class AuthServiceTests
         response.Perfil.Should().Be("Cliente");
         response.Nome.Should().Be("Representante Ana");
         response.ProjetoId.Should().Be(projeto.Id);
+    }
+
+    [Fact]
+    public async Task Login_ComRepresentanteDeClienteComPortalSuspenso_DeveLancarUnauthorizedAccessException()
+    {
+        var email = "rep-suspenso@cliente.com";
+        var password = "password123";
+        var request = new LoginRequestDto(email, password);
+
+        var repRepoMock = new Mock<IRepresentanteClienteRepository>();
+        var sutComRep = new AuthService(
+            _userRepoMock.Object,
+            _clientRepoMock.Object,
+            repRepoMock.Object,
+            _projRepoMock.Object,
+            _uowMock.Object,
+            _tokenServiceMock.Object
+        );
+
+        var rep = new RepresentanteCliente
+        {
+            Id = Guid.NewGuid(),
+            ClienteId = Guid.NewGuid(),
+            Nome = "Representante Ana",
+            Email = email,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            Ativo = true
+        };
+
+        _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync((Usuario?)null);
+        repRepoMock.Setup(r => r.ObterPorEmailAsync(email)).ReturnsAsync(rep);
+        _clientRepoMock.Setup(r => r.GetById(rep.ClienteId)).ReturnsAsync(new Cliente { Id = rep.ClienteId, Ativo = false });
+
+        var act = async () => await sutComRep.Login(request);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*suspenso*");
+    }
+
+    [Fact]
+    public async Task Login_ComRepresentanteInativo_DeveLancarUnauthorizedAccessException()
+    {
+        var email = "rep-inativo@cliente.com";
+        var password = "password123";
+        var request = new LoginRequestDto(email, password);
+
+        var repRepoMock = new Mock<IRepresentanteClienteRepository>();
+        var sutComRep = new AuthService(
+            _userRepoMock.Object,
+            _clientRepoMock.Object,
+            repRepoMock.Object,
+            _projRepoMock.Object,
+            _uowMock.Object,
+            _tokenServiceMock.Object
+        );
+
+        var rep = new RepresentanteCliente
+        {
+            Id = Guid.NewGuid(),
+            ClienteId = Guid.NewGuid(),
+            Nome = "Representante Inativo",
+            Email = email,
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            Ativo = false
+        };
+
+        _userRepoMock.Setup(r => r.GetByEmail(email)).ReturnsAsync((Usuario?)null);
+        repRepoMock.Setup(r => r.ObterPorEmailAsync(email)).ReturnsAsync(rep);
+
+        var act = async () => await sutComRep.Login(request);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*inativa*");
     }
 }
 

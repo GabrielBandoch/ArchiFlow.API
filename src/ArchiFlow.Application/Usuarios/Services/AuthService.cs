@@ -120,9 +120,20 @@ public class AuthService : IAuthService
             return null;
         }
 
-        if (!BCrypt.Net.BCrypt.Verify(request.Senha, representante.SenhaHash) || !representante.Ativo)
+        if (string.IsNullOrEmpty(representante.SenhaHash) || !BCrypt.Net.BCrypt.Verify(request.Senha, representante.SenhaHash))
         {
-            throw new UnauthorizedAccessException("Credenciais inválidas ou conta inativa.");
+            throw new UnauthorizedAccessException("Credenciais inválidas.");
+        }
+
+        if (!representante.Ativo)
+        {
+            throw new UnauthorizedAccessException("Sua conta de acesso está inativa. Entre em contato com o escritório.");
+        }
+
+        var cliente = await _clienteRepository.GetById(representante.ClienteId);
+        if (cliente == null || !cliente.Ativo)
+        {
+            throw new UnauthorizedAccessException("O acesso ao portal está suspenso. Entre em contato com o escritório.");
         }
 
         var projetos = await _projetoRepository.GetByClienteId(representante.ClienteId);
@@ -140,9 +151,14 @@ public class AuthService : IAuthService
             return null;
         }
 
-        if (string.IsNullOrEmpty(cliente.SenhaPortal) || !BCrypt.Net.BCrypt.Verify(request.Senha, cliente.SenhaPortal) || !cliente.Ativo)
+        if (string.IsNullOrEmpty(cliente.SenhaPortal) || !BCrypt.Net.BCrypt.Verify(request.Senha, cliente.SenhaPortal))
         {
-            throw new UnauthorizedAccessException("Credenciais inválidas ou cliente inativo.");
+            throw new UnauthorizedAccessException("Credenciais inválidas.");
+        }
+
+        if (!cliente.Ativo)
+        {
+            throw new UnauthorizedAccessException("O acesso ao portal está suspenso. Entre em contato com o escritório.");
         }
 
         var projetos = await _projetoRepository.GetByClienteId(cliente.Id);
