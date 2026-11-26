@@ -14,10 +14,22 @@ API RESTful e Hub SignalR em **.NET 8 / C#** para a plataforma multi-tenant de g
 ## Ambiente de Demonstração para a Banca
 
 - **Aplicação Web (Tenant TCC):** `https://tcc.cotu.com.br/`
-- **E-mail:** `professores@cotu.com.br`
-- **Senha:** `catolicasc123456`
+- **Escritório configurado (White-Label):** `COTU Studio — Demonstração TCC` (Joinville/SC)
 - **Health Check Produção:** `https://api.cotu.com.br/health`
 - **Guia Passo a Passo:** [Guia da Banca (`ArchiFlow/docs/GUIA_BANCA_DEMONSTRACAO.md`)](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/GUIA_BANCA_DEMONSTRACAO.md)
+
+### Credenciais de Teste Prontas (Admin, Equipe RBAC e Portal do Cliente)
+
+| Perfil / Papel | E-mail | Senha | Módulos / Acesso |
+| :--- | :--- | :--- | :--- |
+| **Arquiteto Sócio / Admin (Banca)** | `professores@cotu.com.br` | `catolicasc123456` | Acesso completo aos **7 módulos operacionais** |
+| **Portal do Cliente (`Família Nogueira`)** | `nogueira.cliente@cotustudio.exemplo.br` | `Cliente@2026` | `/portal` (etapas, arquivos e chat de *Residência Vale Verde*) |
+| **Gerente de Projetos** *(Camila Ferreira)* | `camila.ferreira@cotustudio.exemplo.br` | `Equipe@2026` | Dashboard, Projetos, Clientes, Leads, Fornecedores e Financeiro |
+| **Arquiteto Colaborador** *(Rafael Duarte)* | `rafael.duarte@cotustudio.exemplo.br` | `Equipe@2026` | Dashboard, Projetos, Clientes e Fornecedores |
+| **Administrativo / Financeiro** *(Beatriz Mendes)* | `beatriz.mendes@cotustudio.exemplo.br` | `Equipe@2026` | Dashboard, Financeiro e Clientes |
+| **Estagiário** *(Lucas Andrade)* | `lucas.andrade@cotustudio.exemplo.br` | `Equipe@2026` | Projetos e Fornecedores |
+
+> **Dados já populados em `cotu_tcc`:** 4 Clientes (`Família Nogueira`, `Helena & Marcos Silveira`, `Clínica OdontoPrime`, `Café Botânico Joinville`), 4 Projetos (735 m²), 5 Fornecedores (3 avaliados), 9 Leads no Kanban, 3 Contratos (`R$ 82.000,00` / `R$ 29.000,00` recebidos), 5 Despesas (`R$ 6.345,00`), 2 arquivos visíveis no Portal e Chat SignalR ativo.
 
 ---
 
