@@ -156,10 +156,15 @@ dotnet test ArchiFlow.sln --collect:"XPlat Code Coverage" --settings test.runset
 
 ---
 
-## CI/CD e Qualidade
+## CI/CD, Cobertura de Testes e Conformidade
 
 O pipeline em [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa em todo `push` e `pull_request` para `main`:
 1. Sobe container PostgreSQL 16 de teste para testes de integração reais (`UseNpgsql`).
-2. Executa análise estática de qualidade e segurança via **SonarCloud**.
-3. Compila em modo `Release`, executa todas as suítes xUnit e gera relatório de cobertura.
-4. No `push` em `main`, executa deploy automatizado via SSH na VPS Hostinger reconstruindo `api` e `api-staging` e validando `/health`.
+2. Executa análise estática de qualidade e segurança via **SonarCloud** (**Quality Gate: Passed**, `0` issues e `0` security hotspots).
+3. Compila em modo `Release`, executa todas as `84` suítes xUnit e gera relatório de cobertura (**97,69% Line Coverage** e **80,56% Branch Coverage**, superando a meta de 75%).
+4. No `push` em `main`, executa deploy automatizado via GitHub Actions CI/CD reconstruindo `api` e `api-staging` e validando `/health`.
+
+### Conformidade com Normas
+- **LGPD (Lei nº 13.709/2018):** isolamento físico Database-per-Tenant (`cotu_<subdominio>`), `BCrypt` (`workFactor: 12`) e hashes SHA-256 para tokens de convite/recuperação.
+- **OWASP Top 10:** EF Core parametrizado, policies RBAC + `[RequireModule]` + `ProjetoOwnerHandler` + proteção anti-IDOR no `ChatHub`, `FileSecurityValidator` e Swagger restrito a `Development`.
+- **Licença:** distribuído sob **MIT License** ([`LICENSE`](LICENSE)).

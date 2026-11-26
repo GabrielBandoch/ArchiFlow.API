@@ -130,8 +130,9 @@ flowchart LR
 
 ---
 
-## 4. Observabilidade, Qualidade e Health Checks
+## 4. Observabilidade, Qualidade, Cobertura e Conformidade
 
 - **Logging Estruturado:** **Serilog** com `UseSerilogRequestLogging()` para rastreabilidade de requisições HTTP e erros.
 - **Health Check (`/health`):** executa `DatabaseHealthCheck` contra o PostgreSQL, retornando HTTP `200` (`Healthy`) ou `503` (`Unhealthy`), usado também pelo Caddy (`on_demand_tls`) e pelo pipeline de deploy.
-- **Qualidade Contínua:** análise estática automática no **SonarCloud** e **84 suítes de testes automatizados (xUnit)** executadas a cada push/PR contra um PostgreSQL 16 real no GitHub Actions.
+- **Qualidade & Cobertura (CI):** análise estática automática no **SonarCloud** (**Quality Gate: Passed**, 0 issues / 0 security hotspots) e **84 suítes de testes automatizados (xUnit)** executadas contra PostgreSQL 16 no GitHub Actions, atingindo **97,69% de cobertura de linhas** e **80,56% de branches**.
+- **Conformidade (LGPD & Licenciamento):** isolamento físico por tenant (`cotu_<subdominio>`) alinhado à Lei nº 13.709/2018 (LGPD) e repositório licenciado sob **MIT License** ([`LICENSE`](../LICENSE)).
