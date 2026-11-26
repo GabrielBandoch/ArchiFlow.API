@@ -9,8 +9,8 @@ Bem-vindo à Wiki técnica do backend da plataforma **COTU (ArchiFlow)** — API
 | Página | Conteúdo |
 | :--- | :--- |
 | **[Arquitetura do Sistema](Arquitetura.md)** | Clean Architecture, Facades, Diagramas C4 atualizados (Níveis 1, 2 e 3), Segurança OWASP Top 10, RBAC granular e Health Checks. |
-| **[Multi-Tenancy e Provisionamento](Multi-Tenancy-e-Provisionamento.md)** | Funcionamento completo de 1 banco PostgreSQL por cliente (`cotu_<subdominio>`), `TenantResolutionMiddleware`, `TenantDatabaseProvisioner`, Caddy On-Demand TLS e `DbSeeder`. |
-| **[Modelo de Dados e Migrações](Modelo-de-Dados-e-Migracoes.md)** | Comparativo RFC (9 tabelas) vs. Atual (25 tabelas por tenant + 2 no master), ERD em Mermaid, conversor UTC e estratégia de seeds/migrações. |
+| **[Multi-Tenancy e Provisionamento](Multi-Tenancy-e-Provisionamento.md)** | Funcionamento completo de 1 banco PostgreSQL por cliente (`cotu_<subdominio>`), `TenantResolutionMiddleware`, `TenantDatabaseProvisioner`, Caddy TLS e `DbSeeder`. |
+| **[Modelo de Dados e Migrações](Modelo-de-Dados-e-Migracoes.md)** | Comparativo RFC (9 tabelas) vs. Atual (23 tabelas por tenant + `Tenants_Assinaturas` no master), ERD em Mermaid, conversor UTC e estratégia de seeds/migrações. |
 | **[Evolução Arquitetural e ADRs](Evolucao-Arquitetural-e-ADRs.md)** | Comparativo entre o RFC original (Março/2026) e a versão entregue (Novembro/2026) + **9 ADRs** documentados. |
 | **[Instruções de Deploy](Instrucoes-de-Deploy.md)** | Guia completo para execução local, Docker Compose e deploy AWS CDK (`infra/`). |
 | **[Deploy em Produção (VPS + Caddy)](../deploy/README.md)** | Passo a passo da stack Docker em produção na Hostinger VPS (`docker-compose.prod.yml` e `Caddyfile`). |

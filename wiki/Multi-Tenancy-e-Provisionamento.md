@@ -25,10 +25,10 @@ Cada subdomínio acessado na plataforma é mapeado para um banco PostgreSQL inde
 
 ## 2. Fluxo Ponta a Ponta (Contratação/Pagamento → Base Pronta)
 
-### 2.1 Gestão Comercial e Assinatura (`ArchiFlow.Landing` + `ArchiFlow.Admin.API`)
+### 2.1 Gestão Comercial e Assinatura (`ArchiFlow.Landing` + `Tenants_Assinaturas`)
 1. O potencial cliente conhece os planos na Landing (`cotu.com.br`) — *Starter*, *Professional* e *Enterprise*.
-2. Na Central SuperAdmin (`app.cotu.com.br` / `ArchiFlow.Admin.API`), o escritório é registrado na tabela **`Tenants_Assinaturas`** do banco master `cotu` com subdomínio único, plano, mensalidade e status `Trial`.
-3. Quando o pagamento é registrado (`POST /api/superadmin/escritorios/{id}/registrar-pagamento`), o status passa para `Adimplente`, `TAS_Ultimo_Pagamento` é atualizado, `TAS_Data_Vencimento` avança 1 mês e eventuais bloqueios são removidos.
+2. O escritório é registrado pelo serviço interno de faturamento na tabela **`Tenants_Assinaturas`** do banco master `cotu` com subdomínio único, plano, mensalidade e status `Trial`.
+3. Quando o pagamento é confirmado, o status passa para `Adimplente`, `TAS_Ultimo_Pagamento` é atualizado, `TAS_Data_Vencimento` avança 1 mês e eventuais bloqueios são removidos.
 
 ### 2.2 Provisionamento Automático na Primeira Requisição (`ArchiFlow.API`)
 
@@ -46,8 +46,7 @@ sequenceDiagram
     participant Seed as DbSeeder
 
     User->>Caddy: HTTPS GET https://tcc.cotu.com.br/
-    Caddy->>MW: on_demand_tls ask -> GET http://cotu-api:8080/health?domain=tcc.cotu.com.br
-    MW-->>Caddy: 200 OK Healthy (certificado SSL emitido)
+    Caddy-->>User: Certificado SSL Let's Encrypt e SPA servida
 
     User->>Caddy: POST /api/auth/register ou /api/auth/login
     Caddy->>MW: Forward com Host: tcc.cotu.com.br
@@ -78,7 +77,7 @@ sequenceDiagram
   - Ignora GUIDs na claim `escritorio_id` para evitar criar bancos com UUIDs.
 - **Requisições anônimas (`/api/auth/login`, `/api/auth/register`, `/health`):**
   - Em `Development`/`Testing`, aceita o header `X-Tenant-Id` caso informado.
-  - Em produção, resolve exclusivamente pelo `Host` (`ResolveTenantFromHost`). Prefixos de infraestrutura (`www`, `api`, `app`) retornam `default`; subdomínios de clientes (`duna.cotu.com.br`, `tcc.cotu.com.br`, `staging.cotu.com.br`) retornam o respectivo identificador.
+  - Em produção, resolve exclusivamente pelo `Host` (`ResolveTenantFromHost`). Prefixos de infraestrutura (`www`, `api`) retornam `default`; subdomínios de clientes (`duna.cotu.com.br`, `tcc.cotu.com.br`, `staging.cotu.com.br`) retornam o respectivo identificador.
 - Sempre devolve o cabeçalho `X-Tenant-Resolved` na resposta HTTP.
 
 ### 3.2 `TenantContext` (`src/ArchiFlow.Infrastructure/MultiTenancy/TenantContext.cs`)

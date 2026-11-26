@@ -14,8 +14,7 @@ Crie os seguintes registros do tipo **A**, apontando para o **IP público da sua
 | **A** | `@` | `SEU_IP_VPS` | 14400 | Domínio principal (`seudominio.com`) |
 | **A** | `staging` | `SEU_IP_VPS` | 14400 | Ambiente de Homologação / Staging |
 | **A** | `api` | `SEU_IP_VPS` | 14400 | Acesso direto à API e Swagger |
-| **A** | `app` | `SEU_IP_VPS` | 14400 | Portal administrativo da Cotu |
-| **A** | `*` | `SEU_IP_VPS` | 14400 | Wildcard: atende todos os clientes/tenants dinamicamente (ex: `duna`, `cliente1`, etc.) |
+| **A** | `*` | `SEU_IP_VPS` | 14400 | Wildcard: atende todos os clientes/tenants dinamicamente (ex: `duna`, `tcc`, etc.) |
 
 ---
 

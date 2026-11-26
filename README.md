@@ -30,10 +30,10 @@ API RESTful e Hub SignalR em **.NET 8 / C#** para a plataforma multi-tenant de g
 | **Índice da Wiki** | [`wiki/Home.md`](wiki/Home.md) | Hub da documentação técnica do backend. |
 | **Arquitetura & Segurança** | [`wiki/Arquitetura.md`](wiki/Arquitetura.md) | Clean Architecture, Padrão Facade, C4 atualizado (Níveis 1, 2 e 3), OWASP Top 10, RBAC e Health Checks. |
 | **Multi-Tenancy & Criação da Base** | [`wiki/Multi-Tenancy-e-Provisionamento.md`](wiki/Multi-Tenancy-e-Provisionamento.md) | Fluxo completo Database-per-Tenant (`cotu_<subdominio>`), `TenantResolutionMiddleware`, `TenantDatabaseProvisioner` e `DbSeeder`. |
-| **Modelo de Dados & Migrações** | [`wiki/Modelo-de-Dados-e-Migracoes.md`](wiki/Modelo-de-Dados-e-Migracoes.md) | Comparativo RFC (9 tabelas) vs. Atual (25 tabelas por tenant + 2 no master), ERD em Mermaid, conversor UTC e seeds. |
+| **Modelo de Dados & Migrações** | [`wiki/Modelo-de-Dados-e-Migracoes.md`](wiki/Modelo-de-Dados-e-Migracoes.md) | Comparativo RFC (9 tabelas) vs. Atual (23 tabelas por tenant + `Tenants_Assinaturas` no master), ERD em Mermaid, conversor UTC e seeds. |
 | **Evolução Arquitetural & ADRs** | [`wiki/Evolucao-Arquitetural-e-ADRs.md`](wiki/Evolucao-Arquitetural-e-ADRs.md) | Mudanças desde o RFC v1.0, consolidação de escopo (remoção temporária do Simulador) e ADRs 01–09. |
 | **Instruções de Deploy** | [`wiki/Instrucoes-de-Deploy.md`](wiki/Instrucoes-de-Deploy.md) | Execução local, Docker Compose e infraestrutura AWS CDK. |
-| **Deploy VPS Hostinger & Caddy** | [`deploy/README.md`](deploy/README.md) | Guia prático de produção (`docker-compose.prod.yml`, `Caddyfile` wildcard e `deploy.sh`). |
+| **Deploy VPS Hostinger & Caddy** | [`deploy/README.md`](deploy/README.md) | Guia prático de produção (`docker-compose.prod.yml`, `Caddyfile` e `deploy.sh`). |
 | **Roadmap Cloud (Fases 1 a 7)** | [`wiki/Plano-Futuro-Infraestrutura.md`](wiki/Plano-Futuro-Infraestrutura.md) | Evolução estratégica em nuvem AWS (App Runner → ECS → Aurora Serverless → Multi-Região). |
 
 ### Documentação Complementar no Frontend (`ArchiFlow/docs/`)
@@ -43,7 +43,7 @@ API RESTful e Hub SignalR em **.NET 8 / C#** para a plataforma multi-tenant de g
 | Hub Central & RFC Original | [`ArchiFlow/docs/README.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/README.md) · [`rfc.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/rfc.md) |
 | Evolução RFC vs. Sistema Entregue | [`EVOLUCAO_RFC_VS_ENTREGUE.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/EVOLUCAO_RFC_VS_ENTREGUE.md) |
 | Multi-Tenancy, Pagamento & Provisionamento | [`ARQUITETURA_MULTITENANT_E_PROVISIONAMENTO.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/ARQUITETURA_MULTITENANT_E_PROVISIONAMENTO.md) |
-| Modelo de Dados Completo (25 + 2 Tabelas) | [`MODELO_DE_DADOS.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/MODELO_DE_DADOS.md) |
+| Modelo de Dados Completo (23 + 1 Tabelas) | [`MODELO_DE_DADOS.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/MODELO_DE_DADOS.md) |
 
 ---
 
@@ -55,10 +55,10 @@ API RESTful e Hub SignalR em **.NET 8 / C#** para a plataforma multi-tenant de g
 | Tempo Real | SignalR (`/hubs/chat`) autenticado via JWT |
 | ORM & Banco | Entity Framework Core 8 · PostgreSQL 16 (Database-per-Tenant) |
 | Mapeamento & Segurança | AutoMapper 12 · BCrypt.Net (`workFactor: 12`) · JWT Bearer (HS256) |
-| Integrações | Google Calendar API (OAuth 2.0 / Service Account / `.ics`) · Amazon S3 · Amazon SES / MailKit SMTP |
+| Integrações | Amazon S3 (Storage) · Amazon SES / MailKit SMTP (E-mails) |
 | Observabilidade | Serilog · ASP.NET Core Health Checks (`/health`) |
 | Testes & Qualidade | xUnit · FluentAssertions · Moq · Bogus (`84` suítes) · SonarCloud |
-| Produção & IaC | Docker Compose · Caddy 2 (On-Demand TLS) · GitHub Actions · AWS CDK (`infra/`) |
+| Produção & IaC | Docker Compose · Caddy 2 · GitHub Actions · AWS CDK (`infra/`) |
 
 ---
 
@@ -70,8 +70,8 @@ ArchiFlow.sln
 │   ├── ArchiFlow.Domain/           # Entidades, Enums, Roles, ModulosApp e interfaces de Repository/Tenant (sem deps externas)
 │   ├── ArchiFlow.Application/      # Commands, DTOs, Services, Facades, AutoMapper Profile e FileSecurityValidator
 │   ├── ArchiFlow.Infrastructure/   # ArchiFlowDbContext, DbSeeder, MultiTenancy (TenantContext, TenantDatabaseProvisioner),
-│   │                               # Repositories, UnitOfWork, S3/LocalStorage, SES/SMTP Email, GoogleCalendarService
-│   └── ArchiFlow.API/              # Controllers (18), ChatHub, Middlewares (Exception, TenantResolution),
+│   │                               # Repositories, UnitOfWork, S3/LocalStorage e SES/SMTP Email
+│   └── ArchiFlow.API/              # Controllers (17), ChatHub, Middlewares (Exception, TenantResolution),
 │                                   # Security (RequireModule, ProjetoOwnerHandler), HealthChecks, Program.cs
 ├── tests/
 │   └── ArchiFlow.Tests/            # 84 arquivos de testes unitários e de integração (xUnit + FluentAssertions + Moq)
@@ -110,7 +110,6 @@ Domain  <── Application <── Tests
 | `ArquivosController` | `/api/arquivos` | — | `ProjetoOwner` (leitura) / `AcessoArquiteto` (upload/delete) |
 | `MensagensChatController` | `/api/mensagens` | — | `ProjetoOwner` (histórico e marcação de leitura) |
 | `ChatHub` *(SignalR)* | `/hubs/chat` | — | `[Authorize]` + verificação `PossuiAcessoAoProjeto` + tenant |
-| `AgendaController` | `/api/agenda` | `agenda` | `[Authorize]` + `.ics` + Google OAuth 2.0 / Service Account |
 | `FinanceiroController` | `/api/financeiro` | `financeiro` | `AcessoArquiteto` (contratos, parcelas, baixas, despesas) |
 | `FornecedoresController` | `/api/fornecedores` | `fornecedores` | `AcessoArquiteto` (parceiros, notas 1–5 e vínculos) |
 | `UsuariosController` | `/api/usuarios` | `configuracoes` *(equipe)* | Perfil próprio (`/me`) + `ApenasGerenteOuAdmin` (equipe) |
@@ -147,7 +146,7 @@ dotnet run
 ### Testes Automatizados
 
 ```bash
-# Rodar todas as 84 suítes de testes
+# Rodar todas as suítes de testes
 dotnet test ArchiFlow.sln
 
 # Com relatório de cobertura (Cobertura XML)

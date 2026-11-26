@@ -29,7 +29,7 @@ Este guia cobre a execução da API em ambiente local, via Docker em desenvolvim
    SEED_ADMIN_EMAIL=admin@cotu.com
    SEED_ADMIN_PASSWORD=SuaSenhaForteAqui
    ```
-   *(Variáveis opcionais para e-mail SMTP, AWS S3/SES e Google Calendar OAuth também constam em `.env.example`.)*
+   *(Variáveis opcionais para e-mail SMTP e AWS S3/SES também constam em `.env.example`.)*
 
 2. Restaure as dependências e execute a API (migrations, DDL auxiliar e seeds são executados automaticamente na inicialização):
    ```bash
@@ -57,22 +57,22 @@ docker compose up --build -d
 
 ## 3. Deploy em Produção (Hostinger VPS Ubuntu + Caddy 2)
 
-A stack oficial de produção está na pasta [`deploy/`](../deploy/README.md) e orquestra **9 containers** em [`deploy/docker-compose.prod.yml`](../deploy/docker-compose.prod.yml):
+A stack oficial de produção está na pasta [`deploy/`](../deploy/README.md) e orquestra os containers em [`deploy/docker-compose.prod.yml`](../deploy/docker-compose.prod.yml):
 - `db` (`cotu-db`, PostgreSQL 16 com `init-tenants.sql`)
-- `api` (`cotu-api`), `api-staging` (`cotu-api-staging`), `api-app` (`cotu-api-app`)
-- `web` (`cotu-web`), `web-staging` (`cotu-web-staging`), `admin` (`cotu-admin`), `landing` (`cotu-landing`)
-- `proxy` (`cotu-proxy`, Caddy 2 com HTTPS automático e `on_demand_tls` para `*.cotu.com.br`)
+- `api` (`cotu-api`), `api-staging` (`cotu-api-staging`)
+- `web` (`cotu-web`), `web-staging` (`cotu-web-staging`), `landing` (`cotu-landing`)
+- `proxy` (`cotu-proxy`, Caddy 2 com HTTPS automático via Let's Encrypt)
 
 ### Passos resumidos na VPS
-1. Configure o DNS apontando `@`, `app`, `api`, `staging`, `*` (ou subdomínios específicos) para o IP público da VPS.
-2. Copie `deploy/.env.prod.example` para `deploy/.env` e preencha `DOMAIN_NAME`, `ACME_EMAIL`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_ADMIN_*`, `SMTP_*`, `GOOGLE_CALENDAR_*` e `AWS_*`.
+1. Configure o DNS apontando `@`, `api`, `staging` e os subdomínios de clientes (`duna`, `tcc`, etc.) para o IP público da VPS.
+2. Copie `deploy/.env.prod.example` para `deploy/.env` e preencha `DOMAIN_NAME`, `ACME_EMAIL`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_ADMIN_*`, `SMTP_*` e `AWS_*`.
 3. Execute o script automatizado:
    ```bash
    cd /opt/cotu/ArchiFlow.API/deploy
    chmod +x deploy.sh
    ./deploy.sh
    ```
-4. A cada `push` na branch `main`, o workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) executa testes + SonarCloud e realiza o redeploy automático via SSH de `api` e `api-staging` após validar `https://api.cotu.com.br/health`.
+4. A cada `push` na branch `main`, o workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) executa testes + SonarCloud e realiza o redeploy automático de `api` e `api-staging` validando `https://api.cotu.com.br/health`.
 
 > Consulte todos os detalhes em [`deploy/README.md`](../deploy/README.md) e [`Multi-Tenancy-e-Provisionamento.md`](Multi-Tenancy-e-Provisionamento.md).
 
