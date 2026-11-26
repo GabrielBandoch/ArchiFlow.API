@@ -1,85 +1,137 @@
-# Arquitetura do Backend — ArchiFlow
+# Arquitetura do Backend — COTU (ArchiFlow)
 
-A API do ArchiFlow foi projetada com base nos princípios da **Clean Architecture** (Arquitetura Limpa), visando o desacoplamento de dependências externas, facilidade de manutenção e alta testabilidade.
+A API do **COTU (ArchiFlow)** foi projetada sobre os princípios da **Clean Architecture**, combinada ao padrão **Facade**, **Repository + Unit of Work** e arquitetura **Multi-Tenant (Database-per-Tenant)** em **.NET 8**.
 
-## Estrutura de Camadas
+---
 
-A solução está organizada em 5 projetos principais no diretório `src/`:
+## 1. Estrutura de Camadas e Dependências
 
-```
+```text
 ArchiFlow.sln
 ├── src/
-│   ├── ArchiFlow.Domain/          # Entidades de Domínio, Interfaces base e Enums.
-│   ├── ArchiFlow.Application/     # Serviços de Aplicação, DTOs, Mapeamentos (AutoMapper), Interfaces de Facade e Casos de Uso.
-│   ├── ArchiFlow.Infrastructure/  # Acesso a Dados (EF Core + PostgreSQL), Repositórios, Unit of Work e Migrations.
-│   └── ArchiFlow.API/             # Controllers, Middlewares de Tratamento de Erros, Configurações de Start (Program.cs) e Health Checks.
+│   ├── ArchiFlow.Domain/          # Entidades puras, Enums, Roles, ModulosApp, interfaces de repositório e ITenantContext
+│   ├── ArchiFlow.Application/     # Commands, DTOs, Services, Facades, AutoMapper e FileSecurityValidator
+│   ├── ArchiFlow.Infrastructure/  # ArchiFlowDbContext, DbSeeder, MultiTenancy, Repositories, UnitOfWork, S3/SES/SMTP/Google
+│   └── ArchiFlow.API/             # 18 Controllers REST, ChatHub (SignalR), Middlewares, Auth Policies, HealthChecks
+└── tests/
+    └── ArchiFlow.Tests/           # 84 arquivos de testes unitários e integração (xUnit + FluentAssertions + Moq + Bogus)
 ```
 
-### Detalhes das Camadas
-
-1. **Domain (Domínio):** Contém as entidades de negócio principais (ex: `Projeto`, `Usuario`, `Cliente`). É totalmente independente de frameworks e ORMs.
-2. **Application (Aplicação):** Contém as regras de aplicação e portas de entrada. Orquestra a execução usando padrões como DTOs (Data Transfer Objects) e Services. A comunicação entre o Domínio e a API é mediada por esta camada.
-3. **Infrastructure (Infraestrutura):** Implementa o acesso a banco de dados real via PostgreSQL utilizando o EF Core. Aqui vivem os repositórios reais que estendem as interfaces do Domínio.
-4. **API (Interface Web):** Ponto de entrada do sistema via protocolo HTTP. Implementa controllers RESTful, middleware de tratamento global de exceções, autenticação baseada em JWT e o monitoramento `/health`.
-
----
-
-## Design de Segurança e Autenticação
-
-- **Autenticação JWT:** A segurança de endpoints é governada por tokens JWT (JSON Web Tokens). O login gera um token com tempo de expiração configurável e informações do usuário autenticado.
-- **Autorização Baseada em Roles (Papéis):** O sistema utiliza controle de acessos (ex: `Administrador`, `Arquiteto`, `Cliente`) para restringir o acesso a recursos específicos da API.
-- **Proteção de CORS:** Regras rígidas configuradas via variável de ambiente `AllowedOrigins`.
+### Direção das Dependências
+- `Domain` não referencia nenhum outro projeto nem bibliotecas externas de infraestrutura.
+- `Application` depende apenas de `Domain`.
+- `Infrastructure` depende de `Domain` e implementa interfaces definidas em `Domain` e `Application` (sem criar dependência circular).
+- `API` orquestra injeção de dependência em [`ServiceCollectionExtensions.cs`](../src/ArchiFlow.API/Extensions/ServiceCollectionExtensions.cs) e expõe endpoints REST + SignalR.
 
 ---
 
-## Diagramas de Arquitetura (Modelo C4)
+## 2. Diagramas de Arquitetura (Modelo C4 Atualizado)
 
-### 1. Nível 1 — Diagrama de Contexto do Sistema (C4 Context)
+### Nível 1 — Contexto do Sistema
 
 ```mermaid
 graph TD
-    Arquiteto["Arquiteto / Administrador<br/>(Usuário Principal)"]
-    Cliente["Cliente / Contratante<br/>(Usuário Externo)"]
-    Lead["Lead / Prospect<br/>(Potencial Cliente)"]
+    Arquiteto["Arquiteto / Equipe<br/>(Admin, Gerente, Colaborador, Estagiário, Financeiro)"]
+    Cliente["Cliente / Representantes<br/>(Portal White-Label)"]
+    SuperAdmin["Operador COTU<br/>(Gestão SaaS)"]
 
-    Sistema["<b>ArchiFlow Platform</b><br/>Gestão de Projetos, CRM de Leads, Precificação de Honorários e Finanças"]
+    COTU["<b>Plataforma COTU (ArchiFlow)</b><br/>Gestão de Projetos, Leads, CRM, Agenda, Financeiro, Fornecedores, Chat e Portal"]
 
-    WhatsApp["WhatsApp API / Web<br/>(Comunicação Externa)"]
-    EmailService["Serviço de E-mail / AWS SES<br/>(Notificações e Alertas)"]
+    S3["Amazon S3<br/>(Pranchas, Fotos, Logos, Comprovantes)"]
+    Email["SMTP Hostinger / Amazon SES<br/>(Convites e Recuperação de Senha)"]
+    GCal["Google Calendar API<br/>(OAuth 2.0, Service Account, Meet)"]
+    WhatsApp["WhatsApp Web<br/>(Contato direto com Leads e Fornecedores)"]
 
-    Arquiteto -->|"Gerencia projetos, simula honorários, gera propostas e controla finanças"| Sistema
-    Cliente -->|"Acompanha evolução de etapas, arquivos e faturas no Portal do Cliente"| Sistema
-    Lead -->|"Recebe propostas comerciais e links de atendimento"| Sistema
+    Arquiteto -->|"Gerencia escritório e projetos via HTTPS"| COTU
+    Cliente -->|"Acompanha etapas, arquivos e chat no Portal"| COTU
+    SuperAdmin -->|"Gerencia assinaturas, planos e bloqueios em app.cotu.com.br"| COTU
 
-    Sistema -->|"Dispara mensagens formatadas de proposta"| WhatsApp
-    Sistema -->|"Envia e-mails de convite e notificações"| EmailService
+    COTU -->|"Upload/Delete de arquivos"| S3
+    COTU -->|"E-mails transacionais"| Email
+    COTU -->|"Sincronização e links Meet"| GCal
+    Arquiteto -->|"Disparo de mensagens formatadas"| WhatsApp
 ```
 
-### 2. Nível 2 — Diagrama de Contêineres (C4 Container)
+### Nível 2 — Containers em Produção
 
 ```mermaid
 graph TD
-    subgraph Cliente["Navegador Web / Dispositivo do Usuário"]
-        SPA["<b>Frontend Single Page App</b><br/>[Angular 17, TypeScript, SCSS]<br/>Interface web responsiva com Design System próprio"]
+    Browser["Navegador Web (Desktop / Tablet / Mobile)"]
+
+    subgraph VPS["VPS Produção (Docker Compose + Caddy 2)"]
+        Caddy["<b>Caddy 2 Proxy</b><br/>HTTPS + On-Demand TLS (*.cotu.com.br)"]
+        Landing["<b>cotu-landing</b><br/>cotu.com.br"]
+        AdminWeb["<b>cotu-admin</b><br/>app.cotu.com.br"]
+        AdminAPI["<b>cotu-api-app</b><br/>ArchiFlow.Admin.API"]
+        Web["<b>cotu-web / cotu-web-staging</b><br/>Angular 17 + Nginx"]
+        API["<b>cotu-api / cotu-api-staging</b><br/>.NET 8 REST + SignalR"]
+        DB[("<b>PostgreSQL 16 (cotu-db)</b><br/>Master 'cotu' + Bases Isoladas 'cotu_{tenant}'")]
     end
 
-    subgraph Backend["Ambiente de Servidor / Cloud"]
-        API["<b>Backend REST API</b><br/>[.NET 8 / ASP.NET Core]<br/>Clean Architecture, Controllers REST, Validações e Health Check"]
-        Auth["<b>Módulo de Segurança & JWT</b><br/>Autenticação stateless e RBAC"]
-        DB[("<b>Banco de Dados Relacional</b><br/>[PostgreSQL 16]<br/>Tabelas com suporte multi-tenant e EF Core")]
-        Storage["<b>Armazenamento de Arquivos</b><br/>[Local / AWS S3]<br/>Comprovantes financeiros e entregáveis técnicos"]
-    end
+    Cloud["AWS S3 + SES + Google Calendar"]
 
-    SPA -->|"HTTPS / REST JSON"| API
-    API -->|"Autentica requisições"| Auth
-    API -->|"Persiste e consulta dados (EF Core)"| DB
-    API -->|"Faz upload e streaming de anexos"| Storage
+    Browser -->|HTTPS| Caddy
+    Caddy --> Landing
+    Caddy --> AdminWeb
+    Caddy --> AdminAPI
+    Caddy --> Web
+    Caddy --> API
+    AdminAPI --> DB
+    API --> DB
+    API --> Cloud
+```
+
+### Nível 3 — Componentes Internos da API Principal (`ArchiFlow.API`)
+
+```mermaid
+flowchart LR
+    Req["Requisição HTTPS / WebSocket"] --> Fwd["ForwardedHeaders + CORS Dinâmico"]
+    Fwd --> Exc["ExceptionMiddleware + Serilog"]
+    Exc --> Auth["JWT Bearer Authentication"]
+    Auth --> TenantMW["TenantResolutionMiddleware<br/>(Resolve Tenant + Auto-Provisiona DB)"]
+    TenantMW --> Authz["Authorization Policies + RequireModule + ProjetoOwnerHandler"]
+
+    Authz --> Controllers["18 Controllers REST"]
+    Authz --> Hub["ChatHub (/hubs/chat)"]
+
+    Controllers --> Facades["Application Facades"]
+    Hub --> Facades
+    Facades --> Services["Application Services + Validators"]
+    Services --> UoW["Repositories + UnitOfWork"]
+    UoW --> DbCtx["ArchiFlowDbContext<br/>(ConnectionString por Tenant)"]
+    Services --> InfraExt["S3/Local Storage · Email · Google Calendar"]
 ```
 
 ---
 
-## Monitoramento e Resiliência (Health Checks)
+## 3. Segurança, Autenticação e Autorização
 
-O backend possui o endpoint `/health` que realiza verificações ativas no banco de dados relacional.
-- Se o banco de dados PostgreSQL responder com sucesso às conexões, o endpoint retorna HTTP 200 (OK) com o status `Healthy`.
-- Se houver falha de rede ou indisponibilidade da base de dados, o endpoint retorna HTTP 503 (Service Unavailable) com o status `Unhealthy` e os detalhes da falha.
+### 3.1 Autenticação Stateless (JWT) & Senhas
+- **Hashing:** `BCrypt.Net` com `workFactor: 12` para senhas de equipe (`Usuarios`), clientes legados (`Clientes`), representantes (`Representantes_Clientes`) e tokens seguros SHA-256 para recuperação de senha e convites.
+- **JWT Bearer:** tokens HS256 com `ClockSkew = TimeSpan.Zero`, validando `Issuer`, `Audience`, `Lifetime` e `IssuerSigningKey`.
+- **Token no SignalR:** suporte seguro via query string `access_token` restrito ao path `/hubs/chat`.
+
+### 3.2 Controle de Acesso em 3 Camadas
+1. **Policies de Papel (Role-Based):**
+   - `ApenasAdmin`: `Administrador`, `ArquitetoAdmin`
+   - `ApenasGerenteOuAdmin`: `Administrador`, `Gerente`, `ArquitetoAdmin`
+   - `AcessoArquiteto`: todos os papéis da equipe (`Administrador`, `Gerente`, `Colaborador`, `ArquitetoAdmin`, `ArquitetoColaborador`, `Estagiario`, `Financeiro`)
+2. **Controle Granular por Módulo (`[RequireModule]`):**
+   - Verifica a lista `USR_Modulos_Permitidos` (`dashboard`, `leads`, `clientes`, `fornecedores`, `projetos`, `agenda`, `financeiro`, `configuracoes`), impedindo acesso via API mesmo que o usuário tente forçar a URL diretamente.
+3. **Autorização Baseada em Recurso (`ProjetoOwnerHandler` + `ChatHub`):**
+   - Para usuários do perfil `Cliente`, valida se a claim `cliente_id` ou `projeto_id` realmente pertence ao projeto solicitado, bloqueando acessos horizontais (anti-IDOR) tanto nos endpoints REST (`/api/projetos/{id}`, `/api/arquivos/projeto/{id}`, `/api/mensagens/...`) quanto nas conexões SignalR.
+
+### 3.3 Proteções OWASP Top 10 Aplicadas
+- **SQL Injection:** consultas LINQ parametrizadas via EF Core; validação estrita de nome de banco (`^[a-z0-9_]+$`) no `TenantDatabaseProvisioner`.
+- **CORS Dinâmico:** allowlist explícita em `AllowedOrigins` estendida automaticamente para subdomínios legítimos do domínio raiz configurado.
+- **Swagger Restrito:** `UseSwagger()` e `UseSwaggerUI()` ativos apenas quando `app.Environment.IsDevelopment()` (bloqueado em produção).
+- **Validação de Upload:** `FileSecurityValidator` verifica extensão, MIME type e limite de tamanho antes do envio ao S3/storage.
+- **Exposição de Erros:** `ExceptionMiddleware` intercepta exceções não tratadas e retorna respostas JSON padronizadas sem stack traces em produção.
+
+---
+
+## 4. Observabilidade, Qualidade e Health Checks
+
+- **Logging Estruturado:** **Serilog** com `UseSerilogRequestLogging()` para rastreabilidade de requisições HTTP e erros.
+- **Health Check (`/health`):** executa `DatabaseHealthCheck` contra o PostgreSQL, retornando HTTP `200` (`Healthy`) ou `503` (`Unhealthy`), usado também pelo Caddy (`on_demand_tls`) e pelo pipeline de deploy.
+- **Qualidade Contínua:** análise estática automática no **SonarCloud** e **84 suítes de testes automatizados (xUnit)** executadas a cada push/PR contra um PostgreSQL 16 real no GitHub Actions.

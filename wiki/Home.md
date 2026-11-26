@@ -1,29 +1,25 @@
-# Bem-vindo à Wiki do ArchiFlow API 🚀
+# Wiki Técnica — COTU (ArchiFlow) Backend API
 
-Esta wiki centraliza as especificações técnicas, decisões arquiteturais e guias operacionais para o backend da plataforma **ArchiFlow**.
-
-## Páginas de Documentação
-
-1. **[Arquitetura do Sistema](Arquitetura.md)**
-   - Detalhamento do padrão Clean Architecture adotado.
-   - Divisão de responsabilidades por camadas.
-   - Estratégias de segurança e autenticação (JWT).
-   - Práticas de qualidade e cobertura de testes.
-
-2. **[Instruções de Deploy](Instrucoes-de-Deploy.md)**
-   - Passos para execução local da API.
-   - Configuração e execução via Docker Compose.
-   - Estratégia de infraestrutura e deploy contínuo em nuvem usando AWS CDK (Fase 1, Fase 1.5 e Fase 2).
-
-3. **[Roadmap de Infraestrutura (Fases 1 a 7)](Plano-Futuro-Infraestrutura.md)**
-   - Evolução estratégica da infraestrutura cloud do ArchiFlow.
-   - Detalhamento do escopo atual (Fases 1 a 3) e o planejamento futuro (Fases 4 a 7: Aurora Serverless, WAF/KMS, Observabilidade e Multi-Região).
+Bem-vindo à Wiki técnica do backend da plataforma **COTU (ArchiFlow)** — API REST e SignalR em **.NET 8 / C#** com arquitetura limpa e isolamento **Multi-Tenant Database-per-Tenant**.
 
 ---
 
-## Módulos do Sistema e Roadmap
+## Índice de Documentação
 
-- **Projetos:** Módulo principal de acompanhamento de progresso.
-- **Clientes:** Cadastro de clientes da plataforma.
-- **Autenticação:** Segurança baseada em tokens JWT.
-- **Health Checks:** Monitoramento de saúde e integridade com o banco de dados.
+| Página | Conteúdo |
+| :--- | :--- |
+| **[Arquitetura do Sistema](Arquitetura.md)** | Clean Architecture, Facades, Diagramas C4 atualizados (Níveis 1, 2 e 3), Segurança OWASP Top 10, RBAC granular e Health Checks. |
+| **[Multi-Tenancy e Provisionamento](Multi-Tenancy-e-Provisionamento.md)** | Funcionamento completo de 1 banco PostgreSQL por cliente (`cotu_<subdominio>`), `TenantResolutionMiddleware`, `TenantDatabaseProvisioner`, Caddy On-Demand TLS e `DbSeeder`. |
+| **[Modelo de Dados e Migrações](Modelo-de-Dados-e-Migracoes.md)** | Comparativo RFC (9 tabelas) vs. Atual (25 tabelas por tenant + 2 no master), ERD em Mermaid, conversor UTC e estratégia de seeds/migrações. |
+| **[Evolução Arquitetural e ADRs](Evolucao-Arquitetural-e-ADRs.md)** | Comparativo entre o RFC original (Março/2026) e a versão entregue (Novembro/2026) + **9 ADRs** documentados. |
+| **[Instruções de Deploy](Instrucoes-de-Deploy.md)** | Guia completo para execução local, Docker Compose e deploy AWS CDK (`infra/`). |
+| **[Deploy em Produção (VPS + Caddy)](../deploy/README.md)** | Passo a passo da stack Docker em produção na Hostinger VPS (`docker-compose.prod.yml` e `Caddyfile`). |
+| **[Roadmap de Infraestrutura Cloud](Plano-Futuro-Infraestrutura.md)** | Evolução estratégica proposta na AWS (Fases 1 a 7: App Runner → ECS → Aurora Serverless → Multi-Região). |
+
+---
+
+## Documentação Complementar (Frontend & Banca)
+
+- **Repositório Frontend (`ArchiFlow`):** [Hub de Documentação (`docs/README.md`)](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/README.md)
+- **Guia de Demonstração para a Banca:** [`GUIA_BANCA_DEMONSTRACAO.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/GUIA_BANCA_DEMONSTRACAO.md) (`https://tcc.cotu.com.br/`)
+- **RFC Original v1.0:** [`docs/rfc.md`](https://github.com/GabrielBandoch/ArchiFlow/blob/main/docs/rfc.md)

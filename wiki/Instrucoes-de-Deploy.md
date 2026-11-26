@@ -1,6 +1,6 @@
-# Instruções de Deploy — ArchiFlow Backend
+# Instruções de Deploy — COTU (ArchiFlow) Backend
 
-Este documento serve como guia prático para implantar e executar a API do ArchiFlow em diferentes ambientes.
+Este guia cobre a execução da API em ambiente local, via Docker em desenvolvimento/produção (VPS Hostinger + Caddy 2) e a opção IaC com AWS CDK.
 
 ---
 
@@ -11,84 +11,85 @@ Este documento serve como guia prático para implantar e executar a API do Archi
 - [PostgreSQL 15+](https://www.postgresql.org/download/)
 
 ### Passos para Iniciar
-1. Copie o arquivo `.env.example` para `.env` na raiz do projeto e configure as variáveis de conexão com o banco de dados local e chaves de segurança JWT:
+
+1. Copie `.env.example` para `.env` na raiz do repositório `ArchiFlow.API` e ajuste as variáveis locais:
    ```env
    DB_HOST=localhost
    DB_PORT=5432
-   DB_NAME=archiflow
+   DB_NAME=cotu
    DB_USER=postgres
    DB_PASSWORD=suasenha
-   JWT_SECRET=supersecretkey_minimo_32_caracteres_12345
-   JWT_ISSUER=ArchiFlow
-   JWT_AUDIENCE=ArchiFlowClients
-   JWT_EXPIRATION_MINUTES=60
+
+   JWT_SECRET=suachavesecretaaquicomnominimode32caracteres
+   JWT_ISSUER=Cotu
+   JWT_AUDIENCE=CotuClients
+   JWT_EXPIRATION_MINUTES=480
+
+   SEED_ADMIN_NAME=Administrador do Sistema
+   SEED_ADMIN_EMAIL=admin@cotu.com
+   SEED_ADMIN_PASSWORD=SuaSenhaForteAqui
    ```
-2. Restaure as dependências do .NET:
+   *(Variáveis opcionais para e-mail SMTP, AWS S3/SES e Google Calendar OAuth também constam em `.env.example`.)*
+
+2. Restaure as dependências e execute a API (migrations, DDL auxiliar e seeds são executados automaticamente na inicialização):
    ```bash
-   dotnet restore
-   ```
-3. Inicie o servidor da API (as migrations e seeds são executadas automaticamente na inicialização):
-   `ash
+   dotnet restore ArchiFlow.sln
    cd src/ArchiFlow.API
    dotnet run
    ```
-5. Acesse o console interativo do Swagger em: `http://localhost:5000/swagger` ou verifique a saúde em `http://localhost:5000/health`.
+
+3. Acesse localmente:
+   - API: `http://localhost:5000`
+   - Swagger UI *(ativo em `Development`)*: `http://localhost:5000/swagger`
+   - Health Check: `http://localhost:5000/health`
 
 ---
 
-## 2. Execução via Docker (Ambientes de Teste / Homologação Local)
+## 2. Execução via Docker Compose (Desenvolvimento Local)
 
-A raiz do projeto contém um arquivo `docker-compose.yml` que orquestra a API e o banco de dados PostgreSQL em containers separados.
+A raiz do repositório possui um `docker-compose.yml` para subir API + PostgreSQL localmente:
 
-### Passos para Iniciar
-1. Certifique-se de ter o Docker e Docker Compose instalados.
-2. Execute o comando para construir e inicializar os containers:
-   ```bash
-   docker-compose up --build -d
-   ```
-3. O Docker Compose irá subir:
-   - PostgreSQL rodando na porta `5432` interna (exposta na porta configurável no `.env`).
-   - A API ArchiFlow escutando na porta `5000`.
-4. Os health checks do Docker verificarão o banco antes de liberar a API, garantindo robustez na inicialização.
-
----
-
-## 3. Deploy em Nuvem (Produção via AWS CDK)
-
-O projeto de infraestrutura de nuvem está localizado no diretório `infra/ArchiFlow.Infra` e utiliza o AWS CDK (Cloud Development Kit) escrito em C# para realizar o provisionamento da infraestrutura como código (IaC).
-
-O deploy é segmentado em fases estratégicas utilizando a variável de ambiente `DEPLOYMENT_PHASE`:
-
-### Fases de Deploy
-
-1. **Fase 1: MVP (Mínimo Produto Viável)**
-   - **Variável:** `DEPLOYMENT_PHASE=Phase1`
-   - **Serviços:** AWS App Runner (hospedagem da API em container), Amazon S3 e CloudFront (hospedagem estática do frontend Angular), Amazon RDS PostgreSQL (`db.t3.micro` de baixo custo).
-   - **Foco:** Baixo custo e validação rápida.
-
-2. **Fase 1.5: Bootstrap (Crescimento Inicial)**
-   - **Variável:** `DEPLOYMENT_PHASE=Phase15`
-   - **Serviços:** AWS App Runner com containers mantidos em execução constante (*Always Warm* para evitar *cold starts*), RDS PostgreSQL (`db.t3.small` Single-AZ).
-   - **Foco:** Até 5 clientes pagantes simultâneos sem impacto de latência por cold start.
-
-3. **Fase 2: Enterprise (Alta Disponibilidade)**
-   - **Variável:** `DEPLOYMENT_PHASE=Phase2`
-   - **Serviços:** Amazon ECS Fargate (escala automática por CPU/Memória), Application Load Balancer (ALB) com health checks apontando para `/health`, Amazon RDS Multi-AZ PostgreSQL para failover automático, Amazon ElastiCache (Redis) para caching distribuído.
-   - **Foco:** Alta disponibilidade, tolerância a falhas e escalabilidade.
-
-4. **Fase 3: Multi-Account (Pipeline CI/CD)**
-   - **Variável:** `DEPLOYMENT_PHASE=Phase3`
-   - **Serviços:** Criação de múltiplos ambientes de infraestrutura isolados (Dev, Staging, Production) com pipeline integrado.
-
-### Comando para Deploy CDK
-Na pasta `infra/ArchiFlow.Infra`:
 ```bash
-# Definir variáveis obrigatórias
+docker compose up --build -d
+```
+
+---
+
+## 3. Deploy em Produção (Hostinger VPS Ubuntu + Caddy 2)
+
+A stack oficial de produção está na pasta [`deploy/`](../deploy/README.md) e orquestra **9 containers** em [`deploy/docker-compose.prod.yml`](../deploy/docker-compose.prod.yml):
+- `db` (`cotu-db`, PostgreSQL 16 com `init-tenants.sql`)
+- `api` (`cotu-api`), `api-staging` (`cotu-api-staging`), `api-app` (`cotu-api-app`)
+- `web` (`cotu-web`), `web-staging` (`cotu-web-staging`), `admin` (`cotu-admin`), `landing` (`cotu-landing`)
+- `proxy` (`cotu-proxy`, Caddy 2 com HTTPS automático e `on_demand_tls` para `*.cotu.com.br`)
+
+### Passos resumidos na VPS
+1. Configure o DNS apontando `@`, `app`, `api`, `staging`, `*` (ou subdomínios específicos) para o IP público da VPS.
+2. Copie `deploy/.env.prod.example` para `deploy/.env` e preencha `DOMAIN_NAME`, `ACME_EMAIL`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_ADMIN_*`, `SMTP_*`, `GOOGLE_CALENDAR_*` e `AWS_*`.
+3. Execute o script automatizado:
+   ```bash
+   cd /opt/cotu/ArchiFlow.API/deploy
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+4. A cada `push` na branch `main`, o workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) executa testes + SonarCloud e realiza o redeploy automático via SSH de `api` e `api-staging` após validar `https://api.cotu.com.br/health`.
+
+> Consulte todos os detalhes em [`deploy/README.md`](../deploy/README.md) e [`Multi-Tenancy-e-Provisionamento.md`](Multi-Tenancy-e-Provisionamento.md).
+
+---
+
+## 4. Opção IaC em Nuvem AWS (AWS CDK)
+
+O diretório [`infra/ArchiFlow.Infra`](../infra/ArchiFlow.Infra) contém o projeto **AWS CDK em C#** versionado como caminho de infraestrutura para evolução Enterprise na AWS (controlado por `DEPLOYMENT_PHASE`: `Phase1`, `Phase15`, `Phase2`, `Phase3`).
+
+```bash
+cd infra/ArchiFlow.Infra
 export DEPLOYMENT_PHASE=Phase1
 export DOMAIN_NAME=seu-dominio.com
 export CDK_DEFAULT_ACCOUNT=123456789012
 export CDK_DEFAULT_REGION=us-east-1
 
-# Fazer o deploy
 cdk deploy --all
 ```
+
+Para detalhes das Fases 1 a 7 propostas na AWS, consulte [`Plano-Futuro-Infraestrutura.md`](Plano-Futuro-Infraestrutura.md).
